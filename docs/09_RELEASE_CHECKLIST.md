@@ -1,0 +1,26 @@
+# 09. RELEASE_CHECKLIST
+
+- [x] 기존 기능 분석
+- [x] Google Sheet schema 구현
+- [x] Apps Script 제출/관리자/동기화 API 구현
+- [x] 모바일 제출 화면 구현
+- [x] 관리자 웹 화면 구현
+- [x] Windows 관리자 프로그램 MVP 구현
+- [x] SQLite migration 구현
+- [x] QR 생성 구현
+- [x] Excel 출력 구현
+- [x] HTML 인쇄 출력 구현
+- [x] HWP fallback 구현
+- [x] pytest 작성
+- [x] PowerShell 실행/빌드/패키징 스크립트 작성
+- [x] 보안/인증 문서 작성
+- [x] 초보자 설정 문서 작성
+- [x] 기간별/실별 조회 및 출력 보완
+- [x] QR/출력물 저장 위치 설정 보완
+- [x] 로컬 설정 Google 업로드 버튼 보완
+- [x] setup 재실행 보호 보완
+- [x] Google 관리자 웹 기간/실/상태 필터 보완
+- [x] Google 관리자 웹 CSV 조건 반영 보완
+- [x] 데스크톱 관리자 확인 Google 원본 반영 보완
+- [ ] 실제 학교 Google 계정으로 Apps Script 배포 테스트
+- [ ] 실제 한글 설치 PC에서 HWP 변환 테스트

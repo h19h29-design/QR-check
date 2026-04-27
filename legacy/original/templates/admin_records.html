@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<a href="{{ url_for('home') }}" class="btn btn-primary" style="margin-bottom: 16px;">
+    메인으로 돌아가기
+</a>
+
+    <meta charset="utf-8">
+    <title>전체 점검 기록 (관리자)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .date-filter {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .date-filter label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .date-filter input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .btn-filter, .btn-reset {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .btn-reset {
+            background: #95a5a6;
+            text-decoration: none;
+            color: white;
+        }
+        .excel-download-btn {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .excel-download-btn:hover {
+            background: #219653;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #eee;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .ok {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .bad {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .home-btn {
+            margin-top: 20px;
+        }
+        .logout-btn {
+            float: right;
+            background-color: #e74c3c;
+        }
+        
+        /* Mobile optimization */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+                margin-top: 10px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .date-filter {
+                padding: 10px;
+            }
+            .date-filter label {
+                display: block;
+                margin-bottom: 5px;
+            }
+            .date-filter input[type="date"] {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .btn-filter, .btn-reset {
+                width: 100%;
+                margin: 5px 0;
+                padding: 10px;
+            }
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr {
+                border: 1px solid #ddd;
+                margin-bottom: 10px;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            td {
+                border: none;
+                border-bottom: 1px solid #eee;
+                position: relative;
+                padding-left: 120px;
+                min-height: 40px;
+            }
+            td:before {
+                position: absolute;
+                top: 12px;
+                left: 10px;
+                width: 100px;
+                padding-right: 10px;
+                white-space: nowrap;
+                font-weight: bold;
+            }
+            td:nth-of-type(1):before { content: "실"; }
+            td:nth-of-type(2):before { content: "점검일시"; }
+            td:nth-of-type(3):before { content: "점검자"; }
+            td:nth-of-type(4):before { content: "이상유무"; }
+            td:nth-of-type(5):before { content: "상세보기"; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>전체 점검 기록 (관리자)
+            <a href="/logout" class="btn logout-btn">로그아웃</a>
+        </h1>
+
+  <form method="POST" action="{{ url_for('verify_all_records') }}">
+    <button type="submit" class="btn btn-success" style="margin-bottom:16px">
+        전체실 점검확인
+    </button>
+   </form>
+
+        <div class="date-filter">
+            <form method="GET" action="/admin/records">
+                <label for="start_date">시작일:</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+                
+                <label for="end_date">종료일:</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+                
+                <button type="submit" class="btn-filter">필터적용</button>
+                <a href="/admin/records" class="btn-reset">초기화</a>
+            </form>
+        </div>
+        
+        <a href="/admin/export_excel?start_date={{ start_date }}&end_date={{ end_date }}" class="excel-download-btn">
+            엑셀로 다운로드
+        </a>
+        
+        {% if summaries %}
+        <table>
+            <thead>
+                <tr>
+                    <th>실</th>
+                    <th>점검일시</th>
+                    <th>점검자</th>
+                    <th>이상유무</th>
+                    <th>상세보기</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summaries %}
+                <tr>
+                    <td>{{ row.room_name }}</td>
+                    <td>{{ row.timestamp }}</td>
+                    <td>{{ row.person }}</td>
+                    <td>
+                        {% if not row.abnormal %}
+                            <span class="ok">이상 무</span>
+                        {% else %}
+                            <span class="bad">이상 있음</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ row.detail_url }}" class="btn">상세보기</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:20px; background:#f8f9fa; border-radius:4px;">
+            <p>해당 기간에 점검 기록이 없습니다.</p>
+        </div>
+        {% endif %}
+        
+        <a href="/" class="btn home-btn">홈으로</a>
+    </div>
+</body>
+</html>

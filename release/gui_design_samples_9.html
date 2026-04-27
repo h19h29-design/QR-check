@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR보안점검표 관리자 GUI 디자인 시안 9종</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #64748b;
+      --line: #d6dee8;
+      --bg: #eef2f6;
+      --paper: #ffffff;
+      --blue: #2563eb;
+      --navy: #1e3a8a;
+      --green: #166534;
+      --teal: #0f766e;
+      --orange: #b45309;
+      --red: #b42318;
+      --soft-blue: #dbeafe;
+      --soft-green: #dcfce7;
+      --soft-orange: #fff7ed;
+      --soft-red: #fee4e2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+      font-size: 19px;
+      line-height: 1.45;
+    }
+    header.hero {
+      background: #111827;
+      color: #fff;
+      padding: 28px 34px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 34px; }
+    .hero p { margin: 0; color: #cbd5e1; }
+    .wrap { max-width: 1640px; margin: 0 auto; padding: 26px; }
+    .index {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .index a {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .sample {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 34px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+    }
+    .sample-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 24px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--line);
+    }
+    .sample-head h2 { margin: 0 0 6px; font-size: 28px; }
+    .sample-head p { margin: 0; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      white-space: nowrap;
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: 900;
+      font-size: 16px;
+    }
+    .screen {
+      min-height: 650px;
+      background: #f4f6f8;
+      display: grid;
+    }
+    .side {
+      padding: 22px 18px;
+      color: #fff;
+      background: #1f2937;
+    }
+    .brand { font-size: 25px; font-weight: 900; margin-bottom: 26px; }
+    .nav div {
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      color: #dbe4ee;
+      font-weight: 700;
+    }
+    .nav .on { background: rgba(255,255,255,.16); color: #fff; }
+    .main { padding: 24px; min-width: 0; }
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .topline h3 { margin: 0; font-size: 32px; }
+    .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 17px;
+    }
+    .card span { display: block; color: var(--muted); font-weight: 800; font-size: 17px; }
+    .card strong { display: block; font-size: 33px; margin-top: 4px; }
+    button, .btn, input, select {
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 700;
+    }
+    .btn, button { cursor: default; }
+    .primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .navy { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .green { background: var(--green); color: #fff; border-color: var(--green); }
+    .teal { background: var(--teal); color: #fff; border-color: var(--teal); }
+    .ghost { background: #f8fafc; }
+    .actions, .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); }
+    th, td { padding: 14px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: middle; }
+    th { background: #eef2f7; font-weight: 900; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 16px;
+      font-weight: 900;
+      background: #edf2f7;
+    }
+    .tag.ok { background: var(--soft-green); color: var(--green); }
+    .tag.warn { background: var(--soft-orange); color: var(--orange); }
+    .tag.bad { background: var(--soft-red); color: var(--red); }
+    .split { display: grid; grid-template-columns: 1fr 430px; gap: 16px; }
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .step {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px;
+      font-weight: 900;
+      text-align: center;
+    }
+    .step.on { background: #e7f2ee; color: #14523e; border-color: #8dbbab; }
+    .tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .tile {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px;
+      min-height: 140px;
+    }
+    .tile strong { display: block; font-size: 27px; margin-bottom: 10px; }
+    .paper {
+      background: #fff;
+      border: 1px solid #94a3b8;
+      min-height: 500px;
+      padding: 24px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+    }
+    .paper h4 { margin: 0 0 20px; text-align: center; font-size: 28px; }
+    .statusbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px 18px;
+      font-size: 17px;
+    }
+    .progress {
+      height: 18px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress span { display: block; height: 100%; background: var(--blue); width: 78%; }
+    .mini-list { display: grid; gap: 10px; }
+    .mini-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .wide-table th, .wide-table td { padding: 16px; }
+    .recommend {
+      margin-top: 10px;
+      color: #0f766e;
+      font-weight: 900;
+    }
+    @media (max-width: 980px) {
+      .index, .cards, .steps, .tile-grid, .split, .screen { grid-template-columns: 1fr !important; }
+      .side { display: none; }
+    }
+  </style>
+</head>
+<body>
+<header class="hero">
+  <h1>QR보안점검표 관리자 GUI 디자인 시안 9종</h1>
+  <p>디자인 서브에이전트 3명이 각각 3개씩 제안한 방향을 실제 화면처럼 볼 수 있게 정리했습니다.</p>
+</header>
+
+<div class="wrap">
+  <nav class="index">
+    <a href="#a1">A1 공공기관 클린 대시보드</a>
+    <a href="#a2">A2 현장관리형 큰 버튼 UI</a>
+    <a href="#a3">A3 문서관리형 행정 포털</a>
+    <a href="#b1">B1 3단계 발급 센터</a>
+    <a href="#b2">B2 점검 업무판</a>
+    <a href="#b3">B3 출력 중심 관리자</a>
+    <a href="#c1">C1 행정실 데스크형</a>
+    <a href="#c2">C2 큰 버튼 업무흐름형</a>
+    <a href="#c3">C3 엑셀 친화형 관리대장</a>
+  </nav>
+
+  <section class="sample" id="a1">
+    <div class="sample-head"><div><h2>A1. 공공기관 클린 대시보드</h2><p>흰색 배경, 네이비 메뉴, 하늘색 포인트. 가장 안정적인 행정 시스템 느낌.</p><div class="recommend">추천 포인트: 신뢰감, 익숙함, 큰 글씨와 잘 맞음</div></div><span class="badge">Agent A</span></div>
+    <div class="screen" style="grid-template-columns:310px 1fr;">
+      <aside class="side" style="background:#172033;"><div class="brand">QR보안점검표</div><div class="nav"><div class="on">대시보드</div><div>점검기록</div><div>실 관리</div><div>담당자 관리</div><div>QR 생성</div><div>출력/보관</div><div>설정</div></div></aside>
+      <main class="main"><div class="topline"><h3>오늘 점검 현황</h3><div class="actions"><button class="ghost">2026-04-26</button><button class="primary">Google 동기화</button></div></div><div class="cards"><div class="card"><span>오늘 전체</span><strong>48</strong></div><div class="card"><span>미점검 실</span><strong>6</strong></div><div class="card"><span>이상 보고</span><strong>2</strong></div><div class="card"><span>최근 출력</span><strong>14</strong></div></div><table><thead><tr><th>제출일시</th><th>실</th><th>점검자</th><th>상태</th><th>확인</th></tr></thead><tbody><tr><td>15:10</td><td>교무실</td><td>김담당</td><td><span class="tag ok">이상 없음</span></td><td>확인</td></tr><tr><td>15:02</td><td>과학실</td><td>이당직</td><td><span class="tag bad">이상 있음</span></td><td>미확인</td></tr><tr><td>14:50</td><td>행정실</td><td>박담당</td><td><span class="tag ok">이상 없음</span></td><td>미확인</td></tr></tbody></table></main>
+    </div>
+  </section>
+
+  <section class="sample" id="a2">
+    <div class="sample-head"><div><h2>A2. 현장관리형 큰 버튼 UI</h2><p>초보자가 바로 누를 수 있도록 큰 타일 버튼과 상태 배지를 앞세운 화면.</p><div class="recommend">추천 포인트: 가장 쉬움, 터치 모니터에도 적합</div></div><span class="badge">Agent A</span></div>
+    <div class="screen" style="grid-template-columns:300px 1fr;">
+      <aside class="side" style="background:#123d3a;"><div class="brand">현장 점검 관리</div><div class="nav"><div class="on">홈</div><div>점검기록 보기</div><div>실 등록/수정</div><div>QR 생성</div><div>출력물 보관함</div><div>담당자 관리</div></div></aside>
+      <main class="main"><div class="topline"><h3>무엇을 할까요?</h3><button class="teal">도움말</button></div><div class="tile-grid"><div class="tile"><strong>점검기록 보기</strong><p>날짜별, 실별 제출 결과 확인</p><button class="teal">열기</button></div><div class="tile"><strong>실 등록/수정</strong><p>새 실 추가, 삭제/복구</p><button class="teal">관리</button></div><div class="tile"><strong>QR 생성</strong><p>실별 QR과 A4 부착물 출력</p><button class="teal">생성</button></div><div class="tile"><strong>출력물 보관함</strong><p>엑셀, HTML, HWP 출력</p><button class="teal">출력</button></div></div></main>
+    </div>
+  </section>
+
+  <section class="sample" id="a3">
+    <div class="sample-head"><div><h2>A3. 문서관리형 행정 포털</h2><p>전자결재, 문서보관함처럼 기록과 출력물을 차분하게 관리하는 구조.</p><div class="recommend">추천 포인트: 기록/보관 업무가 많은 학교에 적합</div></div><span class="badge">Agent A</span></div>
+    <div class="screen" style="grid-template-columns:285px 1fr;">
+      <aside class="side" style="background:#253b46;"><div class="brand">행정 포털</div><div class="nav"><div class="on">업무 홈</div><div>점검대장</div><div>QR 문서함</div><div>출력 보관함</div><div>미처리 항목</div></div></aside>
+      <main class="main"><div class="topline"><h3>업무 영역</h3><div class="actions"><button>최근 문서</button><button class="primary">새 QR 발급</button></div></div><div class="split"><div><table><thead><tr><th>문서구분</th><th>제목</th><th>상태</th><th>수정일</th></tr></thead><tbody><tr><td>점검대장</td><td>4월 보안점검표</td><td><span class="tag warn">미확인 9건</span></td><td>오늘</td></tr><tr><td>QR</td><td>과학실 QR 라벨</td><td><span class="tag ok">출력 완료</span></td><td>오늘</td></tr><tr><td>출력물</td><td>교무실 월간 보관본</td><td><span class="tag ok">보관</span></td><td>어제</td></tr></tbody></table></div><aside class="panel"><h3>우측 상세 패널</h3><p>선택한 점검기록, QR, 출력물의 상세와 수정 버튼을 한 곳에 표시합니다.</p><button class="teal">상세보기</button></aside></div></main>
+    </div>
+  </section>
+
+  <section class="sample" id="b1">
+    <div class="sample-head"><div><h2>B1. 3단계 발급 센터</h2><p>설정 → QR 확인 → 출력 순서를 따라가는 업무 마법사형 화면.</p><div class="recommend">추천 포인트: 최초 설정/초보자 안내에 매우 강함</div></div><span class="badge">Agent B</span></div>
+    <div class="screen" style="grid-template-rows:auto 1fr;">
+      <div class="topbar"><strong>3단계 발급 센터</strong><div class="actions"><button>이전</button><button class="primary">다음</button><button class="green">완료</button></div></div>
+      <main class="main"><div class="steps"><div class="step on">1 설정</div><div class="step">2 QR 확인</div><div class="step">3 출력</div></div><div class="split"><div class="panel"><h3>학교 기본 설정</h3><div class="filters"><input value="등촌고등학교"><input value="admin@example.com"></div><p>저장 위치와 Google 연결을 확인한 뒤 다음 단계로 이동합니다.</p><button class="primary">연결 테스트</button></div><aside class="panel"><h3>진행 상태</h3><p>학교명 입력 완료</p><p>Google URL 입력 필요</p><p>Desktop Sync Key 입력 필요</p></aside></div></main>
+    </div>
+  </section>
+
+  <section class="sample" id="b2">
+    <div class="sample-head"><div><h2>B2. 점검 업무판</h2><p>홈에서 오늘 처리할 작업, 최근 QR, 출력 대기를 카드로 보여주는 대시보드형.</p><div class="recommend">추천 포인트: 운영 중 매일 쓰기 좋은 균형형</div></div><span class="badge">Agent B</span></div>
+    <div class="screen" style="grid-template-columns:300px 1fr;">
+      <aside class="side" style="background:#203047;"><div class="brand">점검 업무판</div><div class="nav"><div class="on">홈</div><div>설정</div><div>QR 목록</div><div>출력</div><div>기록</div></div></aside>
+      <main class="main"><div class="topline"><h3>오늘 처리할 작업</h3><button class="primary">동기화</button></div><div class="cards"><div class="card"><span>처리 대기</span><strong>9</strong></div><div class="card"><span>최근 생성 QR</span><strong>3</strong></div><div class="card"><span>출력 대기</span><strong>5</strong></div><div class="card"><span>Google 상태</span><strong>정상</strong></div></div><div class="mini-list"><div class="mini-item"><strong>과학실 이상 있음</strong><span class="tag bad">상세 필요</span></div><div class="mini-item"><strong>행정실 이상 없음</strong><span class="tag warn">확인 대기</span></div><div class="mini-item"><strong>QR 라벨 3건</strong><span class="tag ok">출력 가능</span></div></div></main>
+    </div>
+  </section>
+
+  <section class="sample" id="b3">
+    <div class="sample-head"><div><h2>B3. 출력 중심 관리자</h2><p>왼쪽 설정/QR 항목, 오른쪽 A4 출력 미리보기. 결과물을 바로 확인하는 디자인.</p><div class="recommend">추천 포인트: QR/출력 업무가 핵심일 때 안심감이 큼</div></div><span class="badge">Agent B</span></div>
+    <div class="screen" style="grid-template-columns:1fr 500px;">
+      <main class="main"><div class="topline"><h3>QR 출력 설정</h3><div class="actions"><button class="primary">인쇄</button><button>PDF 저장</button></div></div><div class="panel"><h3>출력 대상</h3><table><thead><tr><th>선택</th><th>실</th><th>QR 상태</th></tr></thead><tbody><tr><td>✓</td><td>교무실</td><td><span class="tag ok">생성됨</span></td></tr><tr><td>✓</td><td>과학실</td><td><span class="tag ok">생성됨</span></td></tr><tr><td></td><td>방송실</td><td><span class="tag warn">토큰 필요</span></td></tr></tbody></table></div></main>
+      <aside class="main" style="background:#e9eef5;"><div class="paper"><h4>QR 부착 안내문</h4><p>실명: 교무실</p><div style="height:170px;border:2px dashed #94a3b8;display:grid;place-items:center;font-size:34px;font-weight:900;">QR</div><p>스마트폰 카메라로 QR을 스캔해 보안점검표를 제출하세요.</p></div></aside>
+    </div>
+  </section>
+
+  <section class="sample" id="c1">
+    <div class="sample-head"><div><h2>C1. 행정실 데스크형</h2><p>상단에 학교명/기간/Google 상태, 중앙에 점검 진행률과 빠른 작업을 둔 균형형.</p><div class="recommend">추천 포인트: 무료 배포 기본안으로 가장 무난</div></div><span class="badge">Agent C</span></div>
+    <div class="screen" style="grid-template-columns:310px 1fr;">
+      <aside class="side" style="background:#253858;"><div class="brand">등촌고등학교</div><div class="nav"><div class="on">대시보드</div><div>점검표</div><div>기간 조회</div><div>실별 조회</div><div>삭제/복구</div><div>출력</div></div></aside>
+      <main class="main"><div class="topline"><h3>행정실 데스크</h3><div class="actions"><span class="tag ok">Google 연결됨</span><button class="primary">수동 동기화</button></div></div><div class="cards"><div class="card"><span>진행률</span><strong>78%</strong><div class="progress"><span></span></div></div><div class="card"><span>미점검 실</span><strong>6</strong></div><div class="card"><span>삭제/복구</span><strong>2</strong></div><div class="card"><span>출력 대기</span><strong>5</strong></div></div><div class="split"><div class="panel"><h3>최근 기록</h3><table><tbody><tr><td>교무실</td><td><span class="tag ok">완료</span></td></tr><tr><td>과학실</td><td><span class="tag bad">이상 있음</span></td></tr></tbody></table></div><aside class="panel"><h3>빠른 작업</h3><button class="primary">출력 미리보기</button><br><br><button>복구함 열기</button></aside></div></main>
+    </div>
+  </section>
+
+  <section class="sample" id="c2">
+    <div class="sample-head"><div><h2>C2. 큰 버튼 업무흐름형</h2><p>핵심 작업 4개만 먼저 보여주는 저밀도 초보자 우선 화면.</p><div class="recommend">추천 포인트: 인수인계가 잦은 학교, 임시 담당자에게 쉬움</div></div><span class="badge">Agent C</span></div>
+    <div class="screen" style="grid-template-rows:1fr auto;">
+      <main class="main"><div class="topline"><h3>필요한 업무를 선택하세요</h3><span class="tag ok">연결됨</span></div><div class="tile-grid"><div class="tile"><strong>점검표 확인</strong><p>오늘 제출된 점검표를 봅니다.</p><button class="navy">시작</button></div><div class="tile"><strong>기간별 조회</strong><p>날짜 범위로 기록을 찾습니다.</p><button class="navy">조회</button></div><div class="tile"><strong>실별 조회</strong><p>특정 실의 점검 이력을 봅니다.</p><button class="navy">조회</button></div><div class="tile"><strong>출력 미리보기</strong><p>A4 보관 양식을 확인합니다.</p><button class="navy">보기</button></div></div></main>
+      <div class="statusbar"><span>Google 연결됨</span><span>마지막 저장 16:20</span><span>마지막 동기화 16:18</span></div>
+    </div>
+  </section>
+
+  <section class="sample" id="c3">
+    <div class="sample-head"><div><h2>C3. 엑셀 친화형 관리대장</h2><p>엑셀처럼 표를 중심으로 기간/실/담당자/동기화 상태를 한 번에 다루는 고밀도 화면.</p><div class="recommend">추천 포인트: 기록 비교와 대량 관리에 강함</div></div><span class="badge">Agent C</span></div>
+    <div class="screen" style="grid-template-columns:1fr 360px;">
+      <main class="main"><div class="topline"><h3>관리대장</h3><span class="tag ok">Google 동기화 정상</span></div><div class="filters"><input value="2026-04-01"><input value="2026-04-30"><select><option>전체 실</option></select><select><option>전체 담당자</option></select><button class="green">조회</button></div><br><table class="wide-table"><thead><tr><th>날짜</th><th>실명</th><th>항목</th><th>상태</th><th>담당자</th><th>동기화</th></tr></thead><tbody><tr><td>04-26</td><td>과학실</td><td>문단속</td><td><span class="tag bad">이상</span></td><td>이당직</td><td>완료</td></tr><tr><td>04-26</td><td>교무실</td><td>전체</td><td><span class="tag ok">정상</span></td><td>김담당</td><td>완료</td></tr><tr><td>04-25</td><td>행정실</td><td>전체</td><td><span class="tag ok">정상</span></td><td>박담당</td><td>완료</td></tr></tbody></table></main>
+      <aside class="main" style="background:#f7fbf4;"><div class="panel"><h3>선택 항목 작업</h3><button class="green">수정</button><br><br><button>삭제</button><br><br><button>복구함 열기</button><br><br><button class="green">출력 미리보기</button></div></aside>
+    </div>
+  </section>
+</div>
+</body>
+</html>

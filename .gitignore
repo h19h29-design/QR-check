@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+dist/
+build/
+*.spec
+
+# Local secrets and runtime data
+.env
+*.env
+local_settings.json
+admin-desktop/local_settings.json
+admin-desktop/data/
+admin-desktop/logs/
+admin-desktop/exports/
+admin-desktop/qrcodes/
+*.db
+*.sqlite
+*.sqlite3
+
+# Google secrets
+client_secret*.json
+token*.json
+credentials*.json
+*sync_key*
+*admin_token*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

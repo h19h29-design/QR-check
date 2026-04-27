@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR 점검표 모바일 미리보기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef2f6;
+      color: #17202a;
+      font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+    .container { max-width: 760px; margin: 0 auto; padding: 14px; }
+    h1 {
+      font-size: 28px;
+      margin: 10px 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #2563a6;
+    }
+    .notice {
+      padding: 12px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    label { display: block; font-weight: 800; margin: 12px 0; }
+    select, textarea, input[type=file] {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px;
+      border: 1px solid #c9d1d9;
+      border-radius: 6px;
+      font: inherit;
+      margin-top: 6px;
+      background: #fff;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 12px 8px; text-align: left; vertical-align: top; }
+    th { background: #eef2f7; }
+    .status { display: grid; gap: 8px; }
+    .radio {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background: #f8fafc;
+      font-weight: 700;
+    }
+    .radio input { width: 22px; height: 22px; }
+    .issue { background: #fff7ed; }
+    button {
+      width: 100%;
+      min-height: 58px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563a6;
+      color: #fff;
+      font: inherit;
+      font-size: 22px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .done {
+      display: none;
+      padding: 18px;
+      border-radius: 8px;
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      color: #14532d;
+      font-weight: 800;
+    }
+    @media (max-width: 640px) {
+      .container { padding: 10px; }
+      table, thead, tbody, tr, th, td { display: block; width: 100%; }
+      thead { display: none; }
+      tr { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+      td { border: 0; }
+      td:first-child { background: #eef2f7; font-weight: 800; }
+    }
+  </style>
+</head>
+<body>
+<main class="container">
+  <h1>보안점검표 - 교무실</h1>
+  <div class="notice">
+    이 화면은 QR을 찍으면 나오는 모바일 점검표 미리보기입니다. 실제 제출은 Google Apps Script 배포 후 QR 주소에서 동작합니다.
+  </div>
+  <form class="panel" onsubmit="event.preventDefault(); document.querySelector('.done').style.display='block'; window.scrollTo(0, document.body.scrollHeight);">
+    <label>담당자
+      <select>
+        <option>담당자 선택</option>
+        <option selected>김담당</option>
+        <option>박담당</option>
+      </select>
+    </label>
+    <label>당직자
+      <select>
+        <option selected>당직자 선택</option>
+        <option>이당직</option>
+        <option>최당직</option>
+      </select>
+    </label>
+    <table>
+      <thead><tr><th>항목</th><th>상태</th><th>첨부파일</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>서류보관상태</td>
+          <td class="status"><label class="radio"><input type="radio" name="document" checked> 이상 무</label><label class="radio"><input type="radio" name="document"> 이상 유</label></td>
+          <td><input type="file" accept="image/*,application/pdf"></td>
+        </tr>
+        <tr>
+          <td>청소상태</td>
+          <td class="status"><label class="radio"><input type="radio" name="cleaning" checked> 이상 무</label><label class="radio"><input type="radio" name="cleaning"> 이상 유</label></td>
+          <td><input type="file" accept="image/*,application/pdf"></td>
+        </tr>
+        <tr>
+          <td>소등상태</td>
+          <td class="status"><label class="radio"><input type="radio" name="lighting" checked> 이상 무</label><label class="radio"><input type="radio" name="lighting"> 이상 유</label></td>
+          <td><input type="file" accept="image/*,application/pdf"></td>
+        </tr>
+        <tr>
+          <td>화기단속상태</td>
+          <td class="status"><label class="radio"><input type="radio" name="fire" checked> 이상 무</label><label class="radio issue"><input type="radio" name="fire"> 이상 유</label></td>
+          <td><input type="file" accept="image/*,application/pdf"></td>
+        </tr>
+        <tr>
+          <td>문단속상태</td>
+          <td class="status"><label class="radio"><input type="radio" name="door" checked> 이상 무</label><label class="radio"><input type="radio" name="door"> 이상 유</label></td>
+          <td><input type="file" accept="image/*,application/pdf"></td>
+        </tr>
+      </tbody>
+    </table>
+    <label>특이사항
+      <textarea placeholder="특이사항이 있으면 입력하세요."></textarea>
+    </label>
+    <button type="submit">최종 확인 및 전송</button>
+  </form>
+  <section class="done">제출 완료 화면 예시: 기록번호 rec_sample_001</section>
+</main>
+</body>
+</html>

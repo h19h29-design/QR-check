@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>{{ room_name }} 점검표</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #eee;
+            font-weight: normal;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        input[type="radio"] + label {
+            font-size: 18px;
+            vertical-align: middle;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 18px;
+            margin: 8px 0;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 100px;
+            resize: vertical;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 0;
+            width: 100%;
+            font-size: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .role-select {
+            background-color: #f7f9fc;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .role-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .or-divider {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #777;
+        }
+        
+        /* Mobile optimization */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            table, tbody, tr {
+                display: block;
+                width: 100%;
+            }
+            th {
+                display: none;
+            }
+            td {
+                display: block;
+                text-align: left;
+                padding: 8px;
+                position: relative;
+                border-bottom: none;
+            }
+            td:before {
+                content: attr(data-label);
+                font-weight: bold;
+                display: inline-block;
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            tr {
+                border-bottom: 1px solid #ddd;
+                margin-bottom: 10px;
+            }
+            input[type="radio"] {
+                width: 25px;
+                height: 25px;
+                margin-right: 10px;
+            }
+            input[type="radio"] + label {
+                font-size: 20px;
+            }
+            button {
+                font-size: 20px;
+                padding: 18px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>보안점검표 - {{ room_name }}</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="role-select">
+                <div class="role-title">담당자/당직자 중 하나만 선택하세요</div>
+                <div>
+                    <select name="responsible_person">
+                        <option value="">담당자 선택</option>
+                        {% for name in responsible_persons %}
+                        <option value="{{ name }}" {% if form_data.get('responsible_person') == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="or-divider">또는</div>
+                <div>
+                    <select name="duty_officer">
+                        <option value="">당직자 선택</option>
+                        {% for name in duty_officers %}
+                        <option value="{{ name }}" {% if form_data.get('duty_officer') == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>항목</th>
+                    <th>상태</th>
+                    <th>첨부파일</th>
+                </tr>
+                <tr>
+                    <td data-label="서류보관상태">서류보관상태</td>
+                    <td data-label="상태">
+                        <input type="radio" id="document_ok" name="document" value="이상 무" required {% if form_data.get('document', '이상 무') == '이상 무' %}checked{% endif %}>
+                        <label for="document_ok">이상 무</label>
+                        <input type="radio" id="document_issue" name="document" value="이상 유" {% if form_data.get('document') == '이상 유' %}checked{% endif %}>
+                        <label for="document_issue">이상 유</label>
+                    </td>
+                    <td data-label="첨부파일">
+                        <input type="file" name="document_file" accept="image/*,application/pdf">
+                    </td>
+                </tr>
+                <tr>
+                    <td data-label="청소상태">청소상태</td>
+                    <td data-label="상태">
+                        <input type="radio" id="cleaning_ok" name="cleaning" value="이상 무" required {% if form_data.get('cleaning', '이상 무') == '이상 무' %}checked{% endif %}>
+                        <label for="cleaning_ok">이상 무</label>
+                        <input type="radio" id="cleaning_issue" name="cleaning" value="이상 유" {% if form_data.get('cleaning') == '이상 유' %}checked{% endif %}>
+                        <label for="cleaning_issue">이상 유</label>
+                    </td>
+                    <td data-label="첨부파일">
+                        <input type="file" name="cleaning_file" accept="image/*,application/pdf">
+                    </td>
+                </tr>
+                <tr>
+                    <td data-label="소등상태">소등상태</td>
+                    <td data-label="상태">
+                        <input type="radio" id="lighting_ok" name="lighting" value="이상 무" required {% if form_data.get('lighting', '이상 무') == '이상 무' %}checked{% endif %}>
+                        <label for="lighting_ok">이상 무</label>
+                        <input type="radio" id="lighting_issue" name="lighting" value="이상 유" {% if form_data.get('lighting') == '이상 유' %}checked{% endif %}>
+                        <label for="lighting_issue">이상 유</label>
+                    </td>
+                    <td data-label="첨부파일">
+                        <input type="file" name="lighting_file" accept="image/*,application/pdf">
+                    </td>
+                </tr>
+                <tr>
+                    <td data-label="화기단속상태">화기단속상태</td>
+                    <td data-label="상태">
+                        <input type="radio" id="fire_ok" name="fire" value="이상 무" required {% if form_data.get('fire', '이상 무') == '이상 무' %}checked{% endif %}>
+                        <label for="fire_ok">이상 무</label>
+                        <input type="radio" id="fire_issue" name="fire" value="이상 유" {% if form_data.get('fire') == '이상 유' %}checked{% endif %}>
+                        <label for="fire_issue">이상 유</label>
+                    </td>
+                    <td data-label="첨부파일">
+                        <input type="file" name="fire_file" accept="image/*,application/pdf">
+                    </td>
+                </tr>
+                <tr>
+                    <td data-label="문단속상태">문단속상태</td>
+                    <td data-label="상태">
+                        <input type="radio" id="door_ok" name="door" value="이상 무" required {% if form_data.get('door', '이상 무') == '이상 무' %}checked{% endif %}>
+                        <label for="door_ok">이상 무</label>
+                        <input type="radio" id="door_issue" name="door" value="이상 유" {% if form_data.get('door') == '이상 유' %}checked{% endif %}>
+                        <label for="door_issue">이상 유</label>
+                    </td>
+                    <td data-label="첨부파일">
+                        <input type="file" name="door_file" accept="image/*,application/pdf">
+                    </td>
+                </tr>
+                <tr>
+                    <td data-label="비고" colspan="3">
+                        <textarea name="remarks" placeholder="특이사항을 입력하세요">{{ form_data.get('remarks', '') }}</textarea>
+                    </td>
+                </tr>
+            </table>
+            <button type="submit">최종 확인 및 전송</button>
+        </form>
+    </div>
+</body>
+</html>

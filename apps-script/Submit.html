@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+<main class="container">
+  <h1 id="title">보안점검표</h1>
+  <section id="offlineBox" class="notice hidden"></section>
+  <form id="submitForm" class="panel">
+    <input type="hidden" id="recordId">
+    <label>담당자
+      <select id="responsibleSelect"><option value="">담당자 선택</option></select>
+    </label>
+    <div class="divider">또는</div>
+    <label>당직자
+      <select id="dutySelect"><option value="">당직자 선택</option></select>
+    </label>
+    <table id="itemsTable">
+      <thead><tr><th>항목</th><th>상태</th><th>첨부파일</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <label>특이사항
+      <textarea id="remarks" placeholder="특이사항이 있으면 입력하세요."></textarea>
+    </label>
+    <button type="submit">최종 확인 및 전송</button>
+  </form>
+  <section id="done" class="panel hidden"></section>
+</main>
+<?!= include('Client.js'); ?>
+<script>
+  window.__PARAMS__ = {
+    roomId: '<?= data.params.roomId || data.params.room_id || "" ?>',
+    submitToken: '<?= data.params.submitToken || data.params.submit_token || "" ?>'
+  };
+  initSubmitPage();
+</script>
+</body>
+</html>
+

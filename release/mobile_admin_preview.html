@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR보안점검표 모바일 관리자 미리보기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef2f6;
+      color: #17202a;
+      font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #17202a;
+      color: #fff;
+      padding: 14px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, .18);
+    }
+    .top h1 {
+      margin: 0;
+      font-size: 23px;
+    }
+    .top p {
+      margin: 4px 0 0;
+      color: #d7dee8;
+      font-size: 14px;
+    }
+    main { max-width: 780px; margin: 0 auto; padding: 12px; }
+    .notice {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+    .filters, .panel {
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-weight: 800;
+      margin: 10px 0;
+    }
+    input, select {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px;
+      border: 1px solid #c9d1d9;
+      border-radius: 6px;
+      font: inherit;
+      margin-top: 6px;
+      background: #fff;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      min-height: 52px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563a6;
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.secondary { background: #475569; }
+    button.green { background: #25775c; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .card span {
+      display: block;
+      color: #637083;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .card strong {
+      display: block;
+      font-size: 30px;
+      margin-top: 4px;
+    }
+    .record {
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .record-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .room { font-size: 21px; font-weight: 900; }
+    .tag {
+      display: inline-block;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 900;
+      background: #edf2f7;
+      white-space: nowrap;
+    }
+    .tag.ok { background: #dcfce7; color: #166534; }
+    .tag.bad { background: #fee4e2; color: #991b1b; }
+    .tag.wait { background: #fff7ed; color: #9a3412; }
+    .meta {
+      color: #475569;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+    .record-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .detail {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 16px;
+    }
+    .detail.open { display: block; }
+    @media (min-width: 720px) {
+      .buttons { grid-template-columns: repeat(3, 1fr); }
+      .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>QR보안점검표 관리자</h1>
+    <p>모바일 관리자 화면 미리보기</p>
+  </header>
+  <main>
+    <div class="notice">
+      이 화면은 Google Apps Script 배포 후 `?page=admin`으로 보는 관리자 페이지의 모바일 미리보기입니다.
+      실제 데이터 확인은 배포 URL에서 관리자 Google 계정 또는 관리자 token으로 진행합니다.
+    </div>
+
+    <section class="filters">
+      <label>시작일 <input type="date" value="2026-04-26"></label>
+      <label>종료일 <input type="date" value="2026-04-26"></label>
+      <label>실
+        <select>
+          <option>전체</option>
+          <option>교무실</option>
+          <option>과학실</option>
+          <option>행정실</option>
+        </select>
+      </label>
+      <label>상태
+        <select>
+          <option>전체</option>
+          <option>이상 있음</option>
+          <option>이상 없음</option>
+          <option>미확인</option>
+          <option>확인 완료</option>
+        </select>
+      </label>
+      <div class="buttons">
+        <button onclick="alert('조회 예시입니다.')">조회</button>
+        <button class="green" onclick="alert('이상 없음만 일괄확인됩니다.')">이상 없음 일괄확인</button>
+        <button class="secondary" onclick="alert('현재 조건 CSV 다운로드 예시입니다.')">CSV 다운로드</button>
+      </div>
+    </section>
+
+    <section class="cards">
+      <div class="card"><span>오늘 전체</span><strong>48</strong></div>
+      <div class="card"><span>이상 있음</span><strong>2</strong></div>
+      <div class="card"><span>미확인</span><strong>9</strong></div>
+      <div class="card"><span>확인 완료</span><strong>39</strong></div>
+    </section>
+
+    <section class="panel">
+      <div class="record">
+        <div class="record-head"><span class="room">과학실</span><span class="tag bad">이상 있음</span></div>
+        <div class="meta">2026-04-26 15:02 | 이당직 | 미확인</div>
+        <div>문단속상태 이상 유, 사진 첨부 1건</div>
+        <div class="record-actions">
+          <button onclick="toggleDetail('d1')">상세보기</button>
+          <button class="green" onclick="alert('상세 확인 후 개별확인 처리 예시입니다.')">개별확인</button>
+        </div>
+        <div id="d1" class="detail">
+          서류보관상태: 이상 무<br>
+          청소상태: 이상 무<br>
+          소등상태: 이상 무<br>
+          화기단속상태: 이상 무<br>
+          문단속상태: 이상 유<br>
+          첨부파일: door_photo.jpg
+        </div>
+      </div>
+
+      <div class="record">
+        <div class="record-head"><span class="room">행정실</span><span class="tag wait">미확인</span></div>
+        <div class="meta">2026-04-26 14:50 | 박담당 | 이상 없음</div>
+        <div>특이사항 없음</div>
+        <div class="record-actions">
+          <button onclick="toggleDetail('d2')">상세보기</button>
+          <button class="green" onclick="alert('이상 없음 개별확인 예시입니다.')">확인</button>
+        </div>
+        <div id="d2" class="detail">
+          모든 항목 이상 무. 관리자 확인 대기 중입니다.
+        </div>
+      </div>
+
+      <div class="record">
+        <div class="record-head"><span class="room">교무실</span><span class="tag ok">확인 완료</span></div>
+        <div class="meta">2026-04-26 15:10 | 김담당 | 이상 없음</div>
+        <div>관리자 확인 완료</div>
+      </div>
+    </section>
+  </main>
+  <script>
+    function toggleDetail(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

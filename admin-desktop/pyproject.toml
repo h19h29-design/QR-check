@@ -1,0 +1,20 @@
+[project]
+name = "qr-security-admin"
+version = "0.1.0"
+description = "QR보안점검표 Windows 관리자 프로그램"
+requires-python = ">=3.11"
+dependencies = [
+  "PySide6>=6.6",
+  "requests>=2.31",
+  "qrcode[pil]>=7.4",
+  "openpyxl>=3.1",
+  "python-dotenv>=1.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pyinstaller>=6.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

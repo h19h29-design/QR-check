@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <main class="container">
+    <h1>QR보안점검표 초기 설정</h1>
+    <section class="panel">
+      <label>학교명 <input id="schoolName" placeholder="예: 서울○○학교"></label>
+      <label>관리자 Google 이메일 <input id="adminEmail" placeholder="admin@example.com"></label>
+      <button onclick="runSetup()">Google 저장소 만들기</button>
+      <pre id="result"></pre>
+    </section>
+  </main>
+  <script>
+    function runSetup() {
+      const payload = {
+        school_name: document.getElementById('schoolName').value,
+        admin_email: document.getElementById('adminEmail').value
+      };
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('result').textContent = JSON.stringify(res, null, 2);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('result').textContent = err.message || String(err);
+        })
+        .setupInitializeForUi(payload);
+    }
+  </script>
+</body>
+</html>
+

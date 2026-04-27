@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>전체 점검 기록</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .card-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .card-facility {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        .card-person {
+            color: #3498db;
+            font-weight: bold;
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .card-item {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .card-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .card-value {
+            padding-left: 10px;
+        }
+        .card-remarks {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-style: italic;
+        }
+        .admin-actions {
+            padding: 15px;
+            background-color: #eef7fe;
+            border-top: 1px solid #ddd;
+        }
+        .admin-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .admin-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .admin-verified {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .home-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .no-records {
+            text-align: center;
+            padding: 30px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            color: #777;
+        }
+        
+        /* Responsive design for mobile */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .card-title {
+                font-size: 16px;
+            }
+            .card-header, .card-body {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>전체 점검 기록 (관리자)</h1>
+        <a href="/" class="home-link">← 홈으로</a>
+        
+        {% if inspections %}
+            {% for row in inspections %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="card-facility">{{ row['room_display'] }}</span>
+                        점검일시: {{ row['timestamp'] }}
+                        {% if row['responsible_person'] %}
+                        <span class="card-person">담당자: {{ row['responsible_person'] }}</span>
+                        {% endif %}
+                        {% if row['duty_officer'] %}
+                        <span class="card-person">당직자: {{ row['duty_officer'] }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-item">
+                        <div class="card-label">서류보관상태</div>
+                        <div class="card-value">{{ row['document'] }}</div>
+                    </div>
+                    <div class="card-item">
+                        <div class="card-label">청소상태</div>
+                        <div class="card-value">{{ row['cleaning'] }}</div>
+                    </div>
+                    <div class="card-item">
+                        <div class="card-label">소등상태</div>
+                        <div class="card-value">{{ row['lighting'] }}</div>
+                    </div>
+                    <div class="card-item">
+                        <div class="card-label">화기단속상태</div>
+                        <div class="card-value">{{ row['fire'] }}</div>
+                    </div>
+                    <div class="card-item">
+                        <div class="card-label">문단속상태</div>
+                        <div class="card-value">{{ row['door'] }}</div>
+                    </div>
+                    
+                    {% if row['remarks'] %}
+                    <div class="card-item">
+                        <div class="card-label">비고</div>
+                        <div class="card-remarks">{{ row['remarks'] }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if row['admin_verified'] %}
+                    <div class="card-item admin-verified">
+                        <div>관리자 확인 완료 ({{ row['verification_time'] }})</div>
+                        {% if row['admin_memo'] %}
+                        <div>{{ row['admin_memo'] }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="admin-actions">
+                        <form method="POST" action="/verify/{{ row['room_key'] }}/{{ row['id'] }}">
+                            <input type="text" name="admin_memo" class="admin-input" placeholder="관리자 메모">
+                            <button type="submit" class="admin-btn">확인 완료</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-records">
+                <p>아직 등록된 점검기록이 없습니다.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

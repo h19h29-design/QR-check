@@ -1,0 +1,43 @@
+[
+  {
+    "record_id": "rec_sample_001",
+    "submitted_at": "2026-04-26T09:10:00+09:00",
+    "inspection_date": "2026-04-26",
+    "room_id": "room_admin",
+    "room_name": "행정실",
+    "person_id": "person_hong",
+    "person_name": "홍길동",
+    "role_type": "responsible",
+    "status_json": {
+      "document": "이상 무",
+      "cleaning": "이상 무",
+      "lighting": "이상 무",
+      "fire": "이상 무",
+      "door": "이상 무"
+    },
+    "abnormal": false,
+    "remarks": "",
+    "source": "sample"
+  },
+  {
+    "record_id": "rec_sample_002",
+    "submitted_at": "2026-04-26T18:40:00+09:00",
+    "inspection_date": "2026-04-26",
+    "room_id": "room_print",
+    "room_name": "인쇄실",
+    "person_id": "person_duty",
+    "person_name": "김당직",
+    "role_type": "duty",
+    "status_json": {
+      "document": "이상 무",
+      "cleaning": "이상 유",
+      "lighting": "이상 무",
+      "fire": "이상 무",
+      "door": "이상 무"
+    },
+    "abnormal": true,
+    "remarks": "청소 상태 확인 필요",
+    "source": "sample"
+  }
+]
+

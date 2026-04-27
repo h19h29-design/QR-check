@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>{{ room_name }} 점검 상세</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .detail-section {
+            margin-bottom: 30px;
+        }
+        .detail-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+        }
+        .detail-label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .detail-value {
+            flex: 1;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .thumbnail {
+            max-width: 100px;
+            max-height: 100px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .status-ok {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .status-bad {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .btn-confirm {
+            background-color: #27ae60;
+        }
+        .admin-memo {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .admin-verification {
+            background-color: #f0fff0;
+            border-left: 3px solid #27ae60;
+            padding: 10px;
+            margin-top: 20px;
+        }
+        
+        /* Mobile optimization */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+                margin-top: 10px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .detail-item {
+                flex-direction: column;
+            }
+            .detail-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ room_name }} 점검 상세</h1>
+        
+        <div class="detail-section">
+            <div class="detail-item">
+                <div class="detail-label">점검일시</div>
+                <div class="detail-value">{{ record.timestamp }}</div>
+            </div>
+            
+            {% if record.responsible_person %}
+            <div class="detail-item">
+                <div class="detail-label">담당자</div>
+                <div class="detail-value">{{ record.responsible_person }}</div>
+            </div>
+            {% endif %}
+            
+            {% if record.duty_officer %}
+            <div class="detail-item">
+                <div class="detail-label">당직자</div>
+                <div class="detail-value">{{ record.duty_officer }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="detail-item">
+                <div class="detail-label">서류보관상태</div>
+                <div class="detail-value">
+                    {{ record.document }}
+                    {% if record.document_file %}
+                        <br>
+                        <a href="{{ url_for('uploaded_file', filename=record.document_file) }}" target="_blank">
+                            <img src="{{ url_for('uploaded_file', filename=record.document_file) }}" class="thumbnail" alt="첨부파일">
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-label">청소상태</div>
+                <div class="detail-value">
+                    {{ record.cleaning }}
+                    {% if record.cleaning_file %}
+                        <br>
+                        <a href="{{ url_for('uploaded_file', filename=record.cleaning_file) }}" target="_blank">
+                            <img src="{{ url_for('uploaded_file', filename=record.cleaning_file) }}" class="thumbnail" alt="첨부파일">
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-label">소등상태</div>
+                <div class="detail-value">
+                    {{ record.lighting }}
+                    {% if record.lighting_file %}
+                        <br>
+                        <a href="{{ url_for('uploaded_file', filename=record.lighting_file) }}" target="_blank">
+                            <img src="{{ url_for('uploaded_file', filename=record.lighting_file) }}" class="thumbnail" alt="첨부파일">
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-label">화기단속상태</div>
+                <div class="detail-value">
+                    {{ record.fire }}
+                    {% if record.fire_file %}
+                        <br>
+                        <a href="{{ url_for('uploaded_file', filename=record.fire_file) }}" target="_blank">
+                            <img src="{{ url_for('uploaded_file', filename=record.fire_file) }}" class="thumbnail" alt="첨부파일">
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-label">문단속상태</div>
+                <div class="detail-value">
+                    {{ record.door }}
+                    {% if record.door_file %}
+                        <br>
+                        <a href="{{ url_for('uploaded_file', filename=record.door_file) }}" target="_blank">
+                            <img src="{{ url_for('uploaded_file', filename=record.door_file) }}" class="thumbnail" alt="첨부파일">
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if record.remarks %}
+            <div class="detail-item">
+                <div class="detail-label">비고</div>
+                <div class="detail-value">{{ record.remarks }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="detail-item">
+                <div class="detail-label">관리자 확인</div>
+                <div class="detail-value">
+                    {% if record.admin_verified %}
+                        <span class="status-ok">확인완료 ({{ record.verification_time }})</span>
+                        {% if record.admin_memo %}
+                            <p>메모: {{ record.admin_memo }}</p>
+                        {% endif %}
+                    {% else %}
+                        <span class="status-bad">미확인</span>
+                        
+                        <!-- 관리자만 확인 버튼 표시 -->
+                        {% if is_admin %}
+                        <form action="{{ url_for('verify_record', room=room_key, record_id=record_id) }}" method="POST">
+                            <input type="text" name="admin_memo" placeholder="확인 메모" class="admin-memo">
+                            <button type="submit" class="btn btn-confirm">확인완료</button>
+                        </form>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            {% if is_admin %}
+                <a href="/" class="back-link">← 요약페이지로 돌아가기</a>
+            {% else %}
+                <a href="/submit/{{ room_key }}" class="back-link">← 점검표로 돌아가기</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

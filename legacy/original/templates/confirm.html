@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>점검 확인</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            margin-bottom: 8px;
+        }
+        .info-label {
+            font-weight: bold;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .card-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .card-item {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .card-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .card-value {
+            padding-left: 10px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .submit-btn {
+            flex: 1;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 0;
+            font-size: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .rewrite-btn {
+            flex: 1;
+            background-color: #e74c3c;
+            color: white;
+            text-decoration: none;
+            padding: 15px 0;
+            font-size: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        /* Mobile optimization */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .button-group {
+                flex-direction: column;
+            }
+            .submit-btn, .rewrite-btn {
+                padding: 12px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>점검 내용 확인</h1>
+        
+        <div class="info-box">
+            <div class="info-item">
+                <span class="info-label">점검일시:</span> {{ current_time }}
+            </div>
+            <div class="info-item">
+                <span class="info-label">점검실:</span> {{ room_name }}
+            </div>
+            {% if responsible_person %}
+            <div class="info-item">
+                <span class="info-label">담당자:</span> {{ responsible_person }}
+            </div>
+            {% endif %}
+            {% if duty_officer %}
+            <div class="info-item">
+                <span class="info-label">당직자:</span> {{ duty_officer }}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">점검 결과</div>
+            </div>
+            <div class="card-body">
+                <div class="card-item">
+                    <div class="card-label">서류보관상태</div>
+                    <div class="card-value">{{ form_data.get('document', '이상무') }}</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-label">청소상태</div>
+                    <div class="card-value">{{ form_data.get('cleaning', '이상무') }}</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-label">소등상태</div>
+                    <div class="card-value">{{ form_data.get('lighting', '이상무') }}</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-label">화기단속상태</div>
+                    <div class="card-value">{{ form_data.get('fire', '이상무') }}</div>
+                </div>
+                <div class="card-item">
+                    <div class="card-label">문단속상태</div>
+                    <div class="card-value">{{ form_data.get('door', '이상무') }}</div>
+                </div>
+                
+                {% if form_data.get('remarks') %}
+                <div class="card-item">
+                    <div class="card-label">비고</div>
+                    <div class="card-value">{{ form_data.get('remarks') }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="button-group">
+            <form method="POST" style="flex: 1;">
+                <button type="submit" class="submit-btn">최종 제출</button>
+            </form>
+            <a href="{{ url_for('submit', room=room_key) }}?rewrite=1" class="rewrite-btn">
+                재작성
+            </a>
+        </div>
+    </div>
+</body>
+</html>

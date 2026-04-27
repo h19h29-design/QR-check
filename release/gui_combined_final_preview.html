@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR보안점검표 통합형 최종 UI 미리보기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef2f6;
+      color: #17202a;
+      font-family: "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.45;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header {
+      background: #111827;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header h1 { margin: 0; font-size: 24px; }
+    header .school { color: #cbd5e1; font-weight: 700; }
+    .badge {
+      margin-left: auto;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .body {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      min-height: 0;
+    }
+    nav {
+      background: #172033;
+      color: #dbe4ee;
+      padding: 12px;
+    }
+    nav a {
+      display: block;
+      padding: 13px 14px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      color: inherit;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    nav a.on { background: #2563eb; color: #fff; }
+    main { padding: 18px; min-width: 0; }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .title-row h2 { margin: 0; font-size: 26px; }
+    button {
+      min-height: 42px;
+      border: 1px solid #cfd8e3;
+      border-radius: 10px;
+      background: #fff;
+      padding: 8px 13px;
+      font: inherit;
+      font-weight: 900;
+    }
+    button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .step {
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      font-weight: 900;
+      font-size: 15px;
+    }
+    .step.on { background: #e7f2ee; color: #14523e; border-color: #8dbbab; }
+    .quick {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .quick .tile {
+      min-height: 78px;
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 14px;
+      padding: 14px;
+      font-weight: 900;
+    }
+    .quick span {
+      display: block;
+      color: #64748b;
+      font-size: 14px;
+      margin-top: 6px;
+      font-weight: 700;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .card span { display: block; color: #64748b; font-weight: 800; font-size: 15px; }
+    .card strong { display: block; font-size: 28px; margin-top: 4px; }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 11px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    th { background: #eef2f7; }
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .ok { background: #dcfce7; color: #166534; }
+    .bad { background: #fee4e2; color: #991b1b; }
+    .wait { background: #fff7ed; color: #9a3412; }
+    .paper {
+      background: #fff;
+      border: 1px solid #94a3b8;
+      border-radius: 10px;
+      min-height: 360px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
+    }
+    .paper h3 { margin-top: 0; text-align: center; font-size: 22px; }
+    footer {
+      background: #f8fafc;
+      border-top: 1px solid #cfd8e3;
+      padding: 10px 16px;
+      color: #475569;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>QR보안점검표 관리자</h1>
+    <div class="school">등촌고등학교</div>
+    <div class="badge">Google 연결됨</div>
+    <button class="primary">동기화</button>
+  </header>
+  <div class="body">
+    <nav>
+      <a class="on">대시보드</a>
+      <a>점검기록</a>
+      <a>실 관리</a>
+      <a>담당자/당직자 관리</a>
+      <a>점검항목 관리</a>
+      <a>QR 생성</a>
+      <a>출력/보관</a>
+      <a>설정</a>
+    </nav>
+    <main>
+      <div class="title-row">
+        <h2>오늘 점검 상황판</h2>
+        <button class="primary">새로고침</button>
+      </div>
+      <section class="steps">
+        <div class="step on">1 설정 저장</div>
+        <div class="step on">2 실/담당자</div>
+        <div class="step">3 Google 업로드</div>
+        <div class="step">4 QR 생성</div>
+        <div class="step">5 테스트 제출</div>
+      </section>
+      <section class="quick">
+        <div class="tile">점검기록<span>날짜/실별 조회</span></div>
+        <div class="tile">실 관리<span>추가/삭제/복구</span></div>
+        <div class="tile">QR 생성<span>부착용 A4 출력</span></div>
+        <div class="tile">출력/보관<span>A4 미리보기</span></div>
+        <div class="tile">Google 업로드<span>설정 반영</span></div>
+        <div class="tile">설정<span>저장 위치/연결</span></div>
+      </section>
+      <section class="cards">
+        <div class="card"><span>오늘 전체</span><strong>48</strong></div>
+        <div class="card"><span>이상 있음</span><strong>2</strong></div>
+        <div class="card"><span>미확인</span><strong>9</strong></div>
+        <div class="card"><span>확인 완료</span><strong>39</strong></div>
+      </section>
+      <section class="split">
+        <table>
+          <thead><tr><th>우선확인</th><th>실</th><th>내용</th><th>제출일시</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag bad">이상 있음</span></td><td>과학실</td><td>문단속상태 이상 유</td><td>15:02</td></tr>
+            <tr><td><span class="tag wait">미확인</span></td><td>행정실</td><td>관리자 확인 대기</td><td>14:50</td></tr>
+            <tr><td><span class="tag ok">완료</span></td><td>교무실</td><td>이상 없음</td><td>15:10</td></tr>
+          </tbody>
+        </table>
+        <aside class="paper">
+          <h3>출력물 미리보기</h3>
+          <p>기관명: 등촌고등학교</p>
+          <p>조회 범위: 2026-04-26</p>
+          <table>
+            <tbody>
+              <tr><th>실</th><td>교무실</td></tr>
+              <tr><th>상태</th><td>이상 없음</td></tr>
+              <tr><th>담당자 서명</th><td style="height:58px"></td></tr>
+              <tr><th>관리자 서명</th><td style="height:58px"></td></tr>
+            </tbody>
+          </table>
+        </aside>
+      </section>
+    </main>
+  </div>
+  <footer>준비됨 | 마지막 동기화 16:18 | 출력 저장 위치 설정됨</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<script>
+function qs(id) { return document.getElementById(id); }
+function recordId() {
+  return 'rec_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+function readFileAsBase64(file) {
+  return new Promise(function(resolve, reject) {
+    if (!file) return resolve(null);
+    if (file.size > 5 * 1024 * 1024) return reject(new Error('파일은 5MB 이하만 첨부할 수 있습니다.'));
+    const reader = new FileReader();
+    reader.onload = function() {
+      const text = reader.result || '';
+      resolve({ file_name: file.name, mime_type: file.type, file_size: file.size, base64: String(text).split(',')[1] });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function gas(functionName, payload) {
+  return new Promise(function(resolve, reject) {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[functionName](payload || {});
+  });
+}
+async function initSubmitPage() {
+  qs('recordId').value = recordId();
+  const params = window.__PARAMS__ || {};
+  try {
+    const data = await gas('getSubmitBootstrapForUi', params);
+    window.__BOOTSTRAP__ = data;
+    qs('title').textContent = '보안점검표 - ' + data.room.room_name;
+    renderPeople(data.people || []);
+    renderItems(data.items || []);
+    resendPending();
+  } catch (err) {
+    qs('offlineBox').classList.remove('hidden');
+    qs('offlineBox').textContent = '점검표 정보를 불러오지 못했습니다. QR 주소 또는 네트워크를 확인하세요. ' + (err.message || err);
+  }
+  qs('submitForm').addEventListener('submit', submitForm);
+}
+function renderPeople(people) {
+  people.forEach(function(p) {
+    const option = new Option(p.person_name, p.person_id + '|' + p.person_name);
+    if (p.role_type === 'duty') qs('dutySelect').add(option);
+    else qs('responsibleSelect').add(option);
+  });
+}
+function renderItems(items) {
+  const tbody = qs('itemsTable').querySelector('tbody');
+  tbody.innerHTML = '';
+  items.forEach(function(item) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + item.item_name + '</td>' +
+      '<td class="status">' +
+      '<label><input type="radio" name="status_' + item.item_key + '" value="이상 무" checked> 이상 무</label>' +
+      '<label><input type="radio" name="status_' + item.item_key + '" value="이상 유"> 이상 유</label>' +
+      '</td>' +
+      '<td class="file-cell"><input type="file" id="file_' + item.item_key + '" accept="image/*,application/pdf"></td>';
+    tbody.appendChild(tr);
+    tr.querySelectorAll('input[type=radio]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        tr.querySelector('.file-cell').classList.toggle('issue', radio.value === '이상 유' && radio.checked);
+      });
+    });
+  });
+}
+async function submitForm(event) {
+  event.preventDefault();
+  const responsible = qs('responsibleSelect').value;
+  const duty = qs('dutySelect').value;
+  if (!responsible && !duty) { alert('담당자 또는 당직자를 선택하세요.'); return; }
+  const selected = (responsible || duty).split('|');
+  const roleType = duty ? 'duty' : 'responsible';
+  const items = window.__BOOTSTRAP__.items || [];
+  const status = {};
+  const attachments = {};
+  for (const item of items) {
+    const checked = document.querySelector('input[name=status_' + item.item_key + ']:checked');
+    status[item.item_key] = checked ? checked.value : '이상 무';
+    const fileInput = qs('file_' + item.item_key);
+    if (fileInput && fileInput.files[0]) attachments[item.item_key] = await readFileAsBase64(fileInput.files[0]);
+  }
+  const payload = {
+    record_id: qs('recordId').value,
+    room_id: window.__PARAMS__.roomId,
+    submit_token: window.__PARAMS__.submitToken,
+    person_id: selected[0],
+    person_name: selected[1],
+    role_type: roleType,
+    status_json: status,
+    remarks: qs('remarks').value,
+    attachments: attachments,
+    client_info: { userAgent: navigator.userAgent }
+  };
+  try {
+    const result = await gas('submitInspectionForUi', payload);
+    showDone(result);
+    localStorage.removeItem('qr_pending_' + payload.record_id);
+  } catch (err) {
+    localStorage.setItem('qr_pending_' + payload.record_id, JSON.stringify(payload));
+    alert('전송 실패로 임시 저장했습니다. 이 화면을 다시 열면 재전송을 시도합니다.');
+  }
+}
+function showDone(result) {
+  qs('submitForm').classList.add('hidden');
+  qs('done').classList.remove('hidden');
+  qs('done').innerHTML = '<h2>제출 완료</h2><p>기록번호: ' + result.record_id + '</p><p>' + (result.abnormal ? '이상 있음으로 제출되었습니다.' : '이상 없음으로 제출되었습니다.') + '</p>';
+}
+async function resendPending() {
+  const keys = Object.keys(localStorage).filter(function(k) { return k.indexOf('qr_pending_') === 0; });
+  for (const key of keys) {
+    try {
+      const payload = JSON.parse(localStorage.getItem(key));
+      await gas('submitInspectionForUi', payload);
+      localStorage.removeItem(key);
+    } catch (err) {
+      qs('offlineBox').classList.remove('hidden');
+      qs('offlineBox').textContent = '미전송 자료가 있습니다. 네트워크가 복구되면 다시 시도하세요.';
+    }
+  }
+}
+async function loadAdmin() {
+  const payload = adminFilterPayload();
+  try {
+    const data = await gas('adminListForUi', payload);
+    renderAdminRooms(data.rooms || []);
+    renderAdminRows(data.submissions || []);
+  } catch (err) {
+    alert(err.message || err);
+  }
+}
+async function initAdminPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  qs('adminStartDate').value = today;
+  qs('adminEndDate').value = today;
+  await loadAdmin();
+}
+function adminFilterPayload() {
+  return {
+    start_date: qs('adminStartDate').value,
+    end_date: qs('adminEndDate').value,
+    room_id: qs('adminRoom').value,
+    state: qs('adminState').value,
+    adminToken: qs('adminToken').value
+  };
+}
+function renderAdminRooms(rooms) {
+  const select = qs('adminRoom');
+  const current = select.value;
+  select.innerHTML = '<option value="">전체</option>';
+  rooms.forEach(function(room) {
+    const option = new Option(room.room_name, room.room_id);
+    select.add(option);
+  });
+  if (current) select.value = current;
+}
+function renderAdminRows(rows) {
+  const tbody = qs('adminTable').querySelector('tbody');
+  tbody.innerHTML = '';
+  qs('adminSummary').textContent = '조회 결과: ' + rows.length + '건';
+  rows.forEach(function(row) {
+    const abnormal = row.abnormal === true || row.abnormal === 'TRUE' || row.abnormal === 'true' || row.abnormal === 1 || row.abnormal === '1';
+    const verified = row.admin_verified === true || row.admin_verified === 'TRUE' || row.admin_verified === 'true' || row.admin_verified === 1 || row.admin_verified === '1';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + row.submitted_at + '</td><td>' + row.room_name + '</td><td>' + row.person_name + '</td>' +
+      '<td class="' + (abnormal ? 'bad' : 'ok') + '">' + (abnormal ? '이상 있음' : '이상 없음') + '</td>' +
+      '<td>' + (verified ? '확인' : '미확인') + '</td>' +
+      '<td><button data-id="' + row.record_id + '">상세보기</button></td>';
+    tr.querySelector('button').onclick = function() { loadDetail(row.record_id); };
+    tbody.appendChild(tr);
+  });
+}
+async function loadDetail(recordId) {
+  const payload = { record_id: recordId, adminToken: qs('adminToken').value };
+  const data = await gas('adminDetailForUi', payload);
+  const record = data.record;
+  const attachments = data.attachments || [];
+  const attachmentHtml = attachments.length
+    ? '<h3>첨부파일</h3><ul>' + attachments.map(function(file) {
+        return '<li><a href="' + file.drive_url + '" target="_blank" rel="noopener">' + file.file_name + '</a></li>';
+      }).join('') + '</ul>'
+    : '<p>첨부파일 없음</p>';
+  const detail = qs('detail');
+  detail.classList.remove('hidden');
+  detail.innerHTML =
+    '<h2>상세보기</h2><pre>' + JSON.stringify(record, null, 2) + '</pre>' +
+    attachmentHtml +
+    '<textarea id="adminMemo" placeholder="관리자 메모"></textarea>' +
+    '<button onclick="verifyDetail(\\'' + record.record_id + '\\')">개별확인</button>';
+}
+async function verifyDetail(recordId) {
+  await gas('adminVerifyForUi', { record_id: recordId, admin_memo: qs('adminMemo').value, adminToken: qs('adminToken').value });
+  await loadAdmin();
+}
+async function bulkVerify() {
+  const payload = adminFilterPayload();
+  payload.state = '';
+  const result = await gas('adminBulkVerifyForUi', payload);
+  alert('일괄확인 완료: ' + result.count + '건');
+  await loadAdmin();
+}
+function openCsv() {
+  const payload = adminFilterPayload();
+  const query = Object.keys(payload).map(function(key) {
+    return encodeURIComponent(key) + '=' + encodeURIComponent(payload[key] || '');
+  }).join('&');
+  window.open('?page=csv&' + query, '_blank');
+}
+</script>
