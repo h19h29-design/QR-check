@@ -75,6 +75,19 @@ function saveRoomFromAdmin(payload) {
 
 function exportCsv_(params) {
   verifyAdmin_(params || {});
+  const csv = buildAdminCsv_(params || {});
+  return ContentService.createTextOutput(csv).setMimeType(ContentService.MimeType.CSV);
+}
+
+function adminCsvForUi(payload) {
+  verifyAdmin_(payload || {});
+  return {
+    file_name: 'qr_security_submissions_' + today_().replace(/-/g, '') + '.csv',
+    csv: buildAdminCsv_(payload || {})
+  };
+}
+
+function buildAdminCsv_(params) {
   const rows = filterAdminSubmissions_(readTable_('submissions'), params || {});
   const headers = SHEET_SCHEMAS.submissions;
   const csv = '\ufeff' + [headers.join(',')].concat(rows.map(function(row) {
@@ -83,7 +96,7 @@ function exportCsv_(params) {
       return '"' + value + '"';
     }).join(',');
   })).join('\r\n');
-  return ContentService.createTextOutput(csv).setMimeType(ContentService.MimeType.CSV);
+  return csv;
 }
 
 function filterAdminSubmissions_(rows, payload) {

@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## 0.1.9 - 2026-04-28
+
+- 배포 전 QA/보안 리뷰를 수행하고 학교 전달용 ZIP 생성 흐름을 `admin-desktop/scripts/package.ps1` 하나로 정리했다.
+- 패키징 스크립트가 pytest, PyInstaller 빌드, 필수 파일 검증, Downloads 배포 폴더/ZIP 생성을 한 번에 처리하도록 보강했다.
+- 관리자 웹 CSV 다운로드에서 관리자 토큰 fallback 값이 URL query string에 남지 않도록 `google.script.run` + Blob 다운로드 방식으로 변경했다.
+- Google 배포 권한, 점검자 무로그인 리스크, Desktop Sync Key 보관/재발급 안내를 문서에 보강했다.
+- 최종 배포 ZIP smoke 테스트와 실행파일 시작 확인을 수행했다.
+
 ## 0.1.8 - 2026-04-27
 
 - 점검기록과 출력/보관 화면의 시작일/종료일 날짜 입력, 실/상태 선택 상자의 폭과 간격을 정리했다.

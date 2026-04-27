@@ -200,11 +200,21 @@ async function bulkVerify() {
   alert('일괄확인 완료: ' + result.count + '건');
   await loadAdmin();
 }
-function openCsv() {
+async function openCsv() {
   const payload = adminFilterPayload();
-  const query = Object.keys(payload).map(function(key) {
-    return encodeURIComponent(key) + '=' + encodeURIComponent(payload[key] || '');
-  }).join('&');
-  window.open('?page=csv&' + query, '_blank');
+  try {
+    const result = await gas('adminCsvForUi', payload);
+    const blob = new Blob([result.csv || ''], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = result.file_name || 'qr_security_submissions.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(err.message || err);
+  }
 }
 </script>

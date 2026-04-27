@@ -13,6 +13,11 @@
 - [x] HWP fallback 구현
 - [x] pytest 작성
 - [x] PowerShell 실행/빌드/패키징 스크립트 작성
+- [x] 다운로드 폴더 실배포 ZIP 자동 생성 스크립트 작성
+- [x] `admin-desktop\scripts\build.ps1` pytest 통과 확인
+- [x] `admin-desktop\scripts\package.ps1` pytest 후 PyInstaller dist 생성 확인
+- [x] 실배포 묶음 필수 구조 검증: Windows 관리자 프로그램, Apps Script 코드, 문서, UI 미리보기, 샘플 데이터
+- [x] Downloads 실배포 폴더의 Windows 관리자 프로그램 시작 smoke 확인
 - [x] 보안/인증 문서 작성
 - [x] 초보자 설정 문서 작성
 - [x] 기간별/실별 조회 및 출력 보완
@@ -22,5 +27,6 @@
 - [x] Google 관리자 웹 기간/실/상태 필터 보완
 - [x] Google 관리자 웹 CSV 조건 반영 보완
 - [x] 데스크톱 관리자 확인 Google 원본 반영 보완
+- [ ] 실배포 ZIP 압축 해제 후 다른 Windows PC에서 실행 확인
 - [ ] 실제 학교 Google 계정으로 Apps Script 배포 테스트
 - [ ] 실제 한글 설치 PC에서 HWP 변환 테스트

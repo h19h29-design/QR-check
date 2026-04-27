@@ -16,12 +16,27 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 .\scripts\build.ps1
 ```
 
-## 빌드
+## 패키징
 
 ```powershell
 Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 .\scripts\package.ps1
 ```
+
+이 명령은 다음을 순서대로 수행합니다.
+
+1. Python 의존성 설치
+2. pytest 실행
+3. PyInstaller dist 생성
+4. `C:\Users\user\Downloads`에 학교 배포용 폴더와 zip 생성
+
+생성 위치 예시:
+
+- `D:\gpt\QR\qr-security-check\admin-desktop\dist\QR보안점검표 관리자`
+- `C:\Users\user\Downloads\QR_security_check_deploy_yyyyMMdd-HHmmss`
+- `C:\Users\user\Downloads\QR_security_check_deploy_yyyyMMdd-HHmmss.zip`
+
+이미 설치된 가상환경을 그대로 쓰려면 `.\scripts\package.ps1 -SkipInstall`, zip 없이 폴더만 만들려면 `.\scripts\package.ps1 -NoZip`을 사용합니다.
 
 ## 최초 설정 순서
 

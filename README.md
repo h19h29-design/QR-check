@@ -41,12 +41,20 @@ Sheet에 기록하고 Drive에 첨부파일을 저장하려면 Google 정책상 
 1. 학교 관리자 Google 계정으로 Google Sheet를 만든다.
 2. `확장 프로그램 > Apps Script`를 연다.
 3. `apps-script/` 폴더의 `.gs`, `.html`, `appsscript.json` 파일을 같은 이름으로 만든다.
-4. `?page=setup` 화면 또는 `setup.initialize` 함수로 초기 설정을 실행한다.
-5. Google 권한을 승인한다.
-6. `배포 > 새 배포 > 웹 앱`에서 실행 사용자는 `나`, 접근 권한은 점검자 무로그인을 위해 `모든 사용자`로 배포한다.
-7. 배포 URL을 Windows 관리자 프로그램 설정에 입력한다.
+4. `배포 > 새 배포 > 웹 앱`에서 실행 사용자는 `나`, 접근 권한은 점검자 무로그인을 위해 `모든 사용자`로 배포한다.
+5. Google 권한 승인 화면이 나오면 학교 관리자 계정으로 승인한다.
+6. 배포 URL 뒤에 `?page=setup`을 붙여 초기 설정을 열고 학교명/관리자 이메일을 입력한다.
+7. 화면에 표시되는 관리자 토큰과 Desktop Sync Key를 즉시 안전한 곳에 보관한다.
+8. 배포 URL과 Desktop Sync Key를 Windows 관리자 프로그램 설정에 입력하고 `연결 테스트`를 실행한다.
 
 자세한 단계는 `docs/02_Google_Apps_Script_배포가이드.md`와 `docs/04_학교별_초기설정_가이드.md`를 보세요.
+
+초보자 실사용 체크:
+
+- Google Sheet/Drive 자체를 `링크가 있는 모든 사용자 편집 가능`으로 공유하지 않는다.
+- Apps Script 웹앱만 점검자 접속을 위해 `모든 사용자`로 열고, 실행 권한은 반드시 학교 관리자 본인인 `나`로 둔다.
+- `연결 테스트`, `로컬 설정을 Google로 업로드`, `QR 생성`까지 끝난 뒤 QR 1개를 스마트폰으로 시험 제출한다.
+- 관리자 웹은 배포 URL 뒤에 `?page=admin`을 붙여 열며, 이메일 확인이 비어 있으면 관리자 토큰을 입력한다.
 
 ## Windows 관리자 프로그램 실행
 
@@ -74,6 +82,8 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 .\scripts\package.ps1
 ```
 
+위 `package.ps1` 명령은 실행파일 빌드 후 `C:\Users\user\Downloads`에 학교 전달용 폴더와 ZIP까지 함께 만듭니다.
+
 ## 관리자 프로그램 주요 기능
 
 - 최초 설정: 학교명, 관리자 이메일, Apps Script URL, Desktop Sync Key 입력
@@ -93,6 +103,8 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 - 실제 관리자 이메일, Google Client Secret, 관리자 토큰, sync key는 코드에 넣지 마세요.
 - QR에는 `room_id + submit_token`이 들어갑니다. QR이 외부에 노출되면 해당 실 토큰을 재발급하세요.
 - `submit_token`과 sync key는 서버/Sheet에는 hash로 저장합니다.
+- Desktop Sync Key는 Windows 관리자 프로그램의 로컬 설정에 저장되므로 공용 PC, 화면 공유, 메신저, 공개 문서에 노출하지 마세요. PC 분실이나 담당자 변경 시 즉시 재발급하세요.
+- 관리자 토큰은 가능하면 URL에 붙이지 말고 화면 입력으로만 사용하세요. CSV 다운로드도 토큰을 URL에 붙이지 않고 관리자 화면 내부 호출로 처리합니다.
 - 첨부파일은 이미지/PDF만 허용하며 기본 5MB 제한입니다.
 - Google Sheet/Drive는 “링크가 있는 모든 사용자 편집 가능”으로 공유하지 마세요.
 - 무료 배포형이므로 고위험 개인정보, 법적 신원 확인, 강한 보안 보증 용도로 쓰지 마세요.
@@ -100,4 +112,3 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 ## 학교 담당자 안내문
 
 이 시스템은 보안점검표를 종이 수기철 대신 QR로 제출하고 Google Sheet에 자동 저장하는 무료 배포형 도구입니다. 점검자는 QR 스캔 후 이름을 선택하고 이상이 없으면 바로 제출하면 됩니다. 학교 관리자 1명만 최초 Google 권한 승인을 진행하면 이후 일반 점검자는 별도 Google 로그인 없이 사용할 수 있습니다.
-

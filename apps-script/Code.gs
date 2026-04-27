@@ -14,7 +14,9 @@ function doGet(e) {
     return renderPage_('Admin', { page: 'admin', title: '관리자 화면', params: params });
   }
   if (page === 'csv') {
-    return exportCsv_(params);
+    const safeParams = Object.assign({}, params);
+    delete safeParams.adminToken;
+    return exportCsv_(safeParams);
   }
   return renderPage_('Submit', { page: 'submit', title: '보안점검표', params: params });
 }
