@@ -1,10 +1,12 @@
 function desktopSyncPull_(payload) {
   verifyDesktop_(payload || {});
+  const nextSince = nowIso_();
   const since = payload.since || '';
   function changed(row) {
     return !since || String(row.updated_at || row.created_at || '') > since;
   }
   const data = {
+    next_since: nextSince,
     settings_school: readTable_('settings_school'),
     settings_admins: readTable_('settings_admins').filter(changed),
     settings_rooms: readTable_('settings_rooms').filter(changed),

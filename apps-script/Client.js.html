@@ -1,5 +1,32 @@
 <script>
+const STATUS_NORMAL = '이상 무';
+const STATUS_ABNORMAL = '이상 유';
+const ALLOWED_FILE_MIME = {
+  'image/png': true,
+  'image/jpeg': true,
+  'image/jpg': true,
+  'image/gif': true,
+  'image/webp': true,
+  'image/heic': true,
+  'image/heif': true,
+  'application/pdf': true
+};
+
 function qs(id) { return document.getElementById(id); }
+function clearNode(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+function textEl(tag, text, className) {
+  const el = document.createElement(tag);
+  el.textContent = text == null ? '' : String(text);
+  if (className) el.className = className;
+  return el;
+}
+function safeAttachmentUrl(value) {
+  const url = String(value || '');
+  if (/^https:\/\/(drive|docs)\.google\.com\//.test(url)) return url;
+  return '#';
+}
 function recordId() {
   return 'rec_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
@@ -7,6 +34,9 @@ function readFileAsBase64(file) {
   return new Promise(function(resolve, reject) {
     if (!file) return resolve(null);
     if (file.size > 5 * 1024 * 1024) return reject(new Error('파일은 5MB 이하만 첨부할 수 있습니다.'));
+    if (!ALLOWED_FILE_MIME[String(file.type || '').toLowerCase()]) {
+      return reject(new Error('이미지 또는 PDF 파일만 첨부할 수 있습니다.'));
+    }
     const reader = new FileReader();
     reader.onload = function() {
       const text = reader.result || '';
@@ -46,20 +76,43 @@ function renderPeople(people) {
 }
 function renderItems(items) {
   const tbody = qs('itemsTable').querySelector('tbody');
-  tbody.innerHTML = '';
+  clearNode(tbody);
   items.forEach(function(item) {
     const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + item.item_name + '</td>' +
-      '<td class="status">' +
-      '<label><input type="radio" name="status_' + item.item_key + '" value="이상 무" checked> 이상 무</label>' +
-      '<label><input type="radio" name="status_' + item.item_key + '" value="이상 유"> 이상 유</label>' +
-      '</td>' +
-      '<td class="file-cell"><input type="file" id="file_' + item.item_key + '" accept="image/*,application/pdf"></td>';
+    const nameCell = textEl('td', item.item_name);
+    const statusCell = document.createElement('td');
+    statusCell.className = 'status';
+    const normalLabel = document.createElement('label');
+    const normal = document.createElement('input');
+    normal.type = 'radio';
+    normal.name = 'status_' + item.item_key;
+    normal.value = STATUS_NORMAL;
+    normal.checked = true;
+    normalLabel.appendChild(normal);
+    normalLabel.appendChild(document.createTextNode(' ' + STATUS_NORMAL));
+    const abnormalLabel = document.createElement('label');
+    const abnormal = document.createElement('input');
+    abnormal.type = 'radio';
+    abnormal.name = 'status_' + item.item_key;
+    abnormal.value = STATUS_ABNORMAL;
+    abnormalLabel.appendChild(abnormal);
+    abnormalLabel.appendChild(document.createTextNode(' ' + STATUS_ABNORMAL));
+    statusCell.appendChild(normalLabel);
+    statusCell.appendChild(abnormalLabel);
+    const fileCell = document.createElement('td');
+    fileCell.className = 'file-cell';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'file_' + item.item_key;
+    fileInput.accept = 'image/*,image/heic,image/heif,application/pdf';
+    fileCell.appendChild(fileInput);
+    tr.appendChild(nameCell);
+    tr.appendChild(statusCell);
+    tr.appendChild(fileCell);
     tbody.appendChild(tr);
     tr.querySelectorAll('input[type=radio]').forEach(function(radio) {
       radio.addEventListener('change', function() {
-        tr.querySelector('.file-cell').classList.toggle('issue', radio.value === '이상 유' && radio.checked);
+        tr.querySelector('.file-cell').classList.toggle('issue', radio.value === STATUS_ABNORMAL && radio.checked);
       });
     });
   });
@@ -75,8 +128,9 @@ async function submitForm(event) {
   const status = {};
   const attachments = {};
   for (const item of items) {
-    const checked = document.querySelector('input[name=status_' + item.item_key + ']:checked');
-    status[item.item_key] = checked ? checked.value : '이상 무';
+    const radios = Array.prototype.slice.call(document.getElementsByName('status_' + item.item_key));
+    const checked = radios.find(function(radio) { return radio.checked; });
+    status[item.item_key] = checked ? checked.value : STATUS_NORMAL;
     const fileInput = qs('file_' + item.item_key);
     if (fileInput && fileInput.files[0]) attachments[item.item_key] = await readFileAsBase64(fileInput.files[0]);
   }
@@ -103,8 +157,12 @@ async function submitForm(event) {
 }
 function showDone(result) {
   qs('submitForm').classList.add('hidden');
-  qs('done').classList.remove('hidden');
-  qs('done').innerHTML = '<h2>제출 완료</h2><p>기록번호: ' + result.record_id + '</p><p>' + (result.abnormal ? '이상 있음으로 제출되었습니다.' : '이상 없음으로 제출되었습니다.') + '</p>';
+  const done = qs('done');
+  done.classList.remove('hidden');
+  clearNode(done);
+  done.appendChild(textEl('h2', '제출 완료'));
+  done.appendChild(textEl('p', '기록번호: ' + result.record_id));
+  done.appendChild(textEl('p', result.abnormal ? '이상 있음으로 제출되었습니다.' : '이상 없음으로 제출되었습니다.'));
 }
 async function resendPending() {
   const keys = Object.keys(localStorage).filter(function(k) { return k.indexOf('qr_pending_') === 0; });
@@ -156,18 +214,24 @@ function renderAdminRooms(rooms) {
 }
 function renderAdminRows(rows) {
   const tbody = qs('adminTable').querySelector('tbody');
-  tbody.innerHTML = '';
+  clearNode(tbody);
   qs('adminSummary').textContent = '조회 결과: ' + rows.length + '건';
   rows.forEach(function(row) {
     const abnormal = row.abnormal === true || row.abnormal === 'TRUE' || row.abnormal === 'true' || row.abnormal === 1 || row.abnormal === '1';
     const verified = row.admin_verified === true || row.admin_verified === 'TRUE' || row.admin_verified === 'true' || row.admin_verified === 1 || row.admin_verified === '1';
     const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + row.submitted_at + '</td><td>' + row.room_name + '</td><td>' + row.person_name + '</td>' +
-      '<td class="' + (abnormal ? 'bad' : 'ok') + '">' + (abnormal ? '이상 있음' : '이상 없음') + '</td>' +
-      '<td>' + (verified ? '확인' : '미확인') + '</td>' +
-      '<td><button data-id="' + row.record_id + '">상세보기</button></td>';
-    tr.querySelector('button').onclick = function() { loadDetail(row.record_id); };
+    tr.appendChild(textEl('td', row.submitted_at));
+    tr.appendChild(textEl('td', row.room_name));
+    tr.appendChild(textEl('td', row.person_name));
+    tr.appendChild(textEl('td', abnormal ? '이상 있음' : '이상 없음', abnormal ? 'bad' : 'ok'));
+    tr.appendChild(textEl('td', verified ? '확인' : '미확인'));
+    const actionCell = document.createElement('td');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = '상세보기';
+    button.addEventListener('click', function() { loadDetail(row.record_id); });
+    actionCell.appendChild(button);
+    tr.appendChild(actionCell);
     tbody.appendChild(tr);
   });
 }
@@ -176,18 +240,39 @@ async function loadDetail(recordId) {
   const data = await gas('adminDetailForUi', payload);
   const record = data.record;
   const attachments = data.attachments || [];
-  const attachmentHtml = attachments.length
-    ? '<h3>첨부파일</h3><ul>' + attachments.map(function(file) {
-        return '<li><a href="' + file.drive_url + '" target="_blank" rel="noopener">' + file.file_name + '</a></li>';
-      }).join('') + '</ul>'
-    : '<p>첨부파일 없음</p>';
   const detail = qs('detail');
   detail.classList.remove('hidden');
-  detail.innerHTML =
-    '<h2>상세보기</h2><pre>' + JSON.stringify(record, null, 2) + '</pre>' +
-    attachmentHtml +
-    '<textarea id="adminMemo" placeholder="관리자 메모"></textarea>' +
-    '<button onclick="verifyDetail(\\'' + record.record_id + '\\')">개별확인</button>';
+  clearNode(detail);
+  detail.appendChild(textEl('h2', '상세보기'));
+  const pre = document.createElement('pre');
+  pre.textContent = JSON.stringify(record, null, 2);
+  detail.appendChild(pre);
+  detail.appendChild(textEl('h3', '첨부파일'));
+  if (attachments.length) {
+    const list = document.createElement('ul');
+    attachments.forEach(function(file) {
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = safeAttachmentUrl(file.drive_url);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = file.file_name || '첨부파일';
+      item.appendChild(link);
+      list.appendChild(item);
+    });
+    detail.appendChild(list);
+  } else {
+    detail.appendChild(textEl('p', '첨부파일 없음'));
+  }
+  const memo = document.createElement('textarea');
+  memo.id = 'adminMemo';
+  memo.placeholder = '관리자 메모';
+  detail.appendChild(memo);
+  const verifyButton = document.createElement('button');
+  verifyButton.type = 'button';
+  verifyButton.textContent = '개별확인';
+  verifyButton.addEventListener('click', function() { verifyDetail(record.record_id); });
+  detail.appendChild(verifyButton);
 }
 async function verifyDetail(recordId) {
   await gas('adminVerifyForUi', { record_id: recordId, admin_memo: qs('adminMemo').value, adminToken: qs('adminToken').value });

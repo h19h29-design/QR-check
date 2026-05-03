@@ -5,6 +5,8 @@ import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .security import protect_local_secret, unprotect_local_secret
+
 
 APP_NAME = "QR보안점검표 관리자"
 APP_CODE = "qr-security-admin"
@@ -55,11 +57,15 @@ def load_config(path: Path | None = None) -> AppConfig:
     if not target.exists():
         return AppConfig()
     data = json.loads(target.read_text(encoding="utf-8"))
+    if "sync_key" in data:
+        data["sync_key"] = unprotect_local_secret(str(data.get("sync_key") or ""))
     return AppConfig(**{k: v for k, v in data.items() if k in AppConfig.__dataclass_fields__})
 
 
 def save_config(config: AppConfig, path: Path | None = None) -> Path:
     target = path or config_path(config.resolved_data_dir)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(asdict(config), ensure_ascii=False, indent=2), encoding="utf-8")
+    data = asdict(config)
+    data["sync_key"] = protect_local_secret(config.sync_key)
+    target.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return target

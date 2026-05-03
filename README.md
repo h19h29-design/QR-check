@@ -36,6 +36,14 @@ Sheet에 기록하고 Drive에 첨부파일을 저장하려면 Google 정책상 
 - `legacy/original/`: 기존 Flask 소스 분석용 추출본
 - `sample-data/`: 샘플 제출 데이터와 설정 안내
 
+## 학교 배포 ZIP 빠른 확인
+
+개발자가 학교 전달용 ZIP을 만들 때는 `admin-desktop\scripts\package.ps1`을 실행합니다. 생성된 ZIP은 `C:\Users\user\Downloads\QR_security_check_deploy_yyyyMMdd-HHmmss.zip` 형태입니다.
+
+학교 담당자는 ZIP을 통째로 압축 해제한 뒤 루트의 `README_먼저읽기.md`부터 읽습니다. Windows 프로그램은 ZIP 내부에서 바로 실행하지 말고 압축 해제된 폴더의 `1_Windows_Admin_Program\QR보안점검표 관리자\QR보안점검표 관리자.exe`를 실행합니다.
+
+배포 묶음의 샘플 자료는 `5_Sample_Data` 바로 아래에 들어갑니다. 실제 학교 개인정보가 들어 있는 파일을 샘플 폴더에 추가하지 마세요.
+
 ## Apps Script 배포 요약
 
 1. 학교 관리자 Google 계정으로 Google Sheet를 만든다.
@@ -56,7 +64,9 @@ Sheet에 기록하고 Drive에 첨부파일을 저장하려면 Google 정책상 
 - `연결 테스트`, `로컬 설정을 Google로 업로드`, `QR 생성`까지 끝난 뒤 QR 1개를 스마트폰으로 시험 제출한다.
 - 관리자 웹은 배포 URL 뒤에 `?page=admin`을 붙여 열며, 이메일 확인이 비어 있으면 관리자 토큰을 입력한다.
 
-## Windows 관리자 프로그램 실행
+## Windows 관리자 프로그램 개발 실행
+
+학교 현장에서는 위 배포 ZIP 안의 `.exe`를 실행합니다. 아래 PowerShell 명령은 개발자나 유지보수자가 소스에서 직접 실행, 테스트, 패키징할 때 사용합니다.
 
 PowerShell에서:
 
@@ -66,6 +76,12 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\scripts\run_dev.ps1 -SkipInstall
+```
+
+PowerShell에서 스크립트 실행이 차단되면 같은 창에서 먼저 아래 명령을 1회 실행합니다.
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 테스트:
@@ -103,7 +119,7 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 - 실제 관리자 이메일, Google Client Secret, 관리자 토큰, sync key는 코드에 넣지 마세요.
 - QR에는 `room_id + submit_token`이 들어갑니다. QR이 외부에 노출되면 해당 실 토큰을 재발급하세요.
 - `submit_token`과 sync key는 서버/Sheet에는 hash로 저장합니다.
-- Desktop Sync Key는 Windows 관리자 프로그램의 로컬 설정에 저장되므로 공용 PC, 화면 공유, 메신저, 공개 문서에 노출하지 마세요. PC 분실이나 담당자 변경 시 즉시 재발급하세요.
+- Desktop Sync Key는 Windows 관리자 프로그램의 로컬 설정에 저장되며 Windows DPAPI로 현재 사용자 계정에 묶어 보호됩니다. 그래도 공용 PC, 화면 공유, 메신저, 공개 문서에 노출하지 마세요. PC 분실이나 담당자 변경 시 즉시 재발급하세요.
 - 관리자 토큰은 가능하면 URL에 붙이지 말고 화면 입력으로만 사용하세요. CSV 다운로드도 토큰을 URL에 붙이지 않고 관리자 화면 내부 호출로 처리합니다.
 - 첨부파일은 이미지/PDF만 허용하며 기본 5MB 제한입니다.
 - Google Sheet/Drive는 “링크가 있는 모든 사용자 편집 가능”으로 공유하지 마세요.

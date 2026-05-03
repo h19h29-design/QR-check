@@ -88,5 +88,6 @@ def sync_payload_to_db(conn, payload: dict) -> int:
             data = dict(row)
             data.setdefault("local_path", "")
             upsert_dict(conn, "attachments", data, ["attachment_id"])
-    upsert_dict(conn, "sync_state", {"key": "last_sync_at", "value": now_iso(), "updated_at": now_iso()}, ["key"])
+    next_since = payload.get("next_since") or payload.get("server_time") or now_iso()
+    upsert_dict(conn, "sync_state", {"key": "last_sync_at", "value": next_since, "updated_at": now_iso()}, ["key"])
     return count

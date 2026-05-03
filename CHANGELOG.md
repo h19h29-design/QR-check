@@ -1,5 +1,15 @@
 # CHANGELOG.md
 
+## 0.2.0 - 2026-05-03
+
+- 실배포 안정화 관점으로 추가 점검을 수행했다.
+- Windows 관리자 프로그램의 Desktop Sync Key를 로컬 설정 파일에 저장할 때 Windows DPAPI로 현재 사용자 계정에 묶어 보호하도록 변경했다.
+- Google 동기화 기준 시각을 PC 로컬 시간이 아니라 Apps Script 서버가 내려주는 `next_since` 값으로 저장하도록 변경해 경계 시점 누락 가능성을 줄였다.
+- Apps Script 제출 검증을 강화했다: 담당자/당직자 실제 등록 여부, 항목 상태 정규화, 특이사항/클라이언트 정보 길이 제한, 첨부파일 수 제한, MIME/signature 검증.
+- 첨부파일 업로드 실패 시 제출 레코드가 먼저 저장되어 재전송이 꼬이지 않도록, 파일 생성 성공 후 제출/첨부 행을 기록하는 순서로 조정했다.
+- Apps Script 템플릿 include와 파라미터 주입을 안전한 helper로 정리하고, 관리자 화면의 동적 HTML 생성을 DOM 기반으로 보강했다.
+- PyInstaller 배포 ZIP을 다시 생성하고 exe smoke 테스트를 수행했다.
+
 ## 0.1.9 - 2026-04-28
 
 - 배포 전 QA/보안 리뷰를 수행하고 학교 전달용 ZIP 생성 흐름을 `admin-desktop/scripts/package.ps1` 하나로 정리했다.

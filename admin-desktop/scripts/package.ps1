@@ -11,11 +11,68 @@ $Root = Split-Path -Parent $PSScriptRoot
 $RepoRoot = Split-Path -Parent $Root
 Set-Location $Root
 
-if (-not (Test-Path ".venv")) {
-    python -m venv .venv
+function New-ProjectVenv {
+    if (Test-Path -LiteralPath ".venv") {
+        return
+    }
+
+    $PythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if ($PythonCommand) {
+        & $PythonCommand.Source -m venv .venv
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+    }
+
+    $PyLauncher = Get-Command py -ErrorAction SilentlyContinue
+    if ($PyLauncher) {
+        & $PyLauncher.Source -3 -m venv .venv
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+    }
+
+    throw "Python 3.11 이상이 필요합니다. python 또는 py 명령을 PowerShell에서 실행할 수 있게 설치한 뒤 다시 실행하세요."
 }
 
+function Resolve-OutputDirectory {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -ItemType Directory -Force -Path $Path | Out-Null
+    }
+
+    $Item = Get-Item -LiteralPath $Path
+    if (-not $Item.PSIsContainer) {
+        throw "OutputRoot가 폴더가 아닙니다: $Path"
+    }
+
+    return $Item.FullName
+}
+
+foreach ($RelativePath in @(
+    "apps-script\Code.gs",
+    "apps-script\appsscript.json",
+    "docs\09_RELEASE_CHECKLIST.md",
+    "release\mobile_submit_preview.html",
+    "release\mobile_admin_preview.html",
+    "sample-data\sample_submissions.json",
+    "README.md",
+    "admin-desktop\README.md"
+)) {
+    $SourcePath = Join-Path $RepoRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $SourcePath)) {
+        throw "배포 묶음 원본 파일이 없습니다: $SourcePath"
+    }
+}
+
+$OutputRoot = Resolve-OutputDirectory -Path $OutputRoot
+New-ProjectVenv
 $Python = Join-Path $Root ".venv\Scripts\python.exe"
+if (-not (Test-Path -LiteralPath $Python)) {
+    throw "가상환경 Python을 찾지 못했습니다: $Python"
+}
+
 if (-not $SkipInstall) {
     & $Python -m pip install --upgrade pip
     & $Python -m pip install -r requirements.txt
@@ -79,7 +136,7 @@ Copy-Item -LiteralPath $AdminReadme -Destination (Join-Path $ManualsDir "README_
 Copy-Item -LiteralPath (Join-Path $RepoRoot "CHANGELOG.md") -Destination $ManualsDir -Force
 Copy-Item -LiteralPath (Join-Path $RepoRoot "PLAN.md") -Destination $ManualsDir -Force
 Copy-Item -Path (Join-Path $RepoRoot "release\*.html") -Destination $PreviewDir -Force
-Copy-Item -LiteralPath (Join-Path $RepoRoot "sample-data") -Destination $SampleDir -Recurse -Force
+Copy-Item -Path (Join-Path $RepoRoot "sample-data\*") -Destination $SampleDir -Recurse -Force
 $ReleaseReadme = Get-ChildItem -LiteralPath (Join-Path $RepoRoot "release") -Filter "README_*.md" | Select-Object -First 1
 if (-not $ReleaseReadme) {
     throw "release 폴더에서 README_*.md 파일을 찾지 못했습니다."
@@ -100,7 +157,7 @@ $RequiredPaths = @(
     "3_Manuals\README_project.md",
     "3_Manuals\docs\09_RELEASE_CHECKLIST.md",
     "4_UI_Previews\mobile_submit_preview.html",
-    "5_Sample_Data\sample-data\sample_submissions.json"
+    "5_Sample_Data\sample_submissions.json"
 )
 foreach ($RelativePath in $RequiredPaths) {
     $FullPath = Join-Path $BundleRoot $RelativePath

@@ -2,11 +2,30 @@
 
 Windows 학교 PC에서 실행하는 관리자 프로그램입니다.
 
-## 실행
+## 학교 PC 실행
+
+학교에 전달된 `QR_security_check_deploy_yyyyMMdd-HHmmss.zip`을 받은 경우:
+
+1. ZIP 파일을 원하는 폴더에 압축 해제한다.
+2. `README_먼저읽기.md`를 먼저 연다.
+3. `1_Windows_Admin_Program\QR보안점검표 관리자` 폴더 전체를 학교 PC에 둔다.
+4. `QR보안점검표 관리자.exe`를 실행한다.
+
+`QR보안점검표 관리자.exe`만 따로 복사하면 실행에 필요한 `_internal` 폴더를 찾지 못할 수 있습니다. 반드시 프로그램 폴더 전체를 함께 보관하세요.
+
+## 개발 실행
+
+아래 명령은 소스에서 직접 실행할 때 사용합니다. 학교 담당자가 배포 ZIP을 받은 경우에는 위의 `.exe` 실행 흐름을 사용하세요.
 
 ```powershell
 Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 .\scripts\run_dev.ps1
+```
+
+PowerShell에서 스크립트 실행이 막히면 같은 창에서 먼저 실행합니다.
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 ## 테스트
@@ -35,6 +54,8 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 - `D:\gpt\QR\qr-security-check\admin-desktop\dist\QR보안점검표 관리자`
 - `C:\Users\user\Downloads\QR_security_check_deploy_yyyyMMdd-HHmmss`
 - `C:\Users\user\Downloads\QR_security_check_deploy_yyyyMMdd-HHmmss.zip`
+
+배포 묶음의 샘플 파일은 `5_Sample_Data` 바로 아래에 복사됩니다.
 
 이미 설치된 가상환경을 그대로 쓰려면 `.\scripts\package.ps1 -SkipInstall`, zip 없이 폴더만 만들려면 `.\scripts\package.ps1 -NoZip`을 사용합니다.
 

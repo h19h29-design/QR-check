@@ -27,6 +27,22 @@
 - [x] Google 관리자 웹 기간/실/상태 필터 보완
 - [x] Google 관리자 웹 CSV 조건 반영 보완
 - [x] 데스크톱 관리자 확인 Google 원본 반영 보완
+- [x] Desktop Sync Key 로컬 설정 파일 DPAPI 보호 보완
+- [x] Google Apps Script `next_since` 기준 증분 동기화 보완
+- [x] 첨부파일 생성 실패 시 제출 기록만 남는 문제 완화
+- [x] Apps Script `.gs` 문법 검사 통과
+- [x] 민감키 패턴 스캔 통과
+- [x] 최종 실배포 ZIP 생성 및 필수 파일 포함 확인
 - [ ] 실배포 ZIP 압축 해제 후 다른 Windows PC에서 실행 확인
 - [ ] 실제 학교 Google 계정으로 Apps Script 배포 테스트
 - [ ] 실제 한글 설치 PC에서 HWP 변환 테스트
+
+## 2026-05-03 Production Release Audit
+
+- [x] 학교 담당자용 실행 흐름과 개발자용 PowerShell 흐름을 README에서 분리
+- [x] 배포 ZIP의 `5_Sample_Data` 구조를 문서 설명과 일치하도록 패키징 스크립트 보정
+- [x] `package.ps1`에서 배포 필수 원본 파일 누락을 초기에 검증
+- [x] `run_dev.ps1`, `build.ps1`, `package.ps1`에서 Python 미설치/경로 오류를 초보자가 읽을 수 있는 메시지로 변경
+- [x] PowerShell 실행 정책 차단 시 처리 방법을 README와 FAQ에 추가
+- [x] 실배포 ZIP 생성 전체 경로를 릴리스 PC에서 1회 더 측정
+- [x] `docs/02_Google_Apps_Script_배포가이드.md`의 초기 설정/웹앱 배포 순서 문서 정합성 확인

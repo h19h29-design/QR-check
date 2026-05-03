@@ -58,7 +58,8 @@ Google OAuth 클라이언트를 별도로 구성하고 관리자 계정을 명�
 
 ## 현재 한계와 배포 전 확인
 
-- Desktop Sync Key는 Sheet에는 hash로 저장되지만 Windows 로컬 설정에는 원문이 저장된다.
+- Desktop Sync Key는 Sheet에는 hash로 저장된다. Windows 로컬 설정에는 DPAPI 보호값으로 저장하며, 앱 실행 중에만 복호화해 Apps Script 동기화 요청에 사용한다.
+- DPAPI 보호값은 같은 Windows 사용자 계정 기준으로 복호화된다. PC 교체, 사용자 계정 변경, 프로필 재생성 시에는 Desktop Sync Key를 다시 입력해야 한다.
 - 관리자 token 회전과 Desktop Sync Key 회전은 운영 절차로 관리해야 하며, 전용 UI는 추후 개선 대상이다.
 - 점검자 제출은 강한 본인확인이 아니므로 법적 서명이나 신원확인 용도로 쓰지 않는다.
 - `localStorage`에 미전송 제출 payload가 잠시 남을 수 있으므로 공용 스마트폰 사용을 피한다.

@@ -43,11 +43,12 @@
 - Windows 로컬 설정에는 사용자가 입력한 key를 저장한다.
 - 장치 분실 또는 담당자 변경 시 폐기한다.
 
-현재 Windows 관리자 프로그램은 Desktop Sync Key를 사용자 로컬 설정 파일에 저장한다. 일반적으로 `%LOCALAPPDATA%\qr-security-admin\local_settings.json`에 저장되며, 저장소 안의 `local_settings.json`, `*sync_key*`, `*admin_token*` 파일은 `.gitignore`로 제외한다.
+현재 Windows 관리자 프로그램은 Desktop Sync Key를 사용자 로컬 설정 파일에 저장한다. 일반적으로 `%LOCALAPPDATA%\qr-security-admin\local_settings.json`에 저장되며, Windows에서는 DPAPI로 현재 Windows 사용자 계정에 묶어 암호화 저장한다. 저장소 안의 `local_settings.json`, `*sync_key*`, `*admin_token*` 파일은 `.gitignore`로 제외한다.
 
 운영 주의:
 
 - Desktop Sync Key를 메신저, 이메일 본문, 공개 문서, 화면 캡처에 남기지 않는다.
+- 다른 Windows 계정이나 다른 PC로 `local_settings.json`만 복사해도 DPAPI 보호값은 복호화되지 않을 수 있다. PC를 바꾸면 설정 화면에서 Desktop Sync Key를 다시 입력한다.
 - OneDrive/Google Drive 같은 동기화 폴더에 로컬 설정 파일을 직접 옮기지 않는다.
 - 관리자 PC 계정 잠금, 디스크 암호화, 백신, OS 업데이트를 유지한다.
 - PC 폐기, 분실, 담당자 변경, 외부 수리 전에는 key를 재발급한다.

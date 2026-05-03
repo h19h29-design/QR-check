@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <?!= include('Styles'); ?>
+  <?!= include_('Styles'); ?>
 </head>
 <body>
 <main class="container">
@@ -28,14 +28,13 @@
   </form>
   <section id="done" class="panel hidden"></section>
 </main>
-<?!= include('Client.js'); ?>
+<?!= include_('Client.js'); ?>
 <script>
-  window.__PARAMS__ = {
-    roomId: '<?= data.params.roomId || data.params.room_id || "" ?>',
-    submitToken: '<?= data.params.submitToken || data.params.submit_token || "" ?>'
-  };
+  window.__PARAMS__ = <?!= jsonForHtmlScript_({
+    roomId: data.params.roomId || data.params.room_id || '',
+    submitToken: data.params.submitToken || data.params.submit_token || ''
+  }) ?>;
   initSubmitPage();
 </script>
 </body>
 </html>
-

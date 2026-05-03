@@ -1,4 +1,4 @@
-function adminBootstrap(payload) {
+function adminBootstrap_(payload) {
   const auth = verifyAdmin_(payload || {});
   return Object.assign(bootstrapForClient_(), { auth: auth });
 }
@@ -54,7 +54,7 @@ function adminBulkVerifyNormal_(payload) {
   return { count: count };
 }
 
-function saveRoomFromAdmin(payload) {
+function saveRoomFromAdmin_(payload) {
   const auth = verifyAdmin_(payload || {});
   const now = nowIso_();
   const roomId = payload.room_id || uuid_('room');
@@ -91,12 +91,15 @@ function buildAdminCsv_(params) {
   const rows = filterAdminSubmissions_(readTable_('submissions'), params || {});
   const headers = SHEET_SCHEMAS.submissions;
   const csv = '\ufeff' + [headers.join(',')].concat(rows.map(function(row) {
-    return headers.map(function(h) {
-      const value = String(row[h] == null ? '' : row[h]).replace(/"/g, '""');
-      return '"' + value + '"';
-    }).join(',');
+    return headers.map(function(h) { return csvCell_(row[h]); }).join(',');
   })).join('\r\n');
   return csv;
+}
+
+function csvCell_(value) {
+  let text = String(value == null ? '' : value);
+  if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
 }
 
 function filterAdminSubmissions_(rows, payload) {
