@@ -7,9 +7,13 @@ function adminListSubmissions_(payload) {
   verifyAdmin_(payload || {});
   const rows = filterAdminSubmissions_(readTable_('submissions'), payload || {})
     .sort(function(a, b) { return String(b.submitted_at).localeCompare(String(a.submitted_at)); });
+  const recordIds = rows.reduce(function(acc, row) {
+    acc[String(row.record_id)] = true;
+    return acc;
+  }, {});
   return {
     submissions: rows,
-    attachments: readTable_('attachments'),
+    attachments: readTable_('attachments').filter(function(row) { return recordIds[String(row.record_id)]; }),
     rooms: readTable_('settings_rooms').filter(activeRow_)
   };
 }

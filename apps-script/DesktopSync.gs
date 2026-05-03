@@ -13,7 +13,7 @@ function desktopSyncPull_(payload) {
     settings_people: readTable_('settings_people').filter(changed),
     settings_check_items: readTable_('settings_check_items').filter(changed),
     submissions: readTable_('submissions').filter(changed),
-    attachments: readTable_('attachments')
+    attachments: readTable_('attachments').filter(changed)
   };
   logAudit_('desktop', 'desktop_sync_pull', 'sync', since || 'full', {
     submissions: data.submissions.length

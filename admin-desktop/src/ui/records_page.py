@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from app.config import AppConfig
 from app.db import connect
+from app.models import now_iso
 from app.sync_client import AppsScriptClient
 from .detail_dialog import DetailDialog
 from .ui_helpers import configure_full_width_table
@@ -147,19 +148,15 @@ class RecordsPage(QWidget):
         self.refresh()
 
     def bulk_verify_normal(self) -> None:
-        where, params = self._where()
         start = self.start_date.date().toString("yyyy-MM-dd")
         end = self.end_date.date().toString("yyyy-MM-dd")
         room_id = self.room_filter.currentData() or ""
-        with connect(self.config.db_path) as conn:
-            conn.execute(
-                f"""
-                UPDATE submissions
-                SET admin_verified=1, admin_verified_by='desktop', admin_verified_at=datetime('now', 'localtime')
-                WHERE {where} AND abnormal=0 AND admin_verified=0
-                """,
-                params,
-            )
+        clauses = ["inspection_date BETWEEN ? AND ?"]
+        params: list[str] = [start, end]
+        if room_id:
+            clauses.append("room_id=?")
+            params.append(room_id)
+        where = " AND ".join(clauses)
         if self.config.apps_script_url and self.config.sync_key:
             try:
                 AppsScriptClient(self.config.apps_script_url, self.config.sync_key).bulk_verify_normal(start, end, room_id)
@@ -167,8 +164,19 @@ class RecordsPage(QWidget):
                 QMessageBox.warning(
                     self,
                     "Google 반영 실패",
-                    "로컬 일괄확인은 저장했지만 Google Sheet 반영에 실패했습니다.\n"
-                    "네트워크와 Desktop Sync Key를 확인한 뒤 다시 동기화하세요.\n\n"
+                    "Google Sheet 반영에 실패해서 로컬 일괄확인도 보류했습니다.\n"
+                    "네트워크와 Desktop Sync Key를 확인한 뒤 다시 시도하세요.\n\n"
                     + str(exc),
                 )
+                return
+        now = now_iso()
+        with connect(self.config.db_path) as conn:
+            conn.execute(
+                f"""
+                UPDATE submissions
+                SET admin_verified=1, admin_verified_by='desktop', admin_verified_at=?, updated_at=?
+                WHERE {where} AND abnormal=0 AND admin_verified=0
+                """,
+                [now, now, *params],
+            )
         self.refresh()

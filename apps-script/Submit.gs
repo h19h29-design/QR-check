@@ -25,11 +25,43 @@ function validateRoomToken_(roomId, submitToken) {
 }
 
 function submitInspection_(payload) {
+  const prepared = prepareSubmission_(payload || {});
+  const lock = LockService.getScriptLock();
+  let locked = false;
+  lock.waitLock(30000);
+  locked = true;
+  const attachments = [];
+  try {
+    if (findBy_('submissions', 'record_id', prepared.recordId)) {
+      return { record_id: prepared.recordId, duplicate: true };
+    }
+    prepared.fileKeys.forEach(function(itemKey) {
+      const uploaded = createAttachmentFile_(prepared.recordId, itemKey, prepared.files[itemKey]);
+      if (uploaded) attachments.push(uploaded);
+    });
+    appendObject_('submissions', prepared.row);
+    attachments.forEach(function(attachment) {
+      appendObject_('attachments', attachment);
+    });
+    logAudit_(
+      prepared.submitter.person_name || 'anonymous',
+      'submit_create',
+      'submission',
+      prepared.recordId,
+      { room_id: prepared.room.room_id, abnormal: prepared.abnormal }
+    );
+    return { record_id: prepared.recordId, duplicate: false, abnormal: prepared.abnormal, attachments: attachments };
+  } catch (err) {
+    trashDriveFiles_(attachments);
+    throw err;
+  } finally {
+    if (locked) lock.releaseLock();
+  }
+}
+
+function prepareSubmission_(payload) {
   const room = validateRoomToken_(payload.room_id || payload.roomId, payload.submit_token || payload.submitToken);
   const recordId = payload.record_id || uuid_('rec');
-  if (findBy_('submissions', 'record_id', recordId)) {
-    return { record_id: recordId, duplicate: true };
-  }
   const now = nowIso_();
   const activeItems = readTable_('settings_check_items').filter(activeRow_);
   const activeItemKeys = activeItems.reduce(function(acc, item) {
@@ -40,6 +72,15 @@ function submitInspection_(payload) {
   const abnormal = Object.keys(status).some(function(key) { return status[key] === STATUS_ABNORMAL; });
   const submitter = resolveSubmitter_(payload, room);
   const remarks = limitedText_(payload.remarks || '', MAX_REMARKS_LENGTH, '특이사항');
+  const files = payload.attachments || {};
+  const fileKeys = Object.keys(files);
+  if (fileKeys.length > MAX_ATTACHMENTS_PER_SUBMISSION) {
+    throw new Error('첨부파일은 한 제출당 최대 ' + MAX_ATTACHMENTS_PER_SUBMISSION + '개까지 가능합니다.');
+  }
+  fileKeys.forEach(function(itemKey) {
+    if (!activeItemKeys[itemKey]) throw new Error('알 수 없는 점검항목 첨부입니다: ' + itemKey);
+    validateAttachmentPayload_(files[itemKey]);
+  });
   const row = {
     record_id: recordId,
     submitted_at: now,
@@ -63,26 +104,7 @@ function submitInspection_(payload) {
     created_at: now,
     updated_at: now
   };
-  const attachments = [];
-  const files = payload.attachments || {};
-  const fileKeys = Object.keys(files);
-  if (fileKeys.length > MAX_ATTACHMENTS_PER_SUBMISSION) {
-    throw new Error('첨부파일은 한 제출당 최대 ' + MAX_ATTACHMENTS_PER_SUBMISSION + '개까지 가능합니다.');
-  }
-  fileKeys.forEach(function(itemKey) {
-    if (!activeItemKeys[itemKey]) throw new Error('알 수 없는 점검항목 첨부입니다: ' + itemKey);
-    validateAttachmentPayload_(files[itemKey]);
-  });
-  fileKeys.forEach(function(itemKey) {
-    const uploaded = createAttachmentFile_(recordId, itemKey, files[itemKey]);
-    if (uploaded) attachments.push(uploaded);
-  });
-  appendObject_('submissions', row);
-  attachments.forEach(function(attachment) {
-    appendObject_('attachments', attachment);
-  });
-  logAudit_(submitter.person_name || 'anonymous', 'submit_create', 'submission', recordId, { room_id: room.room_id, abnormal: abnormal });
-  return { record_id: recordId, duplicate: false, abnormal: abnormal, attachments: attachments };
+  return { room: room, recordId: recordId, row: row, abnormal: abnormal, submitter: submitter, files: files, fileKeys: fileKeys };
 }
 
 function normalizeStatus_(input, activeItems) {

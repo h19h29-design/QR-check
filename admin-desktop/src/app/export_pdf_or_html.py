@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+from html import escape
 from pathlib import Path
+
+from .export_excel import normalize_export_items
 
 
 ITEM_LABELS = {
@@ -13,9 +16,15 @@ ITEM_LABELS = {
 }
 
 
-def export_printable_html(records: list[dict], output_path: str | Path, school_name: str = "") -> Path:
+def export_printable_html(
+    records: list[dict],
+    output_path: str | Path,
+    school_name: str = "",
+    items: list[dict] | None = None,
+) -> Path:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    export_items = normalize_export_items(records, items)
     rows = []
     for record in records:
         status = record.get("status_json", {})
@@ -24,22 +33,22 @@ def export_printable_html(records: list[dict], output_path: str | Path, school_n
                 status = json.loads(status)
             except json.JSONDecodeError:
                 status = {}
-        item_cells = "".join(f"<td>{status.get(key, '이상 무')}</td>" for key in ITEM_LABELS)
+        item_cells = "".join(f"<td>{escape(str(status.get(key, '이상 무')))}</td>" for key, _ in export_items)
         rows.append(
             f"""
             <tr class="{'bad' if record.get('abnormal') else ''}">
-              <td>{record.get('inspection_date', '')}</td>
-              <td>{record.get('room_name', '')}</td>
-              <td>{record.get('person_name', '')}</td>
+              <td>{escape(str(record.get('inspection_date', '')))}</td>
+              <td>{escape(str(record.get('room_name', '')))}</td>
+              <td>{escape(str(record.get('person_name', '')))}</td>
               {item_cells}
-              <td>{record.get('remarks', '')}</td>
-              <td>{'확인' if record.get('admin_verified') else '미확인'}<br>{record.get('admin_verified_at', '')}</td>
+              <td>{escape(str(record.get('remarks', '')))}</td>
+              <td>{'확인' if record.get('admin_verified') else '미확인'}<br>{escape(str(record.get('admin_verified_at', '')))}</td>
               <td class="sign"></td>
               <td class="sign"></td>
             </tr>
             """
         )
-    item_headers = "".join(f"<th>{label}</th>" for label in ITEM_LABELS.values())
+    item_headers = "".join(f"<th>{escape(label)}</th>" for _, label in export_items)
     html = f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -60,7 +69,7 @@ td:nth-child(9) {{ text-align: left; }}
 </head>
 <body>
 <h1>보안점검표</h1>
-<div class="meta"><span>기관명: {school_name}</span><span>출력일: <script>document.write(new Date().toLocaleDateString())</script></span></div>
+<div class="meta"><span>기관명: {escape(school_name)}</span><span>출력일: <script>document.write(new Date().toLocaleDateString())</script></span></div>
 <table>
 <thead>
 <tr><th>점검일</th><th>실명</th><th>점검자</th>{item_headers}<th>특이사항</th><th>관리자 확인</th><th>담당자 서명</th><th>관리자 서명</th></tr>
@@ -71,4 +80,3 @@ td:nth-child(9) {{ text-align: left; }}
 </html>"""
     path.write_text(html, encoding="utf-8")
     return path
-

@@ -45,6 +45,8 @@
 
 현재 Windows 관리자 프로그램은 Desktop Sync Key를 사용자 로컬 설정 파일에 저장한다. 일반적으로 `%LOCALAPPDATA%\qr-security-admin\local_settings.json`에 저장되며, Windows에서는 DPAPI로 현재 Windows 사용자 계정에 묶어 암호화 저장한다. 저장소 안의 `local_settings.json`, `*sync_key*`, `*admin_token*` 파일은 `.gitignore`로 제외한다.
 
+실별 QR 생성을 위해 Windows 관리자 프로그램은 로컬 SQLite에 submit token 원문을 별도로 보관한다. 새로 생성되는 submit token은 Windows DPAPI 보호값으로 저장하며, QR 생성 시 같은 Windows 사용자 계정에서만 복호화해 사용한다. 다른 PC에서 Google Sheet 설정만 내려받은 경우에는 submit token 원문이 없으므로 QR을 새로 만들 수 없고, 해당 실을 다시 등록하거나 토큰을 재발급해야 한다.
+
 운영 주의:
 
 - Desktop Sync Key를 메신저, 이메일 본문, 공개 문서, 화면 캡처에 남기지 않는다.

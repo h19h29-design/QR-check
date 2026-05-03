@@ -19,6 +19,7 @@ from app.db import connect, rows_to_dicts
 from app.export_excel import export_security_check_xlsx
 from app.export_hwp import export_hwp_or_fallback
 from app.export_pdf_or_html import export_printable_html
+from app.security import safe_filename
 from .ui_helpers import configure_full_width_table
 
 
@@ -130,6 +131,13 @@ class ExportPage(QWidget):
             ).fetchall()
             return rows_to_dicts(rows)
 
+    def _items(self) -> list[dict]:
+        with connect(self.config.db_path) as conn:
+            rows = conn.execute(
+                "SELECT item_key, item_name, sort_order, active FROM settings_check_items WHERE active=1 ORDER BY sort_order, item_name"
+            ).fetchall()
+            return rows_to_dicts(rows)
+
     def refresh_preview(self) -> None:
         records = self._records()
         self.table.setRowCount(len(records))
@@ -180,19 +188,19 @@ class ExportPage(QWidget):
         end = self.end_date.date().toString("yyyyMMdd")
         room = self.room_filter.currentText()
         room_part = "" if room == "전체" else f"_{room}"
-        return f"보안점검표_{start}_{end}{room_part}"
+        return safe_filename(f"보안점검표_{start}_{end}{room_part}", "보안점검표")
 
     def export_xlsx(self) -> None:
-        path = export_security_check_xlsx(self._records(), self.config.export_dir / f"{self._file_stem()}.xlsx")
+        path = export_security_check_xlsx(self._records(), self.config.export_dir / f"{self._file_stem()}.xlsx", items=self._items())
         self.status.setText(f"엑셀 생성 완료: {path}")
         self.refresh_preview()
 
     def export_html(self) -> None:
-        path = export_printable_html(self._records(), self.config.export_dir / f"{self._file_stem()}.html", self.config.school_name)
+        path = export_printable_html(self._records(), self.config.export_dir / f"{self._file_stem()}.html", self.config.school_name, self._items())
         self.status.setText(f"HTML 생성 완료: {path}")
         self.refresh_preview()
 
     def export_hwp(self) -> None:
-        path = export_hwp_or_fallback(self._records(), self.config.export_dir / f"{self._file_stem()}.hwp", self.config.school_name)
+        path = export_hwp_or_fallback(self._records(), self.config.export_dir / f"{self._file_stem()}.hwp", self.config.school_name, self._items())
         self.status.setText(f"출력 생성 완료: {path}")
         self.refresh_preview()

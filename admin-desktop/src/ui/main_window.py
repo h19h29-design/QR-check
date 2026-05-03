@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QPushButton, QSplitter, QStackedWidget, QVBoxLayout, QWidget
 
 from app.config import AppConfig
@@ -17,6 +17,28 @@ from .settings_items_page import SettingsItemsPage
 from .settings_people_page import SettingsPeoplePage
 from .settings_rooms_page import SettingsRoomsPage
 from .setup_wizard import SetupPage
+
+
+class SyncWorker(QObject):
+    finished = Signal(int)
+    failed = Signal(str)
+
+    def __init__(self, config: AppConfig) -> None:
+        super().__init__()
+        self.config = config
+
+    def run(self) -> None:
+        try:
+            with connect(self.config.db_path) as conn:
+                row = conn.execute("SELECT value FROM sync_state WHERE key='last_sync_at'").fetchone()
+                since = row["value"] if row else ""
+            client = AppsScriptClient(self.config.apps_script_url, self.config.sync_key, timeout=20)
+            payload = client.pull(since)
+            with connect(self.config.db_path) as conn:
+                count = sync_payload_to_db(conn, payload)
+            self.finished.emit(count)
+        except Exception as exc:
+            self.failed.emit(str(exc))
 
 
 class MainWindow(QMainWindow):
@@ -71,7 +93,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(page)
 
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
-        self.nav.setCurrentRow(0)
+        self.nav.setCurrentRow(len(pages) - 1 if not self.config.apps_script_url or not self.config.sync_key else 0)
 
         splitter = QSplitter()
         splitter.addWidget(self.nav)
@@ -116,6 +138,8 @@ class MainWindow(QMainWindow):
         self.sync_timer.timeout.connect(self.sync_from_google)
         self.sync_timer.start(max(1, self.config.sync_interval_minutes) * 60 * 1000)
         QTimer.singleShot(5000, self.sync_from_google)
+        self.sync_thread: QThread | None = None
+        self.sync_worker: SyncWorker | None = None
 
     def go_to_page(self, label: str) -> None:
         matches = self.nav.findItems(label, Qt.MatchExactly)
@@ -129,19 +153,34 @@ class MainWindow(QMainWindow):
             if hasattr(self, "footer"):
                 self.footer.setText("Apps Script URL과 Desktop Sync Key를 설정하면 Google 동기화를 사용할 수 있습니다.")
             return
-        try:
-            self.sync_badge.setText("동기화 중")
-            with connect(self.config.db_path) as conn:
-                row = conn.execute("SELECT value FROM sync_state WHERE key='last_sync_at'").fetchone()
-                since = row["value"] if row else ""
-            client = AppsScriptClient(self.config.apps_script_url, self.config.sync_key)
-            payload = client.pull(since)
-            with connect(self.config.db_path) as conn:
-                count = sync_payload_to_db(conn, payload)
-            self.sync_badge.setText("Google 연결됨")
-            self.footer.setText(f"Google 동기화 완료: 제출 기록 {count}건 반영")
-            logging.getLogger(__name__).info("Google sync completed")
-        except Exception as exc:
-            self.sync_badge.setText("동기화 오류")
-            self.footer.setText(f"Google 동기화 실패: {exc}")
-            logging.getLogger(__name__).warning("Google sync failed: %s", exc)
+        if self.sync_thread and self.sync_thread.isRunning():
+            self.footer.setText("이미 Google 동기화가 진행 중입니다.")
+            return
+        self.sync_badge.setText("동기화 중")
+        self.footer.setText("Google 데이터를 동기화하는 중입니다. 화면은 계속 사용할 수 있습니다.")
+        self.sync_thread = QThread(self)
+        self.sync_worker = SyncWorker(self.config)
+        self.sync_worker.moveToThread(self.sync_thread)
+        self.sync_thread.started.connect(self.sync_worker.run)
+        self.sync_worker.finished.connect(self.on_sync_finished)
+        self.sync_worker.failed.connect(self.on_sync_failed)
+        self.sync_worker.finished.connect(self.sync_thread.quit)
+        self.sync_worker.failed.connect(self.sync_thread.quit)
+        self.sync_thread.finished.connect(self.sync_worker.deleteLater)
+        self.sync_thread.finished.connect(self.sync_thread.deleteLater)
+        self.sync_thread.finished.connect(self._clear_sync_refs)
+        self.sync_thread.start()
+
+    def on_sync_finished(self, count: int) -> None:
+        self.sync_badge.setText("Google 연결됨")
+        self.footer.setText(f"Google 동기화 완료: 제출 기록 {count}건 반영")
+        logging.getLogger(__name__).info("Google sync completed")
+
+    def on_sync_failed(self, message: str) -> None:
+        self.sync_badge.setText("동기화 오류")
+        self.footer.setText(f"Google 동기화 실패: {message}")
+        logging.getLogger(__name__).warning("Google sync failed: %s", message)
+
+    def _clear_sync_refs(self) -> None:
+        self.sync_thread = None
+        self.sync_worker = None

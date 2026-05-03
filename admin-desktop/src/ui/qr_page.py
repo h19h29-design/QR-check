@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QLabel, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from app.config import AppConfig
 from app.db import connect
 from app.qr_generator import build_submit_url, generate_qr_label_html, generate_qr_png
+from app.security import DPAPI_PREFIX, unprotect_local_secret
 from .ui_helpers import configure_full_width_table
 
 
@@ -40,6 +41,9 @@ class QrPage(QWidget):
 
     def generate_labels(self) -> None:
         self._show_locations()
+        if not self.config.apps_script_url:
+            QMessageBox.warning(self, "QR 생성 불가", "[설정]에서 Apps Script Web App URL을 먼저 입력하고 저장하세요.")
+            return
         rows_for_html = []
         with connect(self.config.db_path) as conn:
             rooms = conn.execute(
@@ -51,13 +55,32 @@ class QrPage(QWidget):
                 ORDER BY r.room_order, r.room_name
                 """
             ).fetchall()
+        if not rooms:
+            QMessageBox.information(self, "QR 생성", "등록된 실이 없습니다. [실 관리]에서 실을 먼저 추가하세요.")
+            return
+        missing = []
+        prepared = []
+        for room in rooms:
+            token = unprotect_local_secret(room["submit_token"] or "")
+            if not token or token.startswith(DPAPI_PREFIX):
+                missing.append(room["room_name"])
+            else:
+                prepared.append((room, token))
+        if missing:
+            QMessageBox.warning(
+                self,
+                "QR 생성 불가",
+                "다음 실은 이 PC에 QR 원본 토큰이 없어 QR을 만들 수 없습니다.\n"
+                "실을 이 관리자 프로그램에서 다시 추가하거나 토큰을 재발급한 뒤 Google 업로드를 진행하세요.\n\n"
+                + "\n".join(missing),
+            )
+            return
         self.config.qr_dir.mkdir(parents=True, exist_ok=True)
         self.config.export_dir.mkdir(parents=True, exist_ok=True)
-        self.table.setRowCount(len(rooms))
-        for r, room in enumerate(rooms):
-            token = room["submit_token"] or "토큰_재발급_필요"
+        self.table.setRowCount(len(prepared))
+        for r, (room, token) in enumerate(prepared):
             url = build_submit_url(
-                self.config.apps_script_url or "https://script.google.com/macros/s/DEPLOYMENT_ID/exec",
+                self.config.apps_script_url,
                 room["room_id"],
                 token,
             )

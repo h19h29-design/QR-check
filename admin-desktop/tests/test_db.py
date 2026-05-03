@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-
 from app.db import connect
 from app.migrations import add_person, add_room, init_db, upsert_submission
+from app.security import unprotect_local_secret
 
 
 def test_db_schema_and_defaults(tmp_path):
@@ -16,6 +16,30 @@ def test_db_schema_and_defaults(tmp_path):
     assert items["count"] >= 5
 
 
+def test_db_migration_adds_missing_columns(tmp_path):
+    db_path = tmp_path / "old.sqlite3"
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE attachments (
+                attachment_id TEXT PRIMARY KEY,
+                record_id TEXT NOT NULL,
+                item_key TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                mime_type TEXT NOT NULL,
+                file_size INTEGER NOT NULL DEFAULT 0,
+                drive_file_id TEXT NOT NULL DEFAULT '',
+                drive_url TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+    init_db(db_path)
+    with connect(db_path) as conn:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(attachments)").fetchall()}
+    assert "local_path" in columns
+
+
 def test_room_person_and_duplicate_submission(tmp_path):
     db_path = tmp_path / "test.sqlite3"
     init_db(db_path)
@@ -24,6 +48,10 @@ def test_room_person_and_duplicate_submission(tmp_path):
         person_id = add_person(conn, "홍길동", "responsible", room_id)
         assert token
         assert person_id
+        stored_token = conn.execute("SELECT submit_token FROM room_submit_tokens_local WHERE room_id=?", (room_id,)).fetchone()["submit_token"]
+        assert unprotect_local_secret(stored_token) == token
+        if stored_token.startswith("dpapi:"):
+            assert stored_token != token
         upsert_submission(
             conn,
             {
@@ -87,4 +115,3 @@ def test_bulk_verify_filter_policy(tmp_path):
         bad = conn.execute("SELECT admin_verified FROM submissions WHERE record_id='bad'").fetchone()
     assert normal["admin_verified"] == 1
     assert bad["admin_verified"] == 0
-

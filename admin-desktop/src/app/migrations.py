@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .db import connect, upsert_dict
 from .models import now_iso
-from .security import generate_token, hash_token
+from .security import generate_token, hash_token, protect_local_secret
 
 
 SCHEMA_VERSION = 1
@@ -25,6 +25,7 @@ DEFAULT_ITEMS = [
 def init_db(db_path: str | Path) -> None:
     with connect(db_path) as conn:
         _create_schema(conn)
+        _migrate_schema(conn)
         _set_schema_version(conn)
         seed_defaults(conn)
 
@@ -167,6 +168,28 @@ def _set_schema_version(conn: sqlite3.Connection) -> None:
         conn.execute("INSERT INTO schema_version(version, applied_at) VALUES (?, ?)", (SCHEMA_VERSION, now_iso()))
 
 
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    """기존 학교 PC의 오래된 SQLite DB도 현재 앱에서 열 수 있게 부족한 컬럼을 보강한다."""
+    expected = {
+        "settings_school": {
+            "updated_at": "TEXT NOT NULL DEFAULT ''",
+        },
+        "attachments": {
+            "local_path": "TEXT NOT NULL DEFAULT ''",
+        },
+        "submissions": {
+            "desktop_synced": "INTEGER NOT NULL DEFAULT 0",
+            "desktop_synced_at": "TEXT NOT NULL DEFAULT ''",
+            "admin_memo": "TEXT NOT NULL DEFAULT ''",
+        },
+    }
+    for table, columns in expected.items():
+        existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        for column, definition in columns.items():
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
 def seed_defaults(conn: sqlite3.Connection) -> None:
     now = now_iso()
     for key, value in {
@@ -206,7 +229,7 @@ def add_room(conn: sqlite3.Connection, room_name: str, room_order: int = 100) ->
     )
     conn.execute(
         "INSERT INTO room_submit_tokens_local(room_id, submit_token, created_at) VALUES (?, ?, ?)",
-        (room_id, token, now),
+        (room_id, protect_local_secret(token), now),
     )
     return room_id, token
 

@@ -119,6 +119,7 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 - 실제 관리자 이메일, Google Client Secret, 관리자 토큰, sync key는 코드에 넣지 마세요.
 - QR에는 `room_id + submit_token`이 들어갑니다. QR이 외부에 노출되면 해당 실 토큰을 재발급하세요.
 - `submit_token`과 sync key는 서버/Sheet에는 hash로 저장합니다.
+- Windows 관리자 프로그램에서 새로 만든 실의 QR submit token 원문은 로컬 SQLite에 DPAPI 보호값으로 저장합니다. 다른 PC로 옮기면 Google Sheet의 hash만으로는 QR을 재생성할 수 없으므로 실을 다시 등록하거나 토큰을 재발급해야 합니다.
 - Desktop Sync Key는 Windows 관리자 프로그램의 로컬 설정에 저장되며 Windows DPAPI로 현재 사용자 계정에 묶어 보호됩니다. 그래도 공용 PC, 화면 공유, 메신저, 공개 문서에 노출하지 마세요. PC 분실이나 담당자 변경 시 즉시 재발급하세요.
 - 관리자 토큰은 가능하면 URL에 붙이지 말고 화면 입력으로만 사용하세요. CSV 다운로드도 토큰을 URL에 붙이지 않고 관리자 화면 내부 호출로 처리합니다.
 - 첨부파일은 이미지/PDF만 허용하며 기본 5MB 제한입니다.

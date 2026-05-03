@@ -11,6 +11,8 @@ const ALLOWED_FILE_MIME = {
   'image/heif': true,
   'application/pdf': true
 };
+const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
+let submitInFlight = false;
 
 function qs(id) { return document.getElementById(id); }
 function clearNode(node) {
@@ -119,9 +121,42 @@ function renderItems(items) {
 }
 async function submitForm(event) {
   event.preventDefault();
+  if (submitInFlight) return;
+  submitInFlight = true;
+  const submitButton = qs('submitForm').querySelector('button[type=submit]');
+  const originalText = submitButton ? submitButton.textContent : '';
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = '전송 중...';
+  }
+  let payload = null;
+  try {
+    payload = await buildSubmitPayload_();
+    const result = await gas('submitInspectionForUi', payload);
+    showDone(result);
+    localStorage.removeItem('qr_pending_' + payload.record_id);
+  } catch (err) {
+    if (payload) {
+      if (storePending_(payload)) {
+        alert('전송 실패로 임시 저장했습니다. 이 화면을 다시 열면 24시간 안에 재전송을 시도합니다.');
+      } else {
+        alert('전송에 실패했고 휴대폰 임시 저장 공간이 부족해 보관하지 못했습니다. 첨부파일을 줄인 뒤 다시 시도하세요.');
+      }
+    } else {
+      alert(err.message || err);
+    }
+  } finally {
+    submitInFlight = false;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalText;
+    }
+  }
+}
+async function buildSubmitPayload_() {
   const responsible = qs('responsibleSelect').value;
   const duty = qs('dutySelect').value;
-  if (!responsible && !duty) { alert('담당자 또는 당직자를 선택하세요.'); return; }
+  if (!responsible && !duty) throw new Error('담당자 또는 당직자를 선택하세요.');
   const selected = (responsible || duty).split('|');
   const roleType = duty ? 'duty' : 'responsible';
   const items = window.__BOOTSTRAP__.items || [];
@@ -147,12 +182,22 @@ async function submitForm(event) {
     client_info: { userAgent: navigator.userAgent }
   };
   try {
-    const result = await gas('submitInspectionForUi', payload);
-    showDone(result);
-    localStorage.removeItem('qr_pending_' + payload.record_id);
+    JSON.stringify(payload);
   } catch (err) {
-    localStorage.setItem('qr_pending_' + payload.record_id, JSON.stringify(payload));
-    alert('전송 실패로 임시 저장했습니다. 이 화면을 다시 열면 재전송을 시도합니다.');
+    throw new Error('임시 저장할 수 없는 입력값이 있습니다.');
+  }
+  return payload;
+}
+function storePending_(payload) {
+  try {
+    localStorage.setItem('qr_pending_' + payload.record_id, JSON.stringify({
+      saved_at: new Date().toISOString(),
+      expires_at: Date.now() + PENDING_TTL_MS,
+      payload: payload
+    }));
+    return true;
+  } catch (err) {
+    return false;
   }
 }
 function showDone(result) {
@@ -168,7 +213,12 @@ async function resendPending() {
   const keys = Object.keys(localStorage).filter(function(k) { return k.indexOf('qr_pending_') === 0; });
   for (const key of keys) {
     try {
-      const payload = JSON.parse(localStorage.getItem(key));
+      const stored = JSON.parse(localStorage.getItem(key));
+      const payload = stored && stored.payload ? stored.payload : stored;
+      if (stored && stored.expires_at && Date.now() > Number(stored.expires_at)) {
+        localStorage.removeItem(key);
+        continue;
+      }
       await gas('submitInspectionForUi', payload);
       localStorage.removeItem(key);
     } catch (err) {

@@ -123,3 +123,19 @@ function getOrCreateChild_(parent, name) {
 function safeFileName_(name) {
   return String(name || 'file').replace(/[\\/:*?"<>|#%{}~&]/g, '_');
 }
+
+function trashDriveFiles_(attachments) {
+  (attachments || []).forEach(function(attachment) {
+    try {
+      if (attachment && attachment.drive_file_id) {
+        DriveApp.getFileById(attachment.drive_file_id).setTrashed(true);
+      }
+    } catch (err) {
+      try {
+        logAudit_('system', 'attachment_cleanup_failed', 'attachment', attachment && attachment.attachment_id, {
+          message: err.message || String(err)
+        });
+      } catch (logErr) {}
+    }
+  });
+}

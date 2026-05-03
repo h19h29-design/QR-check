@@ -28,9 +28,19 @@
 - [x] Google 관리자 웹 CSV 조건 반영 보완
 - [x] 데스크톱 관리자 확인 Google 원본 반영 보완
 - [x] Desktop Sync Key 로컬 설정 파일 DPAPI 보호 보완
+- [x] 로컬 QR submit token DPAPI 보호 보완
 - [x] Google Apps Script `next_since` 기준 증분 동기화 보완
+- [x] Google Apps Script Drive 권한 스코프 보완
+- [x] 모바일/서버 중복 제출 방지 보완
 - [x] 첨부파일 생성 실패 시 제출 기록만 남는 문제 완화
+- [x] 관리자 목록 첨부 메타데이터 최소화
+- [x] QR 더미 링크 생성 차단
+- [x] Google 동기화 UI 스레드 분리
+- [x] 출력물 사용자 추가 점검항목 반영
+- [x] 출력 파일명 안전 처리
+- [x] SQLite 기존 DB 컬럼 보강 마이그레이션 추가
 - [x] Apps Script `.gs` 문법 검사 통과
+- [x] Apps Script client script 문법 검사 통과
 - [x] 민감키 패턴 스캔 통과
 - [x] 최종 실배포 ZIP 생성 및 필수 파일 포함 확인
 - [ ] 실배포 ZIP 압축 해제 후 다른 Windows PC에서 실행 확인

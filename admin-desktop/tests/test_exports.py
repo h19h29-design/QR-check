@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from openpyxl import load_workbook
+
 from app.export_excel import export_security_check_xlsx
 from app.export_hwp import export_hwp_or_fallback
 from app.export_pdf_or_html import export_printable_html
@@ -38,3 +40,17 @@ def test_export_hwp_fallback(tmp_path):
     path = export_hwp_or_fallback(sample_records(), tmp_path / "out.hwp", "샘플학교")
     assert path.exists()
 
+
+def test_export_dynamic_custom_items(tmp_path):
+    records = sample_records()
+    records[0]["status_json"]["window"] = "이상 유"
+    items = [{"item_key": "window", "item_name": "창문잠금상태", "active": 1}]
+    xlsx_path = export_security_check_xlsx(records, tmp_path / "custom.xlsx", items=items)
+    wb = load_workbook(xlsx_path)
+    headers = [cell.value for cell in wb.active[2]]
+    assert "창문잠금상태" in headers
+
+    html_path = export_printable_html(records, tmp_path / "custom.html", "샘플학교", items)
+    text = html_path.read_text(encoding="utf-8")
+    assert "창문잠금상태" in text
+    assert "이상 유" in text
