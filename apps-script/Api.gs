@@ -8,7 +8,7 @@ function initializeSchoolStorage_(payload) {
     ensureSheets_();
     seedDefaults_();
     const alreadySetup = setting_('setup_completed', '') === 'true';
-    const auth = alreadySetup ? verifyAdmin_(payload) : null;
+    const auth = alreadySetup ? verifyAdmin_(payload) : verifyInitialSetupKey_(payload);
     validateSetupPayload_(payload, !alreadySetup);
 
     const now = nowIso_();
@@ -32,6 +32,7 @@ function initializeSchoolStorage_(payload) {
     const syncKey = (!setting_('sync_key_hash', '') || rotate) ? generateSyncKeyForSetup_(payload) : '(기존 Desktop Sync Key 유지)';
     setSetting_('setup_completed', 'true');
     setSetting_('updated_at', now);
+    if (!alreadySetup) clearInitialSetupKey_();
     logAudit_(auth ? auth.actor : adminEmail, 'setup_initialize', 'school', schoolName || setting_('school_name', ''), { rotateTokens: rotate });
     return { folders: folders, adminToken: adminToken, syncKey: syncKey, version: APP_VERSION, setup_completed: true };
   } finally {

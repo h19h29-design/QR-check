@@ -28,6 +28,10 @@
 - token 유출 시 실별로 폐기/재발급한다.
 - 검증 실패는 `audit_log`에 기록한다.
 
+## 최초 설정 보호
+
+초기 설정 화면은 배포 URL을 아는 사람도 접근할 수 있으므로, 최초 설정에는 Apps Script 편집기에서 소유자 계정으로 실행한 `createInitialSetupKey`의 일회성 초기 설정 키가 필요하다. 설정이 완료되면 초기 설정 키는 Script Properties에서 제거된다. 재설정이나 토큰 재발급은 기존 관리자 token 또는 관리자 Google 계정 확인을 거쳐야 한다.
+
 ## 관리자 접근
 
 목표는 `settings_admins` 이메일 allowlist 기반 Google 계정 확인이다. 다만 Apps Script의 `Session.getActiveUser().getEmail()`은 배포 방식에 따라 빈 값일 수 있으므로 관리자 token fallback을 병행한다.

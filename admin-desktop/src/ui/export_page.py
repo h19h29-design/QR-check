@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
     QComboBox,
@@ -161,9 +163,9 @@ class ExportPage(QWidget):
             abnormal = bool(record.get("abnormal"))
             rows.append(
                 "<tr>"
-                f"<td>{record.get('inspection_date', '')}</td>"
-                f"<td>{record.get('room_name', '')}</td>"
-                f"<td>{record.get('person_name', '')}</td>"
+                f"<td>{escape(str(record.get('inspection_date', '')))}</td>"
+                f"<td>{escape(str(record.get('room_name', '')))}</td>"
+                f"<td>{escape(str(record.get('person_name', '')))}</td>"
                 f"<td style='color:{'#b91c1c' if abnormal else '#047857'};font-weight:700'>"
                 f"{'이상 있음' if abnormal else '이상 없음'}</td>"
                 f"<td>{'확인' if record.get('admin_verified') else '미확인'}</td>"
@@ -172,7 +174,7 @@ class ExportPage(QWidget):
         return f"""
         <html><body style="font-family:'Malgun Gothic'; color:#111827;">
         <h1 style="text-align:center;">보안점검표</h1>
-        <p>기관명: {self.config.school_name or '학교명 미설정'}</p>
+        <p>기관명: {escape(self.config.school_name or '학교명 미설정')}</p>
         <p>조회 범위: {self.start_date.date().toString('yyyy-MM-dd')} ~ {self.end_date.date().toString('yyyy-MM-dd')}</p>
         <table width="100%" cellspacing="0" cellpadding="8" style="border-collapse:collapse;">
         <tr style="background:#eef2f7;"><th>날짜</th><th>실</th><th>점검자</th><th>상태</th><th>관리자</th></tr>

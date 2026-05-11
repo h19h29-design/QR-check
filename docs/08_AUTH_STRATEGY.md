@@ -49,9 +49,10 @@ Google OAuth 클라이언트를 별도로 구성하고 관리자 계정을 명�
 1. 학교 관리자 Google 계정으로 Sheet와 Apps Script 프로젝트를 만든다.
 2. Apps Script 웹앱을 실행 사용자 `나`, 액세스 권한 `모든 사용자`로 배포한다.
 3. Google 권한 승인 화면에서 프로젝트와 계정을 확인한 뒤 승인한다.
-4. 배포 URL의 `?page=setup` 화면에서 학교명과 관리자 이메일을 등록한다.
-5. 화면에 표시된 관리자 token과 Desktop Sync Key를 안전한 곳에 보관한다.
-6. Windows 관리자 프로그램에 배포 URL과 Desktop Sync Key를 입력하고 연결 테스트를 실행한다.
+4. Apps Script 편집기에서 `createInitialSetupKey`를 실행해 초기 설정 키를 만든다.
+5. 배포 URL의 `?page=setup` 화면에서 초기 설정 키, 학교명, 관리자 이메일을 등록한다.
+6. 화면에 표시된 관리자 token과 Desktop Sync Key를 안전한 곳에 보관한다.
+7. Windows 관리자 프로그램에 배포 URL과 Desktop Sync Key를 입력하고 연결 테스트를 실행한다.
 7. 관리자 웹 `?page=admin`은 이메일 확인이 되면 바로 열리고, 이메일 확인이 비어 있으면 관리자 token을 입력한다.
 
 이 순서에서 Google Sheet/Drive를 공개 공유로 바꿀 필요는 없다. 점검자 무로그인은 Apps Script 웹앱 공개 배포와 QR token으로 처리한다.

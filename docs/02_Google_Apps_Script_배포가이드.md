@@ -21,10 +21,13 @@
 
 ## 3. 초기 설정 실행
 
-브라우저 주소 뒤에 `?page=setup`을 붙여 초기 설정 화면을 열거나, Apps Script 편집기에서 `setupInitializeForUi` 또는 `initializeSchoolStorage_`를 실행한다.
+Apps Script 편집기에서 함수 목록의 `createInitialSetupKey`를 선택해 실행한다. 실행 결과에 표시된 초기 설정 키를 복사한다.
+
+그 다음 브라우저 주소 뒤에 `?page=setup`을 붙여 초기 설정 화면을 연다. `setupInitializeForUi` 또는 `initializeSchoolStorage_`를 직접 실행하는 방식은 초보자에게 권장하지 않는다.
 
 입력:
 
+- 초기 설정 키
 - 학교명
 - 관리자 Google 이메일
 
@@ -37,6 +40,8 @@
 - Desktop Sync Key
 
 관리자 token과 Desktop Sync Key는 즉시 안전한 곳에 보관한다.
+
+초기 설정 키는 최초 1회 설정을 선점당하지 않게 하기 위한 일회성 값이다. 설정이 완료되면 스크립트 속성에서 제거된다.
 
 ## 4. 권한 승인
 

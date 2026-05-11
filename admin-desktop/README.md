@@ -63,13 +63,15 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 
 1. `설정` 메뉴를 연다.
 2. 화면 위쪽의 `Google 설정 방법(처음 1회)` 안내를 순서대로 진행한다.
-3. 학교명, 관리자 이메일, Apps Script Web App URL을 입력한다.
-4. Apps Script 초기 설정에서 발급받은 Desktop Sync Key를 입력한다.
-5. QR 저장 폴더와 출력물 저장 폴더를 필요하면 바꾼다.
-6. `연결 테스트`를 누른다. 이 테스트는 URL과 Desktop Sync Key를 함께 확인한다.
-7. 실/담당자/점검항목을 등록한다.
-8. `설정 > 로컬 설정을 Google로 업로드`를 눌러 Google Sheet에 반영한다.
-9. `QR 생성` 메뉴에서 QR 부착용 출력물을 만든다.
+3. Apps Script 편집기에서 `createInitialSetupKey`를 실행해 초기 설정 키를 만든다.
+4. `?page=setup` 화면에서 초기 설정 키, 학교명, 관리자 이메일을 입력한다.
+5. 학교명, 관리자 이메일, Apps Script Web App URL을 입력한다.
+6. Apps Script 초기 설정에서 발급받은 Desktop Sync Key를 입력한다.
+7. QR 저장 폴더와 출력물 저장 폴더를 필요하면 바꾼다.
+8. `연결 테스트`를 누른다. 이 테스트는 URL과 Desktop Sync Key를 함께 확인한다.
+9. 실/담당자/점검항목을 등록한다.
+10. `설정 > 로컬 설정을 Google로 업로드`를 눌러 Google Sheet에 반영한다.
+11. `QR 생성` 메뉴에서 QR 부착용 출력물을 만든다.
 
 ## 표시순서란?
 
@@ -81,6 +83,8 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 - `출력/보관`: 기간별, 실별 XLSX/HTML/HWP fallback 출력
 - 저장 위치: `설정` 메뉴의 QR 저장 폴더, 출력물 저장 폴더에서 변경
 - Apps Script URL과 Desktop Sync Key가 설정되어 있으면 개별확인/일괄확인이 Google Sheet 원본에도 함께 반영됨
+
+배포용 exe는 안정적인 패키징을 위해 HWP COM 모듈을 포함하지 않는다. 한글 자동화 환경이 없거나 exe 배포판에서는 HTML 인쇄 파일로 fallback되며, HWP 자동화를 실험하려면 소스 실행 환경에서 pywin32와 한글 프로그램을 별도로 준비한다.
 
 ## Google 등록 후 실사용 조건
 

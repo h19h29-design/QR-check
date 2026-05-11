@@ -41,7 +41,7 @@ def export_printable_html(
               <td>{escape(str(record.get('room_name', '')))}</td>
               <td>{escape(str(record.get('person_name', '')))}</td>
               {item_cells}
-              <td>{escape(str(record.get('remarks', '')))}</td>
+              <td class="remarks">{escape(str(record.get('remarks', '')))}</td>
               <td>{'확인' if record.get('admin_verified') else '미확인'}<br>{escape(str(record.get('admin_verified_at', '')))}</td>
               <td class="sign"></td>
               <td class="sign"></td>
@@ -62,7 +62,7 @@ h1 {{ text-align: center; margin: 0 0 8mm; font-size: 18pt; }}
 table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
 th, td {{ border: 1px solid #333; padding: 5px; font-size: 9pt; text-align: center; vertical-align: middle; word-break: keep-all; }}
 th {{ background: #f1f3f5; }}
-td:nth-child(9) {{ text-align: left; }}
+td.remarks {{ text-align: left; }}
 .bad td {{ background: #fff0f0; }}
 .sign {{ height: 34px; }}
 </style>

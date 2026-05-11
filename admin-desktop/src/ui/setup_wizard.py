@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
+from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
@@ -20,10 +22,27 @@ from app.db import connect, rows_to_dicts
 from app.sync_client import AppsScriptClient, sync_payload_to_db
 
 
+class SetupTaskWorker(QObject):
+    finished = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, task) -> None:
+        super().__init__()
+        self.task = task
+
+    def run(self) -> None:
+        try:
+            self.finished.emit(self.task())
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
 class SetupPage(QWidget):
     def __init__(self, config: AppConfig) -> None:
         super().__init__()
         self.config = config
+        self._task_thread: QThread | None = None
+        self._task_worker: SetupTaskWorker | None = None
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(10)
@@ -46,11 +65,12 @@ class SetupPage(QWidget):
             "3. Apps Script에서 [배포] > [새 배포] > [웹 앱]을 선택합니다.\n"
             "4. 실행 사용자는 '나', 액세스 권한은 점검자 무로그인 제출을 위해 '모든 사용자'로 설정합니다.\n"
             "5. 처음 배포할 때 Google 권한 승인을 진행합니다. 이 승인은 학교 관리자 1명만 하면 됩니다.\n"
-            "6. 배포 URL을 복사해서 아래 'Apps Script Web App URL'에 붙여넣습니다.\n"
-            "7. 배포 URL 뒤에 ?page=setup을 붙여 열고 Desktop Sync Key를 발급받아 아래에 입력합니다.\n"
-            "8. [설정 저장] 후 [연결 테스트]를 누릅니다.\n"
-            "9. 실/담당자/당직자/점검항목을 등록한 뒤 [로컬 설정을 Google로 업로드]를 누릅니다.\n"
-            "10. [QR 생성]에서 QR을 만든 뒤 휴대폰으로 테스트 제출하면 실사용 준비가 끝납니다.\n\n"
+            "6. Apps Script 편집기에서 createInitialSetupKey 함수를 실행하고 표시된 초기 설정 키를 복사합니다.\n"
+            "7. 배포 URL을 복사해서 아래 'Apps Script Web App URL'에 붙여넣습니다.\n"
+            "8. 배포 URL 뒤에 ?page=setup을 붙여 열고 초기 설정 키를 입력한 뒤 Desktop Sync Key를 발급받아 아래에 입력합니다.\n"
+            "9. [설정 저장] 후 [연결 테스트]를 누릅니다.\n"
+            "10. 실/담당자/당직자/점검항목을 등록한 뒤 [로컬 설정을 Google로 업로드]를 누릅니다.\n"
+            "11. [QR 생성]에서 QR을 만든 뒤 휴대폰으로 테스트 제출하면 실사용 준비가 끝납니다.\n\n"
             "주의: 실제 Google 계정 비밀번호나 Client Secret은 이 프로그램에 입력하지 않습니다."
         )
         layout.addWidget(guide)
@@ -134,43 +154,82 @@ class SetupPage(QWidget):
 
     def test_connection(self) -> None:
         self.save()
-        try:
-            client = AppsScriptClient(self.config.apps_script_url, self.config.sync_key)
+        config = self._config_snapshot()
+
+        def task() -> str:
+            client = AppsScriptClient(config.apps_script_url, config.sync_key, timeout=20)
             client.health()
             pulled = client.pull("")
-            self.status.setText(
+            return (
                 "연결 성공: URL과 Desktop Sync Key가 모두 확인되었습니다. "
                 f"서버 제출 기록 {len(pulled.get('submissions', []))}건 확인"
             )
-        except Exception as exc:
-            self.status.setText(f"연결 실패: {exc}")
+
+        self._run_background("연결 테스트 중입니다...", task)
 
     def upload_local_settings(self) -> None:
         self.save()
-        if not self.config.apps_script_url or not self.config.sync_key:
+        config = self._config_snapshot()
+        if not config.apps_script_url or not config.sync_key:
             self.status.setText("Apps Script URL과 Desktop Sync Key를 먼저 입력하세요.")
             return
-        try:
-            with connect(self.config.db_path) as conn:
+
+        def task() -> str:
+            with connect(config.db_path) as conn:
+                state = conn.execute("SELECT value FROM sync_state WHERE key='last_sync_at'").fetchone()
+                base_since = state["value"] if state else ""
                 rooms = rows_to_dicts(conn.execute("SELECT * FROM settings_rooms").fetchall())
                 people = rows_to_dicts(conn.execute("SELECT * FROM settings_people").fetchall())
                 items = rows_to_dicts(conn.execute("SELECT * FROM settings_check_items").fetchall())
-            client = AppsScriptClient(self.config.apps_script_url, self.config.sync_key)
-            client.push_settings({"rooms": rooms, "people": people, "items": items})
-            self.status.setText(f"Google 업로드 완료: 실 {len(rooms)}개, 사람 {len(people)}명, 항목 {len(items)}개")
-        except Exception as exc:
-            self.status.setText(f"Google 업로드 실패: {exc}")
+            client = AppsScriptClient(config.apps_script_url, config.sync_key, timeout=20)
+            client.push_settings({"rooms": rooms, "people": people, "items": items, "base_since": base_since})
+            return f"Google 업로드 완료: 실 {len(rooms)}개, 사람 {len(people)}명, 항목 {len(items)}개"
+
+        self._run_background("로컬 설정을 Google로 업로드하는 중입니다...", task)
 
     def pull_google_data(self) -> None:
         self.save()
-        if not self.config.apps_script_url or not self.config.sync_key:
+        config = self._config_snapshot()
+        if not config.apps_script_url or not config.sync_key:
             self.status.setText("Apps Script URL과 Desktop Sync Key를 먼저 입력하세요.")
             return
-        try:
-            client = AppsScriptClient(self.config.apps_script_url, self.config.sync_key)
+
+        def task() -> str:
+            client = AppsScriptClient(config.apps_script_url, config.sync_key, timeout=20)
             payload = client.pull("")
-            with connect(self.config.db_path) as conn:
+            with connect(config.db_path) as conn:
                 count = sync_payload_to_db(conn, payload)
-            self.status.setText(f"Google 데이터 내려받기 완료: 제출 기록 {count}건 반영")
-        except Exception as exc:
-            self.status.setText(f"Google 데이터 내려받기 실패: {exc}")
+            return f"Google 데이터 내려받기 완료: 제출 기록 {count}건 반영"
+
+        self._run_background("Google 데이터를 내려받는 중입니다...", task)
+
+    def _config_snapshot(self) -> AppConfig:
+        return replace(self.config)
+
+    def _run_background(self, message: str, task) -> None:
+        if self._task_thread and self._task_thread.isRunning():
+            self.status.setText("이미 Google 작업이 진행 중입니다. 잠시만 기다려 주세요.")
+            return
+        self.status.setText(message)
+        self._task_thread = QThread(self)
+        self._task_worker = SetupTaskWorker(task)
+        self._task_worker.moveToThread(self._task_thread)
+        self._task_thread.started.connect(self._task_worker.run)
+        self._task_worker.finished.connect(self._task_finished)
+        self._task_worker.failed.connect(self._task_failed)
+        self._task_worker.finished.connect(self._task_thread.quit)
+        self._task_worker.failed.connect(self._task_thread.quit)
+        self._task_thread.finished.connect(self._task_worker.deleteLater)
+        self._task_thread.finished.connect(self._task_thread.deleteLater)
+        self._task_thread.finished.connect(self._clear_task_refs)
+        self._task_thread.start()
+
+    def _task_finished(self, message: str) -> None:
+        self.status.setText(message)
+
+    def _task_failed(self, message: str) -> None:
+        self.status.setText(f"Google 작업 실패: {message}")
+
+    def _clear_task_refs(self) -> None:
+        self._task_thread = None
+        self._task_worker = None

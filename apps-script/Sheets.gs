@@ -67,7 +67,7 @@ function readTable_(name) {
 function appendObject_(name, obj) {
   const sheet = sheet_(name);
   const headers = SHEET_SCHEMAS[name];
-  sheet.appendRow(headers.map(function(h) { return obj[h] == null ? '' : obj[h]; }));
+  sheet.appendRow(headers.map(function(h) { return safeSheetCell_(obj[h]); }));
 }
 
 function upsertObject_(name, obj, keyName) {
@@ -78,11 +78,17 @@ function upsertObject_(name, obj, keyName) {
   if (keyIndex < 0) throw new Error('키 컬럼이 없습니다: ' + keyName);
   for (let r = 1; r < values.length; r++) {
     if (values[r][keyIndex] === obj[keyName]) {
-      sheet.getRange(r + 1, 1, 1, headers.length).setValues([headers.map(function(h) { return obj[h] == null ? '' : obj[h]; })]);
+      sheet.getRange(r + 1, 1, 1, headers.length).setValues([headers.map(function(h) { return safeSheetCell_(obj[h]); })]);
       return;
     }
   }
   appendObject_(name, obj);
+}
+
+function safeSheetCell_(value) {
+  if (value == null) return '';
+  if (typeof value === 'string' && /^[\s]*[=+\-@]/.test(value)) return "'" + value;
+  return value;
 }
 
 function findBy_(name, key, value) {
@@ -141,6 +147,15 @@ function bootstrapForClient_() {
   };
 }
 
+function publicSchoolSettings_(settings) {
+  settings = settings || {};
+  return {
+    school_name: settings.school_name || '',
+    timezone: settings.timezone || TIMEZONE,
+    apps_script_version: settings.apps_script_version || APP_VERSION
+  };
+}
+
 function activeRow_(row) {
   return row.active === true || row.active === 'TRUE' || row.active === 'true' || row.active === 1 || row.active === '1';
 }
@@ -162,4 +177,3 @@ function logAudit_(actor, action, targetType, targetId, detail) {
     detail_json: JSON.stringify(detail || {})
   });
 }
-

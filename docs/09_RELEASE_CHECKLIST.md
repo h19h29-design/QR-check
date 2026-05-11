@@ -29,13 +29,20 @@
 - [x] 데스크톱 관리자 확인 Google 원본 반영 보완
 - [x] Desktop Sync Key 로컬 설정 파일 DPAPI 보호 보완
 - [x] 로컬 QR submit token DPAPI 보호 보완
+- [x] 최초 Apps Script setup 선점 방지용 초기 설정 키 추가
+- [x] 모바일 제출 bootstrap 내부 설정값 노출 제거
 - [x] Google Apps Script `next_since` 기준 증분 동기화 보완
+- [x] 증분 동기화 초 단위 경계 누락 완화
 - [x] Google Apps Script Drive 권한 스코프 보완
 - [x] 모바일/서버 중복 제출 방지 보완
+- [x] Google Sheet/XLSX 수식 주입 방어
 - [x] 첨부파일 생성 실패 시 제출 기록만 남는 문제 완화
 - [x] 관리자 목록 첨부 메타데이터 최소화
 - [x] QR 더미 링크 생성 차단
+- [x] QR 라벨 이미지 file URI 및 HTML escape 보완
 - [x] Google 동기화 UI 스레드 분리
+- [x] 설정 화면 Google 작업 UI 스레드 분리
+- [x] 로컬 설정 Google 업로드 충돌 감지
 - [x] 출력물 사용자 추가 점검항목 반영
 - [x] 출력 파일명 안전 처리
 - [x] SQLite 기존 DB 컬럼 보강 마이그레이션 추가

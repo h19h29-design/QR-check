@@ -33,20 +33,21 @@
 5. Apps Script를 Web App으로 배포합니다.
    - 실행 사용자는 `나`로 둡니다.
    - 액세스 권한은 점검자 무로그인 제출을 위해 `모든 사용자`로 둡니다.
-6. 배포 후 복사한 `/exec` URL 뒤에 `?page=setup`을 붙여 초기 설정과 Google 권한 승인을 합니다.
-7. 발급된 관리자 토큰과 Desktop Sync Key를 안전한 곳에 보관합니다.
-8. 학교 PC에서 `1_Windows_Admin_Program\QR보안점검표 관리자\QR보안점검표 관리자.exe`를 실행합니다.
-9. 설정 메뉴에 Apps Script URL과 Desktop Sync Key를 입력하고 연결 테스트를 합니다.
-10. 실, 담당자/당직자, 점검항목을 등록합니다.
-11. `로컬 설정을 Google로 업로드`를 누릅니다.
-12. `QR 생성`에서 QR PNG와 A4 부착용 HTML을 생성합니다.
-13. 스마트폰으로 QR을 스캔해 테스트 제출합니다.
+6. Apps Script 편집기에서 `createInitialSetupKey` 함수를 실행하고 초기 설정 키를 복사합니다.
+7. 배포 후 복사한 `/exec` URL 뒤에 `?page=setup`을 붙여 초기 설정 화면을 열고 초기 설정 키, 학교명, 관리자 이메일을 입력합니다.
+8. 발급된 관리자 토큰과 Desktop Sync Key를 안전한 곳에 보관합니다.
+9. 학교 PC에서 `1_Windows_Admin_Program\QR보안점검표 관리자\QR보안점검표 관리자.exe`를 실행합니다.
+10. 설정 메뉴에 Apps Script URL과 Desktop Sync Key를 입력하고 연결 테스트를 합니다.
+11. 실, 담당자/당직자, 점검항목을 등록합니다.
+12. `로컬 설정을 Google로 업로드`를 누릅니다.
+13. `QR 생성`에서 QR PNG와 A4 부착용 HTML을 생성합니다.
+14. 스마트폰으로 QR을 스캔해 테스트 제출합니다.
 
 ## 중요한 원칙
 
 Google 등록만으로 바로 실사용되는 것은 아닙니다.
 
-Apps Script 배포, 권한 승인, Desktop Sync Key 등록, 로컬 설정 Google 업로드, QR 생성까지 끝나야 실사용 가능합니다.
+Apps Script 배포, 권한 승인, 초기 설정 키 발급, Desktop Sync Key 등록, 로컬 설정 Google 업로드, QR 생성까지 끝나야 실사용 가능합니다.
 
 Google Sheet나 Drive 폴더를 `링크가 있는 모든 사용자 편집 가능`으로 바꾸지 마세요. 공개하는 것은 Sheet/Drive가 아니라 Apps Script 웹앱 URL입니다.
 

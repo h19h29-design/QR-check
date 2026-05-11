@@ -44,7 +44,7 @@ def export_security_check_xlsx(
         "관리자 서명",
     ]
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
-    ws.cell(1, 1, title).font = Font(size=16, bold=True)
+    ws.cell(1, 1, safe_excel_text(title)).font = Font(size=16, bold=True)
     ws.cell(1, 1).alignment = Alignment(horizontal="center")
     ws.append(headers)
 
@@ -57,15 +57,15 @@ def export_security_check_xlsx(
                 status = {}
         ws.append(
             [
-                record.get("inspection_date", ""),
-                record.get("room_name", ""),
+                safe_excel_text(record.get("inspection_date", "")),
+                safe_excel_text(record.get("room_name", "")),
                 "당직자" if record.get("role_type") == "duty" else "담당자",
-                record.get("person_name", ""),
-                *[status.get(key, "이상 무") for key, _ in export_items],
-                record.get("remarks", ""),
+                safe_excel_text(record.get("person_name", "")),
+                *[safe_excel_text(status.get(key, "이상 무")) for key, _ in export_items],
+                safe_excel_text(record.get("remarks", "")),
                 "이상 있음" if record.get("abnormal") else "이상 없음",
                 "확인" if record.get("admin_verified") else "미확인",
-                record.get("admin_verified_at", ""),
+                safe_excel_text(record.get("admin_verified_at", "")),
                 "",
                 "",
             ]
@@ -124,3 +124,11 @@ def normalize_export_items(records: list[dict], items: list[dict] | None = None)
                     result.append((key_text, DEFAULT_ITEM_LABELS.get(key_text, key_text)))
                     seen.add(key_text)
     return result
+
+
+def safe_excel_text(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    if value and value.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value

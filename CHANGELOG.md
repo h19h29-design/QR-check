@@ -3,6 +3,14 @@
 ## 0.2.0 - 2026-05-03
 
 - 실배포 안정화 관점으로 추가 점검을 수행했다.
+- 최초 Apps Script 설정에 `createInitialSetupKey` 기반 일회성 초기 설정 키를 추가해 배포 URL 선점 위험을 줄였다.
+- 모바일 제출 bootstrap 응답에서 내부 settings hash, Drive folder id, submit token hash가 내려가지 않도록 공개 필드만 반환하게 변경했다.
+- Apps Script 증분 동기화 기준 시각에 30초 안전 여유를 둬 초 단위 경계 레이스로 기록이 누락될 가능성을 줄였다.
+- Google Sheet 저장과 XLSX 출력에 수식 주입 방어를 추가했다.
+- Desktop 설정 업로드에 마지막 동기화 시각 기반 충돌 감지를 추가해 오래된 로컬 설정이 Google 설정을 덮어쓰는 위험을 줄였다.
+- 설정 화면의 연결 테스트/업로드/다운로드를 백그라운드 작업으로 전환해 Google 응답 지연 시 UI가 멈춰 보이지 않도록 개선했다.
+- QR 부착용 HTML의 QR 이미지 경로를 file URI로 생성하고 실명 HTML escape 처리를 추가했다.
+- Google에서 내려받은 학교명을 데스크톱 헤더/출력 설정에 반영하도록 보강했다.
 - Windows 관리자 프로그램의 Desktop Sync Key를 로컬 설정 파일에 저장할 때 Windows DPAPI로 현재 사용자 계정에 묶어 보호하도록 변경했다.
 - Windows 관리자 프로그램의 로컬 QR submit token도 DPAPI 보호값으로 저장하도록 보강했다.
 - Google 동기화 기준 시각을 PC 로컬 시간이 아니라 Apps Script 서버가 내려주는 `next_since` 값으로 저장하도록 변경해 경계 시점 누락 가능성을 줄였다.

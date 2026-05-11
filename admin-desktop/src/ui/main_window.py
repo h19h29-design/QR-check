@@ -5,7 +5,7 @@ import logging
 from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QPushButton, QSplitter, QStackedWidget, QVBoxLayout, QWidget
 
-from app.config import AppConfig
+from app.config import AppConfig, save_config
 from app.db import connect
 from app.sync_client import AppsScriptClient, sync_payload_to_db
 from .dashboard_page import DashboardPage
@@ -111,10 +111,10 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(18, 10, 18, 10)
         title = QLabel("QR보안점검표 관리자")
         title.setStyleSheet("font-size: 18pt; font-weight: 900;")
-        school = QLabel(self.config.school_name or "학교명 미설정")
-        school.setStyleSheet("font-size: 12pt; color: #cbd5e1;")
+        self.school_label = QLabel(self.config.school_name or "학교명 미설정")
+        self.school_label.setStyleSheet("font-size: 12pt; color: #cbd5e1;")
         header_layout.addWidget(title)
-        header_layout.addWidget(school)
+        header_layout.addWidget(self.school_label)
         header_layout.addStretch(1)
         self.sync_badge = QLabel("Google 연결 대기" if self.config.apps_script_url else "Google 미설정")
         self.sync_badge.setStyleSheet(
@@ -172,6 +172,7 @@ class MainWindow(QMainWindow):
         self.sync_thread.start()
 
     def on_sync_finished(self, count: int) -> None:
+        self._refresh_school_name_from_db()
         self.sync_badge.setText("Google 연결됨")
         self.footer.setText(f"Google 동기화 완료: 제출 기록 {count}건 반영")
         logging.getLogger(__name__).info("Google sync completed")
@@ -184,3 +185,15 @@ class MainWindow(QMainWindow):
     def _clear_sync_refs(self) -> None:
         self.sync_thread = None
         self.sync_worker = None
+
+    def _refresh_school_name_from_db(self) -> None:
+        try:
+            with connect(self.config.db_path) as conn:
+                row = conn.execute("SELECT value FROM settings_school WHERE key='school_name'").fetchone()
+            school_name = row["value"] if row and row["value"] else self.config.school_name
+            if school_name and school_name != self.config.school_name:
+                self.config.school_name = school_name
+                save_config(self.config)
+            self.school_label.setText(self.config.school_name or "학교명 미설정")
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Failed to refresh school name: %s", exc)

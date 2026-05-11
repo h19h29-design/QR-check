@@ -1,6 +1,6 @@
 function desktopSyncPull_(payload) {
   verifyDesktop_(payload || {});
-  const nextSince = nowIso_();
+  const nextSince = isoSecondsAgo_(30);
   const since = payload.since || '';
   function changed(row) {
     return !since || String(row.updated_at || row.created_at || '') > since;
@@ -24,20 +24,36 @@ function desktopSyncPull_(payload) {
 function desktopPushSettings_(payload) {
   verifyDesktop_(payload || {});
   const now = nowIso_();
+  const baseSince = payload.base_since || payload.baseSince || '';
+  const force = payload.force === true;
   (payload.rooms || []).forEach(function(room) {
+    ensureNoSettingsConflict_('settings_rooms', 'room_id', room, baseSince, force);
     room.updated_at = now;
     upsertObject_('settings_rooms', room, 'room_id');
   });
   (payload.people || []).forEach(function(person) {
+    ensureNoSettingsConflict_('settings_people', 'person_id', person, baseSince, force);
     person.updated_at = now;
     upsertObject_('settings_people', person, 'person_id');
   });
   (payload.items || []).forEach(function(item) {
+    ensureNoSettingsConflict_('settings_check_items', 'item_id', item, baseSince, force);
     item.updated_at = now;
     upsertObject_('settings_check_items', item, 'item_id');
   });
   logAudit_('desktop', 'desktop_push_settings', 'sync', 'settings', {});
   return { ok: true };
+}
+
+function ensureNoSettingsConflict_(tableName, keyName, incoming, baseSince, force) {
+  if (force || !baseSince || !incoming || !incoming[keyName]) return;
+  const existing = findBy_(tableName, keyName, incoming[keyName]);
+  if (!existing) return;
+  const existingUpdated = String(existing.updated_at || existing.created_at || '');
+  const incomingUpdated = String(incoming.updated_at || incoming.created_at || '');
+  if (existingUpdated && existingUpdated > baseSince && existingUpdated !== incomingUpdated) {
+    throw new Error('Google 설정이 이 PC의 마지막 동기화 이후 변경되었습니다. 먼저 Google 데이터 내려받기를 실행한 뒤 다시 업로드하세요: ' + tableName);
+  }
 }
 
 function desktopVerifyRecord_(payload) {

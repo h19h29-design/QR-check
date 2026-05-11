@@ -10,7 +10,16 @@ function getSubmitBootstrap_(payload) {
   const room = validateRoomToken_(roomId, submitToken);
   const bootstrap = bootstrapForClient_();
   const people = bootstrap.people.filter(function(p) { return !p.room_id || p.room_id === room.room_id; });
-  return { school: bootstrap.school, room: room, people: people, items: bootstrap.items };
+  return {
+    school: publicSchoolSettings_(bootstrap.school),
+    room: { room_id: room.room_id, room_name: room.room_name, room_order: room.room_order },
+    people: people.map(function(p) {
+      return { person_id: p.person_id, person_name: p.person_name, role_type: p.role_type, room_id: p.room_id || '', sort_order: p.sort_order || 100 };
+    }),
+    items: bootstrap.items.map(function(item) {
+      return { item_id: item.item_id, item_key: item.item_key, item_name: item.item_name, sort_order: item.sort_order || 100 };
+    })
+  };
 }
 
 function validateRoomToken_(roomId, submitToken) {
@@ -84,7 +93,7 @@ function prepareSubmission_(payload) {
   const row = {
     record_id: recordId,
     submitted_at: now,
-    inspection_date: payload.inspection_date || today_(),
+    inspection_date: today_(),
     room_id: room.room_id,
     room_name: room.room_name,
     person_id: submitter.person_id,

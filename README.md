@@ -51,9 +51,10 @@ Sheet에 기록하고 Drive에 첨부파일을 저장하려면 Google 정책상 
 3. `apps-script/` 폴더의 `.gs`, `.html`, `appsscript.json` 파일을 같은 이름으로 만든다.
 4. `배포 > 새 배포 > 웹 앱`에서 실행 사용자는 `나`, 접근 권한은 점검자 무로그인을 위해 `모든 사용자`로 배포한다.
 5. Google 권한 승인 화면이 나오면 학교 관리자 계정으로 승인한다.
-6. 배포 URL 뒤에 `?page=setup`을 붙여 초기 설정을 열고 학교명/관리자 이메일을 입력한다.
-7. 화면에 표시되는 관리자 토큰과 Desktop Sync Key를 즉시 안전한 곳에 보관한다.
-8. 배포 URL과 Desktop Sync Key를 Windows 관리자 프로그램 설정에 입력하고 `연결 테스트`를 실행한다.
+6. Apps Script 편집기에서 `createInitialSetupKey` 함수를 실행해 초기 설정 키를 발급받는다.
+7. 배포 URL 뒤에 `?page=setup`을 붙여 초기 설정을 열고 초기 설정 키/학교명/관리자 이메일을 입력한다.
+8. 화면에 표시되는 관리자 토큰과 Desktop Sync Key를 즉시 안전한 곳에 보관한다.
+9. 배포 URL과 Desktop Sync Key를 Windows 관리자 프로그램 설정에 입력하고 `연결 테스트`를 실행한다.
 
 자세한 단계는 `docs/02_Google_Apps_Script_배포가이드.md`와 `docs/04_학교별_초기설정_가이드.md`를 보세요.
 
@@ -102,7 +103,7 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 
 ## 관리자 프로그램 주요 기능
 
-- 최초 설정: 학교명, 관리자 이메일, Apps Script URL, Desktop Sync Key 입력
+- 최초 설정: 초기 설정 키, 학교명, 관리자 이메일, Apps Script URL, Desktop Sync Key 입력
 - 자동/수동 동기화 구조
 - 오늘 대시보드
 - 점검기록 날짜별 조회

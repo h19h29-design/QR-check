@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -28,11 +29,12 @@ def generate_qr_label_html(rows: list[dict], output_path: str | Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     cards = []
     for row in rows:
+        qr_src = qr_path_to_uri(row.get("qr_path", ""))
         cards.append(
             f"""
             <section class="card">
-              <h2>{row.get('room_name', '')}</h2>
-              <img src="{row.get('qr_path', '')}" alt="QR 코드">
+              <h2>{escape(str(row.get('room_name', '')))}</h2>
+              <img src="{escape(qr_src, quote=True)}" alt="QR 코드">
               <p>퇴실 전 QR을 스캔하고 보안점검표를 제출해 주세요.</p>
             </section>
             """
@@ -61,3 +63,14 @@ p {{ font-size: 11pt; line-height: 1.5; }}
     path.write_text(html, encoding="utf-8")
     return path
 
+
+def qr_path_to_uri(value: str | Path) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    if text.startswith(("file:", "http://", "https://", "data:")):
+        return text
+    try:
+        return Path(text).resolve().as_uri()
+    except ValueError:
+        return text

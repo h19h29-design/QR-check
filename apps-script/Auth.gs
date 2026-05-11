@@ -36,6 +36,41 @@ function verifyDesktop_(payload) {
   return { actor: 'desktop', method: 'sync_key' };
 }
 
+function createInitialSetupKey() {
+  const active = activeEmail_();
+  const effective = effectiveEmail_();
+  if (!active || !effective || String(active).toLowerCase() !== String(effective).toLowerCase()) {
+    throw new Error('Apps Script 편집기에서 스크립트 소유자 계정으로 실행해야 초기 설정 키를 만들 수 있습니다.');
+  }
+  const key = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  PropertiesService.getScriptProperties().setProperty('initial_setup_key_hash', hashToken_(key, 'setup'));
+  return key;
+}
+
+function verifyInitialSetupKey_(payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty('initial_setup_key_hash') || '';
+  if (!expected) {
+    throw new Error('초기 설정 키가 없습니다. Apps Script 편집기에서 createInitialSetupKey 함수를 먼저 실행한 뒤 표시된 키를 입력하세요.');
+  }
+  const setupKey = payload && (payload.setupKey || payload.setup_key);
+  if (!setupKey || !constantTimeEquals_(hashToken_(setupKey, 'setup'), expected)) {
+    throw new Error('초기 설정 키가 올바르지 않습니다.');
+  }
+  return { actor: 'setup_key', method: 'initial_setup_key' };
+}
+
+function clearInitialSetupKey_() {
+  PropertiesService.getScriptProperties().deleteProperty('initial_setup_key_hash');
+}
+
+function effectiveEmail_() {
+  try {
+    return Session.getEffectiveUser().getEmail() || '';
+  } catch (err) {
+    return '';
+  }
+}
+
 function generateAdminTokenForSetup_(payload) {
   const token = payload && payload.newAdminToken ? payload.newAdminToken : Utilities.getUuid() + Utilities.getUuid();
   setSetting_('admin_token_hash', hashToken_(token, 'admin'));

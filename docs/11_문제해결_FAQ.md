@@ -53,6 +53,13 @@ ZIP 파일 안에서 바로 실행하지 말고 먼저 압축을 해제한다. `
 - 브라우저 주소가 `/exec?page=setup` 형태인지 확인한다. `/dev?page=setup`이나 편집기 주소가 아니다.
 - 접근 권한이 `모든 사용자`인지 확인한다.
 
+## 초기 설정 키가 없다고 나옵니다
+
+- Apps Script 편집기로 돌아간다.
+- 함수 목록에서 `createInitialSetupKey`를 선택하고 실행한다.
+- 실행 결과에 표시된 초기 설정 키를 복사해 `?page=setup` 화면에 입력한다.
+- 초기 설정 키는 최초 설정 완료 후 자동으로 제거된다.
+
 ## 샘플 데이터 폴더가 비어 보입니다
 
 최신 배포 묶음에서는 `5_Sample_Data` 바로 아래에 `sample_submissions.json`, `sample_settings.xlsx`, `sample_settings.xlsx.txt`가 있어야 한다. 실제 학교 개인정보 파일을 이 폴더에 넣어 다시 배포하지 않는다.

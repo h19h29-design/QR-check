@@ -54,3 +54,13 @@ def test_export_dynamic_custom_items(tmp_path):
     text = html_path.read_text(encoding="utf-8")
     assert "창문잠금상태" in text
     assert "이상 유" in text
+
+
+def test_export_xlsx_escapes_formula_like_text(tmp_path):
+    records = sample_records()
+    records[0]["remarks"] = "=HYPERLINK(\"https://example.com\")"
+    path = export_security_check_xlsx(records, tmp_path / "formula.xlsx")
+    wb = load_workbook(path, data_only=False)
+    headers = [cell.value for cell in wb.active[2]]
+    remarks_col = headers.index("특이사항") + 1
+    assert wb.active.cell(row=3, column=remarks_col).value.startswith("'=")

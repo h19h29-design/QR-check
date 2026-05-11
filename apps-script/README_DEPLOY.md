@@ -12,10 +12,12 @@
 6. 실행 사용자: `나`
 7. 액세스 권한: 점검자 무로그인 제출이 필요하면 `모든 사용자`
 8. Google 권한 승인 화면이 나오면 학교 관리자 계정으로 승인한다.
-9. 배포 URL을 복사하고, URL 뒤에 `?page=setup`을 붙여 초기 설정을 연다.
-10. 학교명과 관리자 Google 이메일을 입력하고 `Google 저장소 만들기`를 누른다.
-11. 화면에 표시된 관리자 토큰과 Desktop Sync Key를 안전한 곳에 보관한다.
-12. 배포 URL과 Desktop Sync Key를 Windows 관리자 프로그램에 입력하고 `연결 테스트`를 실행한다.
+9. Apps Script 편집기에서 함수 목록의 `createInitialSetupKey`를 선택해 실행한다.
+10. 실행 결과에 표시된 초기 설정 키를 안전하게 복사한다.
+11. 배포 URL을 복사하고, URL 뒤에 `?page=setup`을 붙여 초기 설정을 연다.
+12. 초기 설정 키, 학교명, 관리자 Google 이메일을 입력하고 `Google 저장소 만들기`를 누른다.
+13. 화면에 표시된 관리자 토큰과 Desktop Sync Key를 안전한 곳에 보관한다.
+14. 배포 URL과 Desktop Sync Key를 Windows 관리자 프로그램에 입력하고 `연결 테스트`를 실행한다.
 
 `initializeSchoolStorage_`를 Apps Script 편집기에서 직접 실행하는 방식은 초보자에게 권장하지 않는다. payload 없이 실행하면 학교명/관리자 이메일 입력 흐름을 놓치기 쉽다.
 
@@ -33,6 +35,7 @@ Google Workspace 정책상 `모든 사용자` 웹앱 배포가 금지되어 있�
 ## 보안 주의
 
 - 점검자는 Google Drive 권한이 없어도 제출할 수 있다. Apps Script가 학교 관리자 계정 권한으로 저장하기 때문이다.
+- 최초 초기 설정은 `createInitialSetupKey`로 만든 일회성 키가 있어야 진행된다. 배포 URL을 우연히 아는 사람이 먼저 설정을 선점하지 못하게 하기 위한 장치다.
 - QR URL에는 `roomId`와 `submitToken`이 들어간다. QR이 유출되면 해당 실 토큰을 재발급한다.
 - 관리자 웹은 Google 이메일 확인을 시도하지만 Apps Script 배포 환경에 따라 이메일이 빈 값일 수 있다. 이 경우 초기 설정에서 발급한 관리자 토큰을 입력한다.
 - Desktop Sync Key는 관리자 프로그램에만 입력하고 공개 문서에 적지 않는다.

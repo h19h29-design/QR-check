@@ -74,6 +74,10 @@ function today_() {
   return Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd');
 }
 
+function isoSecondsAgo_(seconds) {
+  return Utilities.formatDate(new Date(Date.now() - Number(seconds || 0) * 1000), TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+}
+
 function uuid_(prefix) {
   return (prefix || 'id') + '_' + Utilities.getUuid().replace(/-/g, '').slice(0, 16);
 }

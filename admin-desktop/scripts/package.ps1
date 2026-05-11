@@ -92,9 +92,14 @@ New-Item -ItemType Directory -Force -Path $WorkPath | Out-Null
 
 & $Python -m PyInstaller `
     --noconfirm `
+    --clean `
     --windowed `
+    --noupx `
     --name $AppName `
     --paths "src" `
+    --exclude-module win32com `
+    --exclude-module pythoncom `
+    --exclude-module pywintypes `
     --specpath $SpecPath `
     --workpath $WorkPath `
     --distpath $DistPath `
