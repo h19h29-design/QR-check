@@ -101,6 +101,15 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 
 위 `package.ps1` 명령은 실행파일 빌드 후 `C:\Users\user\Downloads`에 학교 전달용 폴더와 ZIP까지 함께 만듭니다.
 
+설치 EXE 빌드:
+
+```powershell
+Set-Location D:\gpt\QR\qr-security-check\admin-desktop
+.\scripts\package_installer.ps1 -SkipInstall
+```
+
+위 명령은 `QR_security_check_setup_v버전_yyyyMMdd-HHmmss.exe` 설치파일을 Downloads에 만듭니다. 설치파일은 관리자 권한 없이 현재 사용자 폴더에 프로그램을 설치하고 바탕화면/시작 메뉴 바로가기를 만듭니다.
+
 ## 관리자 프로그램 주요 기능
 
 - 최초 설정: 초기 설정 키, 학교명, 관리자 이메일, Apps Script URL, Desktop Sync Key 입력
@@ -114,6 +123,7 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 - 엑셀 출력
 - HTML 인쇄 출력
 - 한글 설치 PC에서는 HWP 선택 변환, 실패 시 HTML fallback
+- 프로그램 안의 `도움말/매뉴얼` 메뉴에서 초기 설정, QR 생성, 조회, 출력, 문제 해결 확인
 
 ## 보안/개인정보 주의
 

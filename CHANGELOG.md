@@ -3,6 +3,8 @@
 ## 0.2.0 - 2026-05-03
 
 - 실배포 안정화 관점으로 추가 점검을 수행했다.
+- Windows 관리자 프로그램 안에 `도움말/매뉴얼` 메뉴를 추가해 초기 Google 설정, QR 생성, 조회, 출력, 문제 해결을 바로 볼 수 있게 했다.
+- `admin-desktop/scripts/package_installer.ps1`을 추가해 버전명이 들어간 배포 ZIP과 단일 설치 EXE를 Downloads에 생성할 수 있게 했다.
 - 최초 Apps Script 설정에 `createInitialSetupKey` 기반 일회성 초기 설정 키를 추가해 배포 URL 선점 위험을 줄였다.
 - 모바일 제출 bootstrap 응답에서 내부 settings hash, Drive folder id, submit token hash가 내려가지 않도록 공개 필드만 반환하게 변경했다.
 - Apps Script 증분 동기화 기준 시각에 30초 안전 여유를 둬 초 단위 경계 레이스로 기록이 누락될 가능성을 줄였다.

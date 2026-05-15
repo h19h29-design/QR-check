@@ -59,10 +59,27 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 
 이미 설치된 가상환경을 그대로 쓰려면 `.\scripts\package.ps1 -SkipInstall`, zip 없이 폴더만 만들려면 `.\scripts\package.ps1 -NoZip`을 사용합니다.
 
+## 설치파일 만들기
+
+학교 담당자에게 ZIP 압축 해제 대신 단일 설치파일을 전달하려면 아래 명령을 사용합니다.
+
+```powershell
+Set-Location D:\gpt\QR\qr-security-check\admin-desktop
+.\scripts\package_installer.ps1 -SkipInstall
+```
+
+이 명령은 다음 파일을 `C:\Users\user\Downloads`에 만듭니다.
+
+- `QR_security_check_deploy_v버전_yyyyMMdd-HHmmss.zip`
+- `QR_security_check_setup_v버전_yyyyMMdd-HHmmss.exe`
+- `QR_security_check_setup_v버전_yyyyMMdd-HHmmss_README.txt`
+
+설치 EXE는 관리자 권한 없이 현재 사용자 폴더 `%LOCALAPPDATA%\QR보안점검표\배포패키지`에 설치하고, 바탕화면과 시작 메뉴에 바로가기를 만듭니다. 설치 EXE를 만들려면 .NET SDK의 `dotnet` 명령이 필요합니다.
+
 ## 최초 설정 순서
 
 1. `설정` 메뉴를 연다.
-2. 화면 위쪽의 `Google 설정 방법(처음 1회)` 안내를 순서대로 진행한다.
+2. 화면 위쪽의 `Google 설정 방법(처음 1회)` 안내 또는 `도움말/매뉴얼` 메뉴를 순서대로 진행한다.
 3. Apps Script 편집기에서 `createInitialSetupKey`를 실행해 초기 설정 키를 만든다.
 4. `?page=setup` 화면에서 초기 설정 키, 학교명, 관리자 이메일을 입력한다.
 5. 학교명, 관리자 이메일, Apps Script Web App URL을 입력한다.

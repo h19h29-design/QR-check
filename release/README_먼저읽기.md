@@ -57,6 +57,16 @@ Google Sheet나 Drive 폴더를 `링크가 있는 모든 사용자 편집 가능
 
 일반 학교 배포에는 전체 소스가 필요하지 않습니다. 실제 배포에는 이 실배포 패키지만 전달하면 됩니다.
 
+## 설치파일로 받은 경우
+
+`QR_security_check_setup_v버전_yyyyMMdd-HHmmss.exe` 형태의 설치파일을 받은 경우에는 해당 파일을 실행하면 됩니다.
+
+- 설치 위치: `%LOCALAPPDATA%\QR보안점검표\배포패키지`
+- 바탕화면 바로가기: `QR보안점검표 관리자`
+- 시작 메뉴 폴더: `QR보안점검표`
+
+프로그램을 실행한 뒤 왼쪽 메뉴의 `도움말/매뉴얼`에서 초기 Google 설정, QR 생성, 조회, 출력 방법을 바로 확인할 수 있습니다.
+
 ## 배포 ZIP을 다시 만드는 명령
 
 개발자가 수정 후 다시 배포 ZIP을 만들 때는 PowerShell에서 아래 명령을 실행합니다.
@@ -74,3 +84,10 @@ Set-Location D:\gpt\QR\qr-security-check\admin-desktop
 ```
 
 zip 없이 폴더만 만들 때는 `.\scripts\package.ps1 -NoZip`을 사용합니다.
+
+설치 EXE까지 만들 때는:
+
+```powershell
+Set-Location D:\gpt\QR\qr-security-check\admin-desktop
+.\scripts\package_installer.ps1 -SkipInstall
+```

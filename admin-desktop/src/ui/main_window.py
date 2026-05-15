@@ -11,6 +11,7 @@ from app.sync_client import AppsScriptClient, sync_payload_to_db
 from .dashboard_page import DashboardPage
 from .detail_dialog import DetailDialog
 from .export_page import ExportPage
+from .manual_page import ManualPage
 from .qr_page import QrPage
 from .records_page import RecordsPage
 from .settings_items_page import SettingsItemsPage
@@ -85,6 +86,7 @@ class MainWindow(QMainWindow):
             ("QR 생성", QrPage(config)),
             ("출력/보관", ExportPage(config)),
             ("설정", SetupPage(config)),
+            ("도움말/매뉴얼", ManualPage()),
         ]
         for label, page in pages:
             item = QListWidgetItem(label)
@@ -93,7 +95,8 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(page)
 
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
-        self.nav.setCurrentRow(len(pages) - 1 if not self.config.apps_script_url or not self.config.sync_key else 0)
+        setup_row = next((index for index, (label, _) in enumerate(pages) if label == "설정"), 0)
+        self.nav.setCurrentRow(setup_row if not self.config.apps_script_url or not self.config.sync_key else 0)
 
         splitter = QSplitter()
         splitter.addWidget(self.nav)
