@@ -53,6 +53,10 @@ function Resolve-OutputDirectory {
 foreach ($RelativePath in @(
     "apps-script\Code.gs",
     "apps-script\appsscript.json",
+    "supabase\setup_supabase.sql",
+    "supabase\rls_policies.sql",
+    "supabase-submit\index.html",
+    "supabase-submit\config.example.js",
     "docs\09_RELEASE_CHECKLIST.md",
     "release\mobile_submit_preview.html",
     "release\mobile_admin_preview.html",
@@ -129,10 +133,14 @@ $AppsScriptDir = Join-Path $BundleRoot "2_Google_AppsScript_Code"
 $ManualsDir = Join-Path $BundleRoot "3_Manuals"
 $PreviewDir = Join-Path $BundleRoot "4_UI_Previews"
 $SampleDir = Join-Path $BundleRoot "5_Sample_Data"
-New-Item -ItemType Directory -Force -Path $WindowsDir, $AppsScriptDir, $ManualsDir, $PreviewDir, $SampleDir | Out-Null
+$SupabaseDir = Join-Path $BundleRoot "6_Supabase_Setup"
+$SupabaseSubmitDir = Join-Path $BundleRoot "7_Supabase_Submit_Page"
+New-Item -ItemType Directory -Force -Path $WindowsDir, $AppsScriptDir, $ManualsDir, $PreviewDir, $SampleDir, $SupabaseDir, $SupabaseSubmitDir | Out-Null
 
 Copy-Item -LiteralPath $AppDist -Destination $WindowsDir -Recurse -Force
 Copy-Item -Path (Join-Path $RepoRoot "apps-script\*") -Destination $AppsScriptDir -Recurse -Force
+Copy-Item -Path (Join-Path $RepoRoot "supabase\*") -Destination $SupabaseDir -Recurse -Force
+Copy-Item -Path (Join-Path $RepoRoot "supabase-submit\*") -Destination $SupabaseSubmitDir -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $RepoRoot "docs") -Destination $ManualsDir -Recurse -Force
 $ProjectReadme = Join-Path $RepoRoot "README.md"
 $AdminReadme = Join-Path $Root "README.md"
@@ -158,6 +166,10 @@ $RequiredPaths = @(
     "1_Windows_Admin_Program\$AppName\_internal",
     "2_Google_AppsScript_Code\Code.gs",
     "2_Google_AppsScript_Code\appsscript.json",
+    "6_Supabase_Setup\setup_supabase.sql",
+    "6_Supabase_Setup\rls_policies.sql",
+    "7_Supabase_Submit_Page\index.html",
+    "7_Supabase_Submit_Page\config.example.js",
     "3_Manuals\README_admin_desktop.md",
     "3_Manuals\README_project.md",
     "3_Manuals\docs\09_RELEASE_CHECKLIST.md",

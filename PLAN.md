@@ -39,3 +39,17 @@
 - [ ] Web App 배포 URL 복사
 - [ ] 관리자 프로그램 최초 설정 마법사에서 Web App URL, sync key 등록
 
+## Supabase 저장소 모드 추가 계획
+
+- [x] 현재 저장소 구조, Google Apps Script 흐름, Windows PySide6/SQLite 구조 분석
+- [x] 기존 pytest baseline 확인
+- [x] Supabase 최소 침습 설계 문서 작성
+- [x] 로컬 설정에 `storage_mode`와 Supabase 연결값 추가
+- [x] Google client를 유지하고 Supabase REST/RPC client를 병렬 추가
+- [x] Supabase SQL schema/RLS/RPC 설치 파일 추가
+- [x] Supabase 정적 제출 페이지 추가
+- [x] QR 생성 URL을 저장소 모드별로 분기
+- [x] 관리자 확인/일괄확인/동기화/백업을 저장소 provider 경유로 변경
+- [x] Supabase 관련 단위 테스트 추가
+- [ ] 실제 Supabase 프로젝트 end-to-end 검증
+- [ ] build/package/package_installer 최종 검증

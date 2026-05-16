@@ -95,6 +95,16 @@ MANUAL_HTML = """
   <li>QR이 외부에 노출되면 해당 실 토큰을 재발급하고 QR을 다시 출력합니다.</li>
   <li>이 프로그램은 무료 배포형 도구이며 고위험 개인정보 처리나 법적 신원확인 용도로 쓰지 않습니다.</li>
 </ul>
+
+<h2>11. Supabase 저장소 모드</h2>
+<ul>
+  <li><b>Google Drive 방식</b>은 기존 Apps Script, Google Sheet, Google Drive 흐름을 그대로 사용합니다.</li>
+  <li><b>Supabase 방식</b>은 각 학교가 직접 만든 Supabase 프로젝트에 제출 데이터를 저장합니다.</li>
+  <li>Supabase 모드에서는 설정 화면에 Supabase 주소, anon public key, 학교 코드, 제출 페이지 주소, Desktop Sync Key를 입력합니다.</li>
+  <li>service_role key는 절대 입력하지 않습니다. 제출 페이지와 관리자 프로그램은 anon public key와 RPC/RLS 정책을 사용합니다.</li>
+  <li>QR 생성 시 Supabase 제출 페이지 주소에 roomId, token, org만 붙습니다. anon key는 QR URL에 들어가지 않습니다.</li>
+  <li>출력/보관 화면의 Supabase 백업 생성 버튼으로 CSV와 JSON 백업을 만들 수 있습니다.</li>
+</ul>
 """
 
 

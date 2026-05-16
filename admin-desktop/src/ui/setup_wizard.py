@@ -5,6 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
@@ -17,9 +18,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import AppConfig, save_config
+from app.config import AppConfig, STORAGE_MODE_GOOGLE, STORAGE_MODE_SUPABASE, save_config
 from app.db import connect, rows_to_dicts
-from app.sync_client import AppsScriptClient, sync_payload_to_db
+from app.sync_client import create_storage_client, provider_label, sync_payload_to_db, sync_state_key
 
 
 class SetupTaskWorker(QObject):
@@ -43,39 +44,39 @@ class SetupPage(QWidget):
         self.config = config
         self._task_thread: QThread | None = None
         self._task_worker: SetupTaskWorker | None = None
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 12)
         layout.setSpacing(10)
 
-        title = QLabel("설정 및 Google 연결")
+        title = QLabel("설정 및 저장소 연결")
         title.setStyleSheet("font-size: 20pt; font-weight: 800; padding: 4px 0;")
         layout.addWidget(title)
 
         guide = QTextEdit()
         guide.setReadOnly(True)
-        guide.setMaximumHeight(250)
+        guide.setMaximumHeight(210)
         guide.setStyleSheet(
             "background: #f8fafc; border: 1px solid #cfd8e3; border-radius: 8px; "
             "padding: 10px; color: #17202a;"
         )
         guide.setPlainText(
-            "Google 설정 방법(처음 1회)\n"
-            "1. Google Drive에서 새 Google Sheet를 만들거나 배포 패키지의 Google Apps Script 코드 폴더를 준비합니다.\n"
-            "2. Google Sheet에서 [확장 프로그램] > [Apps Script]를 열고 apps-script 폴더의 파일들을 같은 이름으로 붙여넣습니다.\n"
-            "3. Apps Script에서 [배포] > [새 배포] > [웹 앱]을 선택합니다.\n"
-            "4. 실행 사용자는 '나', 액세스 권한은 점검자 무로그인 제출을 위해 '모든 사용자'로 설정합니다.\n"
-            "5. 처음 배포할 때 Google 권한 승인을 진행합니다. 이 승인은 학교 관리자 1명만 하면 됩니다.\n"
-            "6. Apps Script 편집기에서 createInitialSetupKey 함수를 실행하고 표시된 초기 설정 키를 복사합니다.\n"
-            "7. 배포 URL을 복사해서 아래 'Apps Script Web App URL'에 붙여넣습니다.\n"
-            "8. 배포 URL 뒤에 ?page=setup을 붙여 열고 초기 설정 키를 입력한 뒤 Desktop Sync Key를 발급받아 아래에 입력합니다.\n"
-            "9. [설정 저장] 후 [연결 테스트]를 누릅니다.\n"
-            "10. 실/담당자/당직자/점검항목을 등록한 뒤 [로컬 설정을 Google로 업로드]를 누릅니다.\n"
-            "11. [QR 생성]에서 QR을 만든 뒤 휴대폰으로 테스트 제출하면 실사용 준비가 끝납니다.\n\n"
-            "주의: 실제 Google 계정 비밀번호나 Client Secret은 이 프로그램에 입력하지 않습니다."
+            "저장 방식 선택\n\n"
+            "Google Drive 방식은 기존 방식입니다. Apps Script URL과 Desktop Sync Key를 사용하며, "
+            "현재 학교 Google Sheet/Drive 흐름을 그대로 유지합니다.\n\n"
+            "Supabase 방식은 각 학교가 직접 만든 Supabase 프로젝트를 원본 저장소로 사용합니다. "
+            "학교 PC가 꺼져 있어도 QR 제출 페이지와 Supabase가 동작하면 제출을 받을 수 있습니다. "
+            "service_role key는 입력하지 말고 anon public key만 입력하세요."
         )
         layout.addWidget(guide)
 
         form = QFormLayout()
+
+        self.storage_mode = QComboBox()
+        self.storage_mode.addItem("Google Drive 방식", STORAGE_MODE_GOOGLE)
+        self.storage_mode.addItem("Supabase 방식", STORAGE_MODE_SUPABASE)
+        index = self.storage_mode.findData(config.normalized_storage_mode)
+        self.storage_mode.setCurrentIndex(max(index, 0))
 
         self.school_name = QLineEdit(config.school_name)
         self.admin_email = QLineEdit(config.admin_email)
@@ -83,7 +84,18 @@ class SetupPage(QWidget):
         self.apps_script_url.setPlaceholderText("https://script.google.com/macros/s/.../exec")
         self.sync_key = QLineEdit(config.sync_key)
         self.sync_key.setEchoMode(QLineEdit.Password)
-        self.sync_key.setPlaceholderText("관리자 웹 page=setup에서 발급받은 Desktop Sync Key")
+        self.sync_key.setPlaceholderText("Desktop Sync Key")
+
+        self.supabase_url = QLineEdit(config.supabase_url)
+        self.supabase_url.setPlaceholderText("https://xxxx.supabase.co")
+        self.supabase_anon_key = QLineEdit(config.supabase_anon_key)
+        self.supabase_anon_key.setEchoMode(QLineEdit.Password)
+        self.supabase_anon_key.setPlaceholderText("Supabase anon public key")
+        self.supabase_org_code = QLineEdit(config.supabase_org_code)
+        self.supabase_org_code.setPlaceholderText("예: school-2026")
+        self.supabase_submit_url = QLineEdit(config.supabase_submit_url)
+        self.supabase_submit_url.setPlaceholderText("https://example.pages.dev 또는 정적 제출 페이지 주소")
+
         self.interval = QSpinBox()
         self.interval.setRange(1, 120)
         self.interval.setValue(config.sync_interval_minutes)
@@ -91,10 +103,15 @@ class SetupPage(QWidget):
         self.qr_output_dir = QLineEdit(str(config.qr_dir))
         self.export_output_dir = QLineEdit(str(config.export_dir))
 
+        form.addRow("저장 방식", self.storage_mode)
         form.addRow("학교명", self.school_name)
-        form.addRow("관리자 Google 이메일", self.admin_email)
+        form.addRow("관리자 이메일", self.admin_email)
         form.addRow("Apps Script Web App URL", self.apps_script_url)
         form.addRow("Desktop Sync Key", self.sync_key)
+        form.addRow("Supabase 주소", self.supabase_url)
+        form.addRow("Supabase anon public key", self.supabase_anon_key)
+        form.addRow("학교 코드", self.supabase_org_code)
+        form.addRow("Supabase 제출 페이지 주소", self.supabase_submit_url)
         form.addRow("자동 동기화 주기(분)", self.interval)
         form.addRow("QR 저장 폴더", self._folder_row(self.qr_output_dir, self.choose_qr_dir))
         form.addRow("출력물 저장 폴더", self._folder_row(self.export_output_dir, self.choose_export_dir))
@@ -105,9 +122,9 @@ class SetupPage(QWidget):
         save.clicked.connect(self.save)
         test = QPushButton("연결 테스트")
         test.clicked.connect(self.test_connection)
-        upload = QPushButton("로컬 설정을 Google로 업로드")
+        upload = QPushButton("로컬 설정 업로드")
         upload.clicked.connect(self.upload_local_settings)
-        pull = QPushButton("Google 데이터 내려받기")
+        pull = QPushButton("저장소 데이터 내려받기")
         pull.clicked.connect(self.pull_google_data)
         actions.addWidget(save)
         actions.addWidget(test)
@@ -140,10 +157,15 @@ class SetupPage(QWidget):
             self.export_output_dir.setText(selected)
 
     def save(self) -> None:
+        self.config.storage_mode = self.storage_mode.currentData()
         self.config.school_name = self.school_name.text().strip()
         self.config.admin_email = self.admin_email.text().strip()
         self.config.apps_script_url = self.apps_script_url.text().strip()
         self.config.sync_key = self.sync_key.text().strip()
+        self.config.supabase_url = self.supabase_url.text().strip()
+        self.config.supabase_anon_key = self.supabase_anon_key.text().strip()
+        self.config.supabase_org_code = self.supabase_org_code.text().strip()
+        self.config.supabase_submit_url = self.supabase_submit_url.text().strip()
         self.config.sync_interval_minutes = self.interval.value()
         self.config.qr_output_dir = self.qr_output_dir.text().strip()
         self.config.export_output_dir = self.export_output_dir.text().strip()
@@ -155,60 +177,57 @@ class SetupPage(QWidget):
     def test_connection(self) -> None:
         self.save()
         config = self._config_snapshot()
+        label = provider_label(config.normalized_storage_mode)
 
         def task() -> str:
-            client = AppsScriptClient(config.apps_script_url, config.sync_key, timeout=20)
-            client.health()
-            pulled = client.pull("")
-            return (
-                "연결 성공: URL과 Desktop Sync Key가 모두 확인되었습니다. "
-                f"서버 제출 기록 {len(pulled.get('submissions', []))}건 확인"
-            )
+            client = create_storage_client(config, timeout=20)
+            health = client.health()
+            schema = health.get("schema_version", {})
+            version = schema.get("version", "확인됨") if isinstance(schema, dict) else "확인됨"
+            return f"{label} 연결 성공: schema_version {version}"
 
-        self._run_background("연결 테스트 중입니다...", task)
+        self._run_background(f"{label} 연결 테스트 중입니다...", task)
 
     def upload_local_settings(self) -> None:
         self.save()
         config = self._config_snapshot()
-        if not config.apps_script_url or not config.sync_key:
-            self.status.setText("Apps Script URL과 Desktop Sync Key를 먼저 입력하세요.")
-            return
+        label = provider_label(config.normalized_storage_mode)
 
         def task() -> str:
+            state_key = sync_state_key(config.normalized_storage_mode)
             with connect(config.db_path) as conn:
-                state = conn.execute("SELECT value FROM sync_state WHERE key='last_sync_at'").fetchone()
+                state = conn.execute("SELECT value FROM sync_state WHERE key=?", (state_key,)).fetchone()
                 base_since = state["value"] if state else ""
                 rooms = rows_to_dicts(conn.execute("SELECT * FROM settings_rooms").fetchall())
                 people = rows_to_dicts(conn.execute("SELECT * FROM settings_people").fetchall())
                 items = rows_to_dicts(conn.execute("SELECT * FROM settings_check_items").fetchall())
-            client = AppsScriptClient(config.apps_script_url, config.sync_key, timeout=20)
+            client = create_storage_client(config, timeout=20)
             client.push_settings({"rooms": rooms, "people": people, "items": items, "base_since": base_since})
-            return f"Google 업로드 완료: 실 {len(rooms)}개, 사람 {len(people)}명, 항목 {len(items)}개"
+            return f"{label} 업로드 완료: 실 {len(rooms)}개, 인원 {len(people)}명, 항목 {len(items)}개"
 
-        self._run_background("로컬 설정을 Google로 업로드하는 중입니다...", task)
+        self._run_background(f"로컬 설정을 {label}로 업로드하는 중입니다...", task)
 
     def pull_google_data(self) -> None:
         self.save()
         config = self._config_snapshot()
-        if not config.apps_script_url or not config.sync_key:
-            self.status.setText("Apps Script URL과 Desktop Sync Key를 먼저 입력하세요.")
-            return
+        label = provider_label(config.normalized_storage_mode)
 
         def task() -> str:
-            client = AppsScriptClient(config.apps_script_url, config.sync_key, timeout=20)
+            state_key = sync_state_key(config.normalized_storage_mode)
+            client = create_storage_client(config, timeout=20)
             payload = client.pull("")
             with connect(config.db_path) as conn:
-                count = sync_payload_to_db(conn, payload)
-            return f"Google 데이터 내려받기 완료: 제출 기록 {count}건 반영"
+                count = sync_payload_to_db(conn, payload, state_key=state_key)
+            return f"{label} 데이터 내려받기 완료: 제출 기록 {count}건 반영"
 
-        self._run_background("Google 데이터를 내려받는 중입니다...", task)
+        self._run_background(f"{label} 데이터를 내려받는 중입니다...", task)
 
     def _config_snapshot(self) -> AppConfig:
         return replace(self.config)
 
     def _run_background(self, message: str, task) -> None:
         if self._task_thread and self._task_thread.isRunning():
-            self.status.setText("이미 Google 작업이 진행 중입니다. 잠시만 기다려 주세요.")
+            self.status.setText("이미 저장소 작업이 진행 중입니다. 잠시만 기다려 주세요.")
             return
         self.status.setText(message)
         self._task_thread = QThread(self)
@@ -228,7 +247,7 @@ class SetupPage(QWidget):
         self.status.setText(message)
 
     def _task_failed(self, message: str) -> None:
-        self.status.setText(f"Google 작업 실패: {message}")
+        self.status.setText(f"저장소 작업 실패: {message}")
 
     def _clear_task_refs(self) -> None:
         self._task_thread = None

@@ -13,6 +13,15 @@ def build_submit_url(apps_script_url: str, room_id: str, submit_token: str) -> s
     return f"{apps_script_url}{separator}{query}"
 
 
+def build_supabase_submit_url(submit_page_url: str, room_id: str, submit_token: str, organization_code: str = "") -> str:
+    params = {"roomId": room_id, "token": submit_token}
+    if organization_code:
+        params["org"] = organization_code
+    query = urlencode(params)
+    separator = "&" if "?" in submit_page_url else "?"
+    return f"{submit_page_url}{separator}{query}"
+
+
 def generate_qr_png(url: str, output_path: str | Path) -> Path:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

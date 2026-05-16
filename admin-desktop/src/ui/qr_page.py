@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QLabel, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
-from app.config import AppConfig
+from app.config import AppConfig, STORAGE_MODE_SUPABASE
 from app.db import connect
-from app.qr_generator import build_submit_url, generate_qr_label_html, generate_qr_png
+from app.qr_generator import build_submit_url, build_supabase_submit_url, generate_qr_label_html, generate_qr_png
 from app.security import DPAPI_PREFIX, unprotect_local_secret
 from .ui_helpers import configure_full_width_table
 
@@ -41,7 +41,11 @@ class QrPage(QWidget):
 
     def generate_labels(self) -> None:
         self._show_locations()
-        if not self.config.apps_script_url:
+        if self.config.normalized_storage_mode == STORAGE_MODE_SUPABASE:
+            if not self.config.supabase_submit_url or not self.config.supabase_org_code:
+                QMessageBox.warning(self, "QR 생성 불가", "[설정]에서 Supabase 제출 페이지 주소와 학교 코드를 먼저 입력하고 저장하세요.")
+                return
+        elif not self.config.apps_script_url:
             QMessageBox.warning(self, "QR 생성 불가", "[설정]에서 Apps Script Web App URL을 먼저 입력하고 저장하세요.")
             return
         rows_for_html = []
@@ -79,11 +83,19 @@ class QrPage(QWidget):
         self.config.export_dir.mkdir(parents=True, exist_ok=True)
         self.table.setRowCount(len(prepared))
         for r, (room, token) in enumerate(prepared):
-            url = build_submit_url(
-                self.config.apps_script_url,
-                room["room_id"],
-                token,
-            )
+            if self.config.normalized_storage_mode == STORAGE_MODE_SUPABASE:
+                url = build_supabase_submit_url(
+                    self.config.supabase_submit_url,
+                    room["room_id"],
+                    token,
+                    self.config.supabase_org_code,
+                )
+            else:
+                url = build_submit_url(
+                    self.config.apps_script_url,
+                    room["room_id"],
+                    token,
+                )
             png = generate_qr_png(url, self.config.qr_dir / f"{room['room_id']}.png")
             rows_for_html.append({"room_name": room["room_name"], "qr_path": png.as_posix()})
             self.table.setItem(r, 0, QTableWidgetItem(room["room_name"]))

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.qr_generator import build_submit_url, generate_qr_label_html, generate_qr_png
+from app.qr_generator import build_submit_url, build_supabase_submit_url, generate_qr_label_html, generate_qr_png
 
 
 def test_build_submit_url():
@@ -8,6 +8,15 @@ def test_build_submit_url():
     assert "page=submit" in url
     assert "roomId=room_1" in url
     assert "submitToken=tok" in url
+
+
+def test_build_supabase_submit_url_does_not_include_anon_key():
+    url = build_supabase_submit_url("https://submit.example.com/form", "room_1", "tok", "school-2026")
+    assert "roomId=room_1" in url
+    assert "token=tok" in url
+    assert "org=school-2026" in url
+    assert "anon" not in url.lower()
+    assert "key" not in url.lower()
 
 
 def test_generate_qr_png(tmp_path):

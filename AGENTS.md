@@ -1,5 +1,15 @@
 # AGENTS.md
 
+## Supabase 모드 작업 지침
+
+- 기존 Google Apps Script / Google Sheet / Google Drive 방식은 기본값이며 회귀를 최우선으로 보호한다.
+- Supabase는 선택 가능한 저장소 모드로만 추가한다.
+- 학교별 Supabase 프로젝트를 전제로 하며 중앙 서버, 개발자 서버, 개인 NAS 의존을 만들지 않는다.
+- service_role key는 코드, QR URL, 정적 제출 페이지, 로컬 설정, 문서 예시에 넣지 않는다.
+- Supabase anon public key와 Desktop Sync Key를 구분한다. Desktop Sync Key는 DB에는 hash로, 로컬에는 DPAPI 보호값으로 저장한다.
+- QR URL에는 `roomId`, `token`, `org`만 넣고 Supabase anon key를 넣지 않는다.
+- 주요 완성 산출물은 가능하면 `C:\Users\user\Downloads`에도 복사한다.
+
 ## 작업 원칙
 
 - 이 저장소는 "QR보안점검표 Google Drive 중간서버형 무료배포 시스템"을 끝까지 제작하기 위한 작업 공간이다.
@@ -41,4 +51,3 @@
 - Desktop sync key는 관리자 토큰과 분리하고 hash 저장을 우선한다.
 - 첨부파일은 이미지/PDF만 허용하며 기본 5MB 제한을 둔다.
 - 이상 없음만 일괄확인 가능하고, 이상 있음은 상세보기 후 개별확인만 가능하다.
-

@@ -6,6 +6,9 @@ from typing import Any
 
 import requests
 
+from .config import STORAGE_MODE_SUPABASE
+from .supabase_client import SupabaseClient
+
 
 class SyncClientError(RuntimeError):
     pass
@@ -60,7 +63,7 @@ class AppsScriptClient:
         )
 
 
-def sync_payload_to_db(conn, payload: dict) -> int:
+def sync_payload_to_db(conn, payload: dict, state_key: str = "last_sync_at") -> int:
     from .migrations import upsert_submission
     from .db import upsert_dict
     from .models import now_iso
@@ -89,5 +92,36 @@ def sync_payload_to_db(conn, payload: dict) -> int:
             data.setdefault("local_path", "")
             upsert_dict(conn, "attachments", data, ["attachment_id"])
     next_since = payload.get("next_since") or payload.get("server_time") or now_iso()
-    upsert_dict(conn, "sync_state", {"key": "last_sync_at", "value": next_since, "updated_at": now_iso()}, ["key"])
+    upsert_dict(conn, "sync_state", {"key": state_key, "value": next_since, "updated_at": now_iso()}, ["key"])
     return count
+
+
+def sync_payload_to_db_with_state(conn, payload: dict, state_key: str = "last_sync_at") -> int:
+    return sync_payload_to_db(conn, payload, state_key=state_key)
+
+
+def sync_state_key(storage_mode: str) -> str:
+    return "last_sync_at_supabase" if storage_mode == STORAGE_MODE_SUPABASE else "last_sync_at"
+
+
+def provider_label(storage_mode: str) -> str:
+    return "Supabase" if storage_mode == STORAGE_MODE_SUPABASE else "Google"
+
+
+def create_storage_client(config, timeout: int = 30):
+    if config.normalized_storage_mode == STORAGE_MODE_SUPABASE:
+        return SupabaseClient(
+            config.supabase_url,
+            config.supabase_anon_key,
+            config.supabase_org_code,
+            sync_key=config.sync_key,
+            admin_email=config.admin_email,
+            timeout=timeout,
+        )
+    return AppsScriptClient(config.apps_script_url, config.sync_key, timeout=timeout)
+
+
+def is_storage_configured(config) -> bool:
+    if config.normalized_storage_mode == STORAGE_MODE_SUPABASE:
+        return bool(config.supabase_url and config.supabase_anon_key and config.supabase_org_code and config.sync_key)
+    return bool(config.apps_script_url and config.sync_key)

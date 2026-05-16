@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR보안점검표 제출</title>
+  <style>
+    :root { color-scheme: light; font-family: "Malgun Gothic", system-ui, sans-serif; }
+    body { margin: 0; background: #f4f7fb; color: #111827; }
+    main { max-width: 720px; margin: 0 auto; padding: 20px 14px 48px; }
+    header { margin-bottom: 14px; }
+    h1 { font-size: 1.45rem; margin: 0 0 6px; }
+    .muted { color: #475569; font-size: .92rem; }
+    .panel { background: #fff; border: 1px solid #d7dee8; border-radius: 8px; padding: 14px; margin: 12px 0; }
+    label { display: block; font-weight: 700; margin: 10px 0 5px; }
+    select, textarea, input[type="file"] { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font: inherit; background: #fff; }
+    textarea { min-height: 90px; resize: vertical; }
+    .item { display: grid; grid-template-columns: 1fr 128px; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid #e5eaf1; }
+    .item:first-child { border-top: 0; }
+    .item strong { line-height: 1.35; }
+    button { width: 100%; min-height: 48px; border: 0; border-radius: 8px; background: #2563eb; color: white; font-weight: 800; font-size: 1rem; }
+    button:disabled { background: #94a3b8; }
+    .status { white-space: pre-wrap; border-radius: 8px; padding: 12px; margin-top: 12px; background: #eef6ff; border: 1px solid #bfdbfe; }
+    .error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .success { background: #ecfdf5; border-color: #bbf7d0; color: #065f46; }
+  </style>
+  <script src="./config.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1 id="title">QR보안점검표</h1>
+      <div class="muted" id="roomLabel">QR 정보를 확인하는 중입니다.</div>
+    </header>
+
+    <section class="panel">
+      <label for="person">담당자/당직자</label>
+      <select id="person"></select>
+    </section>
+
+    <form id="form">
+      <section class="panel" id="items"></section>
+      <section class="panel">
+        <label for="remarks">특이사항</label>
+        <textarea id="remarks" maxlength="1000" placeholder="필요한 경우 입력하세요."></textarea>
+        <label for="files">사진/PDF 첨부</label>
+        <input id="files" type="file" multiple accept="image/*,application/pdf">
+      </section>
+      <button id="submit" type="submit" disabled>제출</button>
+    </form>
+
+    <div id="status" class="status"></div>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const config = window.QRSEC_SUPABASE_CONFIG || {};
+    const state = {
+      roomId: params.get("roomId") || params.get("room_id") || "",
+      token: params.get("token") || params.get("submitToken") || "",
+      organizationCode: params.get("org") || config.organizationCode || "",
+      bootstrap: null
+    };
+
+    const els = {
+      title: document.getElementById("title"),
+      roomLabel: document.getElementById("roomLabel"),
+      person: document.getElementById("person"),
+      items: document.getElementById("items"),
+      form: document.getElementById("form"),
+      files: document.getElementById("files"),
+      remarks: document.getElementById("remarks"),
+      submit: document.getElementById("submit"),
+      status: document.getElementById("status")
+    };
+
+    function status(message, kind) {
+      els.status.textContent = message;
+      els.status.className = "status" + (kind ? " " + kind : "");
+    }
+
+    function apiConfig() {
+      const supabaseUrl = (config.supabaseUrl || "").replace(/\/$/, "");
+      const anonKey = config.anonKey || "";
+      if (!supabaseUrl || !anonKey || !state.organizationCode || !state.roomId || !state.token) {
+        throw new Error("제출 페이지 설정 또는 QR 정보가 비어 있습니다.");
+      }
+      return { supabaseUrl, anonKey };
+    }
+
+    async function rpc(name, body) {
+      const { supabaseUrl, anonKey } = apiConfig();
+      const res = await fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+        method: "POST",
+        headers: {
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        let text = await res.text();
+        try {
+          const parsed = JSON.parse(text);
+          text = parsed.message || parsed.error || text;
+        } catch (_) {}
+        throw new Error(text || `Supabase 요청 실패: ${res.status}`);
+      }
+      return res.json();
+    }
+
+    async function uploadFile(path, file) {
+      const { supabaseUrl, anonKey } = apiConfig();
+      const res = await fetch(`${supabaseUrl}/storage/v1/object/check-attachments/${encodeURI(path)}`, {
+        method: "POST",
+        headers: {
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+          "Content-Type": file.type || "application/octet-stream",
+          "x-upsert": "false"
+        },
+        body: file
+      });
+      if (!res.ok) throw new Error(`첨부파일 업로드 실패: ${file.name}`);
+    }
+
+    async function load() {
+      try {
+        status("QR 정보를 확인하는 중입니다.");
+        const data = await rpc("get_submit_bootstrap", {
+          p_organization_code: state.organizationCode,
+          p_room_id: state.roomId,
+          p_submit_token: state.token
+        });
+        state.bootstrap = data;
+        els.title.textContent = data.school?.school_name || "QR보안점검표";
+        els.roomLabel.textContent = data.room?.room_name || state.roomId;
+        els.person.innerHTML = "";
+        for (const person of data.people || []) {
+          const option = document.createElement("option");
+          option.value = person.person_id;
+          option.dataset.roleType = person.role_type;
+          option.textContent = `${person.person_name} (${person.role_type === "duty" ? "당직자" : "담당자"})`;
+          els.person.appendChild(option);
+        }
+        els.items.innerHTML = "";
+        for (const item of data.items || []) {
+          const row = document.createElement("div");
+          row.className = "item";
+          row.innerHTML = `<strong></strong><select data-item-key="${item.item_key}"><option value="이상 무">이상 무</option><option value="이상 유">이상 유</option></select>`;
+          row.querySelector("strong").textContent = item.item_name || item.label || item.item_key;
+          els.items.appendChild(row);
+        }
+        els.submit.disabled = false;
+        status("입력 후 제출하세요.");
+      } catch (err) {
+        status(err.message, "error");
+      }
+    }
+
+    els.form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        els.submit.disabled = true;
+        status("제출하는 중입니다.");
+        const selected = els.person.selectedOptions[0];
+        if (!selected) throw new Error("담당자 또는 당직자를 선택하세요.");
+        const statusJson = {};
+        for (const select of els.items.querySelectorAll("select[data-item-key]")) {
+          statusJson[select.dataset.itemKey] = select.value;
+        }
+        const files = Array.from(els.files.files || []);
+        const attachmentMeta = files.map((file) => ({
+          file_name: file.name,
+          mime_type: file.type,
+          file_size: file.size
+        }));
+        const result = await rpc("submit_check_record", {
+          p_organization_code: state.organizationCode,
+          p_room_id: state.roomId,
+          p_submit_token: state.token,
+          p_payload: {
+            person_id: selected.value,
+            role_type: selected.dataset.roleType || "responsible",
+            status_json: statusJson,
+            remarks: els.remarks.value || "",
+            client_info: { user_agent: navigator.userAgent },
+            attachments: attachmentMeta
+          }
+        });
+        const uploads = result.attachments || [];
+        for (let i = 0; i < uploads.length && i < files.length; i += 1) {
+          await uploadFile(uploads[i].storage_path, files[i]);
+        }
+        status(`제출 완료\n기록 ID: ${result.record_id}`, "success");
+        els.form.reset();
+      } catch (err) {
+        status(err.message, "error");
+      } finally {
+        els.submit.disabled = false;
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>

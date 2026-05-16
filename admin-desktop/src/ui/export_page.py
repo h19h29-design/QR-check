@@ -6,8 +6,10 @@ from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
+    QFileDialog,
     QGridLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -16,12 +18,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import AppConfig
+from app.config import AppConfig, STORAGE_MODE_SUPABASE
 from app.db import connect, rows_to_dicts
 from app.export_excel import export_security_check_xlsx
 from app.export_hwp import export_hwp_or_fallback
 from app.export_pdf_or_html import export_printable_html
 from app.security import safe_filename
+from app.supabase_backup import create_supabase_backup
+from app.sync_client import create_storage_client, is_storage_configured
 from .ui_helpers import configure_full_width_table
 
 
@@ -68,10 +72,13 @@ class ExportPage(QWidget):
         html.clicked.connect(self.export_html)
         hwp = QPushButton("HWP 출력 또는 fallback")
         hwp.clicked.connect(self.export_hwp)
+        backup = QPushButton("Supabase 백업 생성")
+        backup.clicked.connect(self.backup_supabase)
         controls.addWidget(preview, 1, 0, 1, 2)
         controls.addWidget(xlsx, 1, 2)
         controls.addWidget(html, 1, 3)
         controls.addWidget(hwp, 1, 4, 1, 2)
+        controls.addWidget(backup, 2, 0, 1, 2)
         controls.setColumnStretch(6, 1)
         layout.addLayout(controls)
 
@@ -206,3 +213,20 @@ class ExportPage(QWidget):
         path = export_hwp_or_fallback(self._records(), self.config.export_dir / f"{self._file_stem()}.hwp", self.config.school_name, self._items())
         self.status.setText(f"출력 생성 완료: {path}")
         self.refresh_preview()
+
+    def backup_supabase(self) -> None:
+        if self.config.normalized_storage_mode != STORAGE_MODE_SUPABASE:
+            QMessageBox.information(self, "Supabase 백업", "Supabase 저장소 모드에서만 사용할 수 있습니다.")
+            return
+        if not is_storage_configured(self.config):
+            QMessageBox.warning(self, "Supabase 백업", "Supabase 주소, anon key, 학교 코드, Desktop Sync Key를 먼저 설정하세요.")
+            return
+        selected = QFileDialog.getExistingDirectory(self, "Supabase 백업 저장 폴더 선택", str(self.config.export_dir))
+        if not selected:
+            return
+        try:
+            path = create_supabase_backup(create_storage_client(self.config, timeout=60), selected)
+        except Exception as exc:
+            QMessageBox.warning(self, "Supabase 백업 실패", str(exc))
+            return
+        self.status.setText(f"Supabase 백업 생성 완료: {path}")

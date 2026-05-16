@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
 
 from app.config import AppConfig, save_config
 from app.db import connect
-from app.sync_client import AppsScriptClient, sync_payload_to_db
+from app.sync_client import create_storage_client, is_storage_configured, provider_label, sync_payload_to_db, sync_state_key
 from .dashboard_page import DashboardPage
 from .detail_dialog import DetailDialog
 from .export_page import ExportPage
@@ -30,13 +30,15 @@ class SyncWorker(QObject):
 
     def run(self) -> None:
         try:
+            mode = self.config.normalized_storage_mode
+            state_key = sync_state_key(mode)
             with connect(self.config.db_path) as conn:
-                row = conn.execute("SELECT value FROM sync_state WHERE key='last_sync_at'").fetchone()
+                row = conn.execute("SELECT value FROM sync_state WHERE key=?", (state_key,)).fetchone()
                 since = row["value"] if row else ""
-            client = AppsScriptClient(self.config.apps_script_url, self.config.sync_key, timeout=20)
+            client = create_storage_client(self.config, timeout=20)
             payload = client.pull(since)
             with connect(self.config.db_path) as conn:
-                count = sync_payload_to_db(conn, payload)
+                count = sync_payload_to_db(conn, payload, state_key=state_key)
             self.finished.emit(count)
         except Exception as exc:
             self.failed.emit(str(exc))
@@ -96,7 +98,7 @@ class MainWindow(QMainWindow):
 
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
         setup_row = next((index for index, (label, _) in enumerate(pages) if label == "설정"), 0)
-        self.nav.setCurrentRow(setup_row if not self.config.apps_script_url or not self.config.sync_key else 0)
+        self.nav.setCurrentRow(setup_row if not is_storage_configured(self.config) else 0)
 
         splitter = QSplitter()
         splitter.addWidget(self.nav)
@@ -119,7 +121,8 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(title)
         header_layout.addWidget(self.school_label)
         header_layout.addStretch(1)
-        self.sync_badge = QLabel("Google 연결 대기" if self.config.apps_script_url else "Google 미설정")
+        label = provider_label(self.config.normalized_storage_mode)
+        self.sync_badge = QLabel(f"{label} 연결 대기" if is_storage_configured(self.config) else f"{label} 미설정")
         self.sync_badge.setStyleSheet(
             "font-size: 11pt; font-weight: 800; padding: 6px 10px; "
             "border-radius: 16px; background: #334155; color: #ffffff;"
@@ -150,17 +153,18 @@ class MainWindow(QMainWindow):
             self.nav.setCurrentItem(matches[0])
 
     def sync_from_google(self) -> None:
-        if not self.config.apps_script_url or not self.config.sync_key:
+        label = provider_label(self.config.normalized_storage_mode)
+        if not is_storage_configured(self.config):
             if hasattr(self, "sync_badge"):
-                self.sync_badge.setText("Google 미설정")
+                self.sync_badge.setText(f"{label} 미설정")
             if hasattr(self, "footer"):
-                self.footer.setText("Apps Script URL과 Desktop Sync Key를 설정하면 Google 동기화를 사용할 수 있습니다.")
+                self.footer.setText(f"{label} 연결값을 설정하면 동기화를 사용할 수 있습니다.")
             return
         if self.sync_thread and self.sync_thread.isRunning():
-            self.footer.setText("이미 Google 동기화가 진행 중입니다.")
+            self.footer.setText(f"이미 {label} 동기화가 진행 중입니다.")
             return
         self.sync_badge.setText("동기화 중")
-        self.footer.setText("Google 데이터를 동기화하는 중입니다. 화면은 계속 사용할 수 있습니다.")
+        self.footer.setText(f"{label} 데이터를 동기화하는 중입니다. 화면은 계속 사용할 수 있습니다.")
         self.sync_thread = QThread(self)
         self.sync_worker = SyncWorker(self.config)
         self.sync_worker.moveToThread(self.sync_thread)
@@ -176,14 +180,16 @@ class MainWindow(QMainWindow):
 
     def on_sync_finished(self, count: int) -> None:
         self._refresh_school_name_from_db()
-        self.sync_badge.setText("Google 연결됨")
-        self.footer.setText(f"Google 동기화 완료: 제출 기록 {count}건 반영")
-        logging.getLogger(__name__).info("Google sync completed")
+        label = provider_label(self.config.normalized_storage_mode)
+        self.sync_badge.setText(f"{label} 연결됨")
+        self.footer.setText(f"{label} 동기화 완료: 제출 기록 {count}건 반영")
+        logging.getLogger(__name__).info("%s sync completed", label)
 
     def on_sync_failed(self, message: str) -> None:
+        label = provider_label(self.config.normalized_storage_mode)
         self.sync_badge.setText("동기화 오류")
-        self.footer.setText(f"Google 동기화 실패: {message}")
-        logging.getLogger(__name__).warning("Google sync failed: %s", message)
+        self.footer.setText(f"{label} 동기화 실패: {message}")
+        logging.getLogger(__name__).warning("%s sync failed: %s", label, message)
 
     def _clear_sync_refs(self) -> None:
         self.sync_thread = None

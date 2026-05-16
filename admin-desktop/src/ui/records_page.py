@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from app.config import AppConfig
 from app.db import connect
 from app.models import now_iso
-from app.sync_client import AppsScriptClient
+from app.sync_client import create_storage_client, is_storage_configured, provider_label
 from .detail_dialog import DetailDialog
 from .ui_helpers import configure_full_width_table
 
@@ -157,15 +157,16 @@ class RecordsPage(QWidget):
             clauses.append("room_id=?")
             params.append(room_id)
         where = " AND ".join(clauses)
-        if self.config.apps_script_url and self.config.sync_key:
+        if is_storage_configured(self.config):
+            label = provider_label(self.config.normalized_storage_mode)
             try:
-                AppsScriptClient(self.config.apps_script_url, self.config.sync_key).bulk_verify_normal(start, end, room_id)
+                create_storage_client(self.config).bulk_verify_normal(start, end, room_id)
             except Exception as exc:
                 QMessageBox.warning(
                     self,
-                    "Google 반영 실패",
-                    "Google Sheet 반영에 실패해서 로컬 일괄확인도 보류했습니다.\n"
-                    "네트워크와 Desktop Sync Key를 확인한 뒤 다시 시도하세요.\n\n"
+                    f"{label} 반영 실패",
+                    f"{label} 원본 저장소 반영에 실패해서 로컬 일괄확인을 보류했습니다.\n"
+                    "네트워크, 연결값, Desktop Sync Key를 확인한 뒤 다시 시도하세요.\n\n"
                     + str(exc),
                 )
                 return
