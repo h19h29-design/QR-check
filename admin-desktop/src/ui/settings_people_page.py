@@ -50,7 +50,12 @@ class SettingsPeoplePage(QWidget):
         layout.addLayout(controls)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["person_id", "이름", "역할", "실", "사용", "삭제/복구"])
-        configure_full_width_table(self.table, hidden_columns=(0,))
+        configure_full_width_table(
+            self.table,
+            hidden_columns=(0,),
+            column_widths={2: 100, 4: 80, 5: 120},
+            stretch_columns=(1, 3),
+        )
         layout.addWidget(self.table)
         self.load_rooms()
         self.refresh()

@@ -2,12 +2,15 @@
 
 학교 담당자용 1차 설치 절차다.
 
+저장 방식별 키값을 더 자세히 확인하려면 `docs/STORAGE_KEY_SETUP_GUIDE.md`도 함께 본다.
+
 ## 1. Supabase 프로젝트 만들기
 
 1. https://supabase.com 에 가입한다.
 2. 새 Project를 만든다.
 3. Project URL과 anon public key를 확인한다.
-4. service_role key는 복사하지 않는다.
+4. `Project Settings > API Keys` 또는 `Connect` 화면에서 Project URL과 anon public key를 복사한다.
+5. service_role, secret, `sb_secret_...` 키는 복사하지 않는다.
 
 ## 2. SQL 실행
 

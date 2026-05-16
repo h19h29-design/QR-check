@@ -37,7 +37,7 @@ class RecordsPage(QWidget):
         self.start_date.setCalendarPopup(True)
         self.start_date.setDisplayFormat("yyyy-MM-dd")
         self.start_date.setDate(QDate.currentDate())
-        self.start_date.setFixedWidth(132)
+        self.start_date.setFixedWidth(170)
         controls.addWidget(self.start_date)
 
         controls.addWidget(QLabel("종료일"))
@@ -45,18 +45,18 @@ class RecordsPage(QWidget):
         self.end_date.setCalendarPopup(True)
         self.end_date.setDisplayFormat("yyyy-MM-dd")
         self.end_date.setDate(QDate.currentDate())
-        self.end_date.setFixedWidth(132)
+        self.end_date.setFixedWidth(170)
         controls.addWidget(self.end_date)
 
         controls.addWidget(QLabel("실"))
         self.room_filter = QComboBox()
-        self.room_filter.setFixedWidth(128)
+        self.room_filter.setFixedWidth(190)
         controls.addWidget(self.room_filter)
 
         controls.addWidget(QLabel("상태"))
         self.state_filter = QComboBox()
         self.state_filter.addItems(["전체", "이상 있음", "이상 없음", "미확인", "확인 완료"])
-        self.state_filter.setFixedWidth(128)
+        self.state_filter.setFixedWidth(160)
         controls.addWidget(self.state_filter)
 
         refresh = QPushButton("조회")
@@ -64,6 +64,7 @@ class RecordsPage(QWidget):
         controls.addWidget(refresh)
 
         bulk = QPushButton("조회 범위 이상 없음 일괄확인")
+        bulk.setMinimumWidth(280)
         bulk.clicked.connect(self.bulk_verify_normal)
         controls.addWidget(bulk)
         controls.addStretch(1)
@@ -71,7 +72,12 @@ class RecordsPage(QWidget):
 
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(["record_id", "제출일시", "실", "점검자", "역할", "이상여부", "관리자확인"])
-        configure_full_width_table(self.table, hidden_columns=(0,))
+        configure_full_width_table(
+            self.table,
+            hidden_columns=(0,),
+            column_widths={1: 210, 4: 90, 5: 120, 6: 120},
+            stretch_columns=(2, 3),
+        )
         self.table.doubleClicked.connect(self.open_detail)
         layout.addWidget(self.table)
 

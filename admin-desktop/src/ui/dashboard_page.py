@@ -68,13 +68,21 @@ class DashboardPage(QWidget):
 
         self.priority = QTableWidget(0, 4)
         self.priority.setHorizontalHeaderLabels(["우선확인", "실", "내용", "제출일시"])
-        configure_full_width_table(self.priority)
+        configure_full_width_table(
+            self.priority,
+            column_widths={0: 130, 3: 210},
+            stretch_columns=(1, 2),
+        )
         layout.addWidget(QLabel("우선 확인 목록"))
         layout.addWidget(self.priority)
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["제출일시", "실", "점검자", "이상여부", "확인"])
-        configure_full_width_table(self.table)
+        configure_full_width_table(
+            self.table,
+            column_widths={0: 210, 3: 120, 4: 100},
+            stretch_columns=(1, 2),
+        )
         layout.addWidget(QLabel("최근 제출 기록"))
         layout.addWidget(self.table)
 

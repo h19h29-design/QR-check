@@ -28,7 +28,12 @@ class QrPage(QWidget):
 
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["실", "room_id", "QR 파일"])
-        configure_full_width_table(self.table, hidden_columns=(1,))
+        configure_full_width_table(
+            self.table,
+            hidden_columns=(1,),
+            column_widths={0: 280},
+            stretch_columns=(2,),
+        )
         layout.addWidget(self.table)
         self._show_locations()
 

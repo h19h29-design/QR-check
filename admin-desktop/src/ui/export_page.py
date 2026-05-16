@@ -48,7 +48,7 @@ class ExportPage(QWidget):
         self.start_date.setCalendarPopup(True)
         self.start_date.setDisplayFormat("yyyy-MM-dd")
         self.start_date.setDate(QDate.currentDate())
-        self.start_date.setFixedWidth(132)
+        self.start_date.setFixedWidth(170)
         controls.addWidget(self.start_date, 0, 1)
 
         controls.addWidget(QLabel("종료일"), 0, 2)
@@ -56,12 +56,12 @@ class ExportPage(QWidget):
         self.end_date.setCalendarPopup(True)
         self.end_date.setDisplayFormat("yyyy-MM-dd")
         self.end_date.setDate(QDate.currentDate())
-        self.end_date.setFixedWidth(132)
+        self.end_date.setFixedWidth(170)
         controls.addWidget(self.end_date, 0, 3)
 
         controls.addWidget(QLabel("실"), 0, 4)
         self.room_filter = QComboBox()
-        self.room_filter.setFixedWidth(150)
+        self.room_filter.setFixedWidth(220)
         controls.addWidget(self.room_filter, 0, 5)
 
         preview = QPushButton("조회/미리보기")
@@ -73,18 +73,23 @@ class ExportPage(QWidget):
         hwp = QPushButton("HWP 출력 또는 fallback")
         hwp.clicked.connect(self.export_hwp)
         backup = QPushButton("Supabase 백업 생성")
+        backup.setMinimumWidth(180)
         backup.clicked.connect(self.backup_supabase)
         controls.addWidget(preview, 1, 0, 1, 2)
         controls.addWidget(xlsx, 1, 2)
         controls.addWidget(html, 1, 3)
         controls.addWidget(hwp, 1, 4, 1, 2)
-        controls.addWidget(backup, 2, 0, 1, 2)
-        controls.setColumnStretch(6, 1)
+        controls.addWidget(backup, 1, 6)
+        controls.setColumnStretch(7, 1)
         layout.addLayout(controls)
 
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["점검일", "실", "점검자", "역할", "이상여부", "확인"])
-        configure_full_width_table(self.table)
+        configure_full_width_table(
+            self.table,
+            column_widths={0: 130, 3: 90, 4: 120, 5: 100},
+            stretch_columns=(1, 2),
+        )
         layout.addWidget(self.table, 2)
 
         self.status = QLabel("")

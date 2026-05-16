@@ -46,7 +46,12 @@ class SettingsRoomsPage(QWidget):
         layout.addLayout(controls)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["room_id", "실명", "표시순서", "사용", "token hash", "삭제/복구"])
-        configure_full_width_table(self.table, hidden_columns=(0, 4))
+        configure_full_width_table(
+            self.table,
+            hidden_columns=(0, 4),
+            column_widths={2: 100, 3: 80, 5: 120},
+            stretch_columns=(1,),
+        )
         layout.addWidget(self.table)
         self.refresh()
 

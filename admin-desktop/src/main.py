@@ -136,7 +136,8 @@ def main() -> int:
         """
     )
     window = MainWindow(config)
-    window.resize(1440, 900)
+    window.setMinimumSize(1280, 820)
+    window.resize(1920, 1080)
     window.show()
     return app.exec()
 

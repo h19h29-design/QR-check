@@ -105,6 +105,29 @@ MANUAL_HTML = """
   <li>QR 생성 시 Supabase 제출 페이지 주소에 roomId, token, org만 붙습니다. anon key는 QR URL에 들어가지 않습니다.</li>
   <li>출력/보관 화면의 Supabase 백업 생성 버튼으로 CSV와 JSON 백업을 만들 수 있습니다.</li>
 </ul>
+
+<h2>12. 키값을 구하는 순서</h2>
+<h3>Google Drive 방식</h3>
+<ol>
+  <li>학교 관리자 Google 계정으로 Google Sheet를 만들고 <b>확장 프로그램 &gt; Apps Script</b>를 엽니다.</li>
+  <li>배포본의 <b>2_Google_AppsScript_Code</b> 파일들을 Apps Script에 같은 이름으로 붙여 넣습니다.</li>
+  <li><b>배포 &gt; 새 배포 &gt; 웹 앱</b>을 선택합니다.</li>
+  <li>실행 사용자는 <b>나</b>, 액세스 권한은 QR 제출을 위해 <b>모든 사용자</b>로 설정합니다.</li>
+  <li>배포 후 표시되는 <b>Web App URL</b>을 설정 화면에 붙여 넣습니다.</li>
+  <li>Apps Script 편집기에서 <b>createInitialSetupKey</b> 함수를 실행합니다.</li>
+  <li>Web App URL 뒤에 <b>?page=setup</b>을 붙여 열고 초기 설정 키를 입력합니다.</li>
+  <li>화면에 표시되는 <b>Desktop Sync Key</b>를 설정 화면에 붙여 넣습니다.</li>
+</ol>
+<h3>Supabase 방식</h3>
+<ol>
+  <li>https://supabase.com 에 가입하고 <b>New project</b>를 만듭니다.</li>
+  <li><b>SQL Editor</b>에서 배포본의 <b>setup_supabase.sql</b>을 실행합니다.</li>
+  <li><b>seed_sample.sql</b>의 학교 코드, 학교명, Desktop Sync Key를 학교 값으로 바꾸어 실행합니다.</li>
+  <li><b>Project Settings &gt; API Keys</b> 또는 <b>Connect</b> 화면에서 Project URL을 복사합니다.</li>
+  <li>같은 화면에서 <b>anon public key</b>를 복사합니다. service_role 또는 secret key는 복사하지 않습니다.</li>
+  <li><b>supabase-submit/config.js</b>에 Supabase URL, anon key, 학교 코드를 입력한 뒤 정적 호스팅에 올립니다.</li>
+  <li>정적 호스팅 주소를 설정 화면의 <b>Supabase 제출 페이지 주소</b>에 붙여 넣습니다.</li>
+</ol>
 """
 
 

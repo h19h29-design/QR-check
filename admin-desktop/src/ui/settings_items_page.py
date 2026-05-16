@@ -44,7 +44,12 @@ class SettingsItemsPage(QWidget):
         layout.addLayout(controls)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["item_id", "키", "항목명", "표시순서", "사용", "삭제/복구"])
-        configure_full_width_table(self.table, hidden_columns=(0, 1))
+        configure_full_width_table(
+            self.table,
+            hidden_columns=(0, 1),
+            column_widths={3: 100, 4: 80, 5: 120},
+            stretch_columns=(2,),
+        )
         layout.addWidget(self.table)
         self.refresh()
 

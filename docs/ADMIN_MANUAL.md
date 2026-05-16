@@ -9,6 +9,8 @@
 
 기존 학교는 Google Drive 방식을 그대로 사용하면 된다.
 
+키값을 처음 구하는 담당자는 `STORAGE_KEY_SETUP_GUIDE.md`를 먼저 보고 진행한다. 이 문서에는 Google Apps Script Web App URL, Desktop Sync Key, Supabase Project URL, anon key를 어디서 복사하는지 순서대로 정리되어 있다.
+
 ## Supabase 방식 초기 순서
 
 1. Supabase 프로젝트를 만든다.
