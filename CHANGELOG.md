@@ -1,5 +1,18 @@
 # CHANGELOG.md
 
+## 0.3.0 - 2026-05-16
+
+- Supabase 저장소 모드를 선택 가능한 저장 방식으로 추가했습니다.
+- 기존 Google Apps Script / Google Sheet / Google Drive 방식은 기본값으로 유지했습니다.
+- 설정 화면에서 Google Drive 방식과 Supabase 방식을 선택하고, 선택한 방식에 필요한 입력칸만 활성화되도록 개선했습니다.
+- Supabase URL, anon public key, 학교 코드, 제출 페이지 주소, Desktop Sync Key 설정과 연결 테스트를 추가했습니다.
+- Supabase schema/RLS/RPC 설치 SQL과 정적 제출 페이지를 배포본에 포함했습니다.
+- QR 생성이 저장 방식에 따라 Google Apps Script 제출 URL 또는 Supabase 제출 페이지 URL을 만들도록 개선했습니다.
+- Supabase CSV/JSON 백업 기능과 관련 문서를 추가했습니다.
+- 1920x1080 화면 기준으로 관리자 프로그램 기본 창 크기, 날짜 입력칸, 테이블 컬럼 폭을 조정했습니다.
+- Google/Supabase 키값 구하는 절차를 내장 도움말과 문서에 자세히 추가했습니다.
+- Supabase provider, 백업, SQL 구조, 설정 UI 테스트를 추가했습니다.
+
 ## 0.2.0 - 2026-05-03
 
 - 실배포 안정화 관점으로 추가 점검을 수행했다.
