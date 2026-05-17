@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -15,6 +17,12 @@ internal static class Program
     private const string AppExeDirName = "QR보안점검표 관리자";
     private const string AppExeName = "QR보안점검표 관리자.exe";
     private const string ShortcutName = "QR보안점검표 관리자.lnk";
+    private const string AppIconFileName = "app_icon.ico";
+    private const uint ShcneAssocChanged = 0x08000000;
+    private const uint ShcnfIdList = 0x0000;
+
+    [DllImport("shell32.dll")]
+    private static extern void SHChangeNotify(uint wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
 
     [STAThread]
     private static int Main()
@@ -311,11 +319,14 @@ internal static class Program
                 throw new FileNotFoundException("Admin application executable was not found.", exePath);
             }
 
+            string appDirectory = Path.GetDirectoryName(exePath) ?? targetRoot;
+            string shortcutIconPath = PrepareShortcutIcon(appDirectory, targetRoot);
+
             if (createDesktopShortcut)
             {
                 report("바탕화면 바로가기를 만드는 중입니다...");
                 string desktopShortcut = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutName);
-                CreateShortcut(desktopShortcut, exePath, Path.GetDirectoryName(exePath) ?? targetRoot, AppExeDirName);
+                CreateShortcut(desktopShortcut, exePath, appDirectory, AppExeDirName, shortcutIconPath);
             }
 
             if (createStartMenuShortcut)
@@ -324,7 +335,12 @@ internal static class Program
                 string startDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), AppRootName);
                 Directory.CreateDirectory(startDir);
                 string startShortcut = Path.Combine(startDir, ShortcutName);
-                CreateShortcut(startShortcut, exePath, Path.GetDirectoryName(exePath) ?? targetRoot, AppExeDirName);
+                CreateShortcut(startShortcut, exePath, appDirectory, AppExeDirName, shortcutIconPath);
+            }
+
+            if (createDesktopShortcut || createStartMenuShortcut)
+            {
+                NotifyShellIconChanged();
             }
 
             string guidePath = Path.Combine(installRoot, "설치_완료_안내.txt");
@@ -379,12 +395,62 @@ internal static class Program
         }
     }
 
-    private static void CreateShortcut(string shortcutPath, string targetPath, string workingDirectory, string description)
+    private static string PrepareShortcutIcon(string appDirectory, string targetRoot)
+    {
+        string? sourceIconPath = ResolveInstalledIconPath(appDirectory, targetRoot);
+        if (sourceIconPath == null)
+        {
+            return string.Empty;
+        }
+
+        byte[] iconBytes = File.ReadAllBytes(sourceIconPath);
+        string hash = Convert.ToHexString(SHA256.HashData(iconBytes)).Substring(0, 12).ToLowerInvariant();
+        string iconDirectory = Path.Combine(appDirectory, "icons");
+        Directory.CreateDirectory(iconDirectory);
+        string shortcutIconPath = Path.Combine(iconDirectory, "app_icon_" + hash + ".ico");
+        File.Copy(sourceIconPath, shortcutIconPath, overwrite: true);
+        return shortcutIconPath;
+    }
+
+    private static string? ResolveInstalledIconPath(string appDirectory, string targetRoot)
+    {
+        foreach (string candidate in new[]
+        {
+            Path.Combine(appDirectory, "_internal", "resources", AppIconFileName),
+            Path.Combine(appDirectory, "resources", AppIconFileName),
+            Path.Combine(targetRoot, "1_Windows_Admin_Program", AppExeDirName, "_internal", "resources", AppIconFileName)
+        })
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static void NotifyShellIconChanged()
+    {
+        try
+        {
+            SHChangeNotify(ShcneAssocChanged, ShcnfIdList, IntPtr.Zero, IntPtr.Zero);
+        }
+        catch
+        {
+        }
+    }
+
+    private static void CreateShortcut(string shortcutPath, string targetPath, string workingDirectory, string description, string shortcutIconPath)
     {
         Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
         if (shellType == null) return;
         object? shell = Activator.CreateInstance(shellType);
         if (shell == null) return;
+        if (File.Exists(shortcutPath))
+        {
+            File.Delete(shortcutPath);
+        }
         object shortcut = shellType.InvokeMember(
             "CreateShortcut",
             System.Reflection.BindingFlags.InvokeMethod,
@@ -395,7 +461,8 @@ internal static class Program
         Type shortcutType = shortcut.GetType();
         shortcutType.InvokeMember("TargetPath", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[] { targetPath });
         shortcutType.InvokeMember("WorkingDirectory", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[] { workingDirectory });
-        shortcutType.InvokeMember("IconLocation", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[] { targetPath });
+        string iconLocation = File.Exists(shortcutIconPath) ? shortcutIconPath + ",0" : targetPath + ",0";
+        shortcutType.InvokeMember("IconLocation", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[] { iconLocation });
         shortcutType.InvokeMember("Description", System.Reflection.BindingFlags.SetProperty, null, shortcut, new object[] { description });
         shortcutType.InvokeMember("Save", System.Reflection.BindingFlags.InvokeMethod, null, shortcut, Array.Empty<object>());
     }

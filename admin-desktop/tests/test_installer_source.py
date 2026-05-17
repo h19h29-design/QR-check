@@ -25,3 +25,13 @@ def test_package_script_uses_installer_source_file():
 
     assert "installer\\SetupProgram.cs" in script
     assert "Copy-Item -LiteralPath $SetupProgram" in script
+
+
+def test_installer_shortcuts_use_refreshable_icon_file():
+    source = (ROOT / "installer" / "SetupProgram.cs").read_text(encoding="utf-8")
+
+    assert "PrepareShortcutIcon" in source
+    assert "app_icon_\" + hash + \".ico" in source
+    assert "IconLocation" in source
+    assert "shortcutIconPath + \",0\"" in source
+    assert "SHChangeNotify" in source
