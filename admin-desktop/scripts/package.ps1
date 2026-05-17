@@ -90,6 +90,7 @@ if (-not $SkipTests) {
 
 $AppName = "QR" + [string]::Concat([char[]](0xBCF4, 0xC548, 0xC810, 0xAC80, 0xD45C)) + " " + [string]::Concat([char[]](0xAD00, 0xB9AC, 0xC790))
 $IconPath = Join-Path $Root "src\resources\app_icon.ico"
+$ResourcesPath = Join-Path $Root "src\resources"
 $SpecPath = Join-Path $Root "build\spec"
 $WorkPath = Join-Path $Root "build\pyinstaller"
 $DistPath = Join-Path $Root "dist"
@@ -104,7 +105,7 @@ New-Item -ItemType Directory -Force -Path $WorkPath | Out-Null
     --name $AppName `
     --icon $IconPath `
     --paths "src" `
-    --add-data "src\resources;resources" `
+    --add-data "$ResourcesPath;resources" `
     --exclude-module win32com `
     --exclude-module pythoncom `
     --exclude-module pywintypes `
@@ -112,6 +113,9 @@ New-Item -ItemType Directory -Force -Path $WorkPath | Out-Null
     --workpath $WorkPath `
     --distpath $DistPath `
     "src\main.py"
+if ($LASTEXITCODE -ne 0) {
+    throw "PyInstaller 빌드 실패: exit code $LASTEXITCODE"
+}
 
 $AppDist = Join-Path $DistPath $AppName
 $ExePath = Join-Path $AppDist "$AppName.exe"
