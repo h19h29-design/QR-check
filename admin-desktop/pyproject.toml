@@ -1,6 +1,6 @@
 [project]
 name = "qr-security-admin"
-version = "0.3.4"
+version = "0.3.5"
 description = "QR보안점검표 Windows 관리자 프로그램"
 requires-python = ">=3.11"
 dependencies = [
