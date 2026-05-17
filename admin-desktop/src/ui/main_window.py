@@ -3,11 +3,14 @@ from __future__ import annotations
 import logging
 
 from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QPushButton, QSplitter, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSplitter, QStackedWidget, QVBoxLayout, QWidget
 
 from app.config import AppConfig, save_config
 from app.db import connect
+from app.resources import resource_path
 from app.sync_client import create_storage_client, is_storage_configured, provider_label, sync_payload_to_db, sync_state_key
+from app.updater import open_update_page, update_unconfigured_message
 from .dashboard_page import DashboardPage
 from .detail_dialog import DetailDialog
 from .export_page import ExportPage
@@ -18,6 +21,18 @@ from .settings_items_page import SettingsItemsPage
 from .settings_people_page import SettingsPeoplePage
 from .settings_rooms_page import SettingsRoomsPage
 from .setup_wizard import SetupPage
+
+
+def server_badge_text(configured: bool, provider: str, state: str = "idle") -> str:
+    if not configured:
+        return "서버연동 미설정"
+    if state == "syncing":
+        return "서버연동 중"
+    if state == "connected":
+        return f"서버연동 완료 ({provider})"
+    if state == "error":
+        return "서버연동 오류"
+    return f"서버연동 대기 ({provider})"
 
 
 class SyncWorker(QObject):
@@ -49,6 +64,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = config
         self.setWindowTitle("QR보안점검표 관리자")
+        icon_path = resource_path("app_icon.ico")
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
         self.stack = QStackedWidget()
         self.nav = QListWidget()
         self.nav.setMinimumWidth(280)
@@ -121,17 +140,22 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(title)
         header_layout.addWidget(self.school_label)
         header_layout.addStretch(1)
+
         label = provider_label(self.config.normalized_storage_mode)
-        self.sync_badge = QLabel(f"{label} 연결 대기" if is_storage_configured(self.config) else f"{label} 미설정")
+        configured = is_storage_configured(self.config)
+        self.sync_badge = QLabel(server_badge_text(configured, label))
         self.sync_badge.setStyleSheet(
             "font-size: 11pt; font-weight: 800; padding: 6px 10px; "
             "border-radius: 16px; background: #334155; color: #ffffff;"
         )
-        sync_button = QPushButton("동기화")
+        sync_button = QPushButton("서버 동기화")
         sync_button.setStyleSheet("background: #2563eb; color: #ffffff; border-color: #2563eb;")
-        sync_button.clicked.connect(self.sync_from_google)
+        sync_button.clicked.connect(self.sync_from_server)
+        update_button = QPushButton("업데이트 확인")
+        update_button.clicked.connect(self.check_for_updates)
         header_layout.addWidget(self.sync_badge)
         header_layout.addWidget(sync_button)
+        header_layout.addWidget(update_button)
 
         self.footer = QLabel("준비됨")
         self.footer.setObjectName("AppFooter")
@@ -141,9 +165,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root)
 
         self.sync_timer = QTimer(self)
-        self.sync_timer.timeout.connect(self.sync_from_google)
+        self.sync_timer.timeout.connect(self.sync_from_server)
         self.sync_timer.start(max(1, self.config.sync_interval_minutes) * 60 * 1000)
-        QTimer.singleShot(5000, self.sync_from_google)
+        QTimer.singleShot(5000, self.sync_from_server)
         self.sync_thread: QThread | None = None
         self.sync_worker: SyncWorker | None = None
 
@@ -152,19 +176,19 @@ class MainWindow(QMainWindow):
         if matches:
             self.nav.setCurrentItem(matches[0])
 
-    def sync_from_google(self) -> None:
+    def sync_from_server(self) -> None:
         label = provider_label(self.config.normalized_storage_mode)
         if not is_storage_configured(self.config):
             if hasattr(self, "sync_badge"):
-                self.sync_badge.setText(f"{label} 미설정")
+                self.sync_badge.setText(server_badge_text(False, label))
             if hasattr(self, "footer"):
-                self.footer.setText(f"{label} 연결값을 설정하면 동기화를 사용할 수 있습니다.")
+                self.footer.setText("설정에서 Google Drive 또는 Supabase 연결값을 입력하면 서버 동기화를 사용할 수 있습니다.")
             return
         if self.sync_thread and self.sync_thread.isRunning():
-            self.footer.setText(f"이미 {label} 동기화가 진행 중입니다.")
+            self.footer.setText(f"이미 {label} 서버 동기화가 진행 중입니다.")
             return
-        self.sync_badge.setText("동기화 중")
-        self.footer.setText(f"{label} 데이터를 동기화하는 중입니다. 화면은 계속 사용할 수 있습니다.")
+        self.sync_badge.setText(server_badge_text(True, label, "syncing"))
+        self.footer.setText(f"{label} 저장소와 동기화하는 중입니다. 화면은 계속 사용할 수 있습니다.")
         self.sync_thread = QThread(self)
         self.sync_worker = SyncWorker(self.config)
         self.sync_worker.moveToThread(self.sync_thread)
@@ -178,17 +202,23 @@ class MainWindow(QMainWindow):
         self.sync_thread.finished.connect(self._clear_sync_refs)
         self.sync_thread.start()
 
+    def check_for_updates(self) -> None:
+        if open_update_page():
+            self.footer.setText("업데이트 릴리즈 페이지를 열었습니다.")
+            return
+        QMessageBox.information(self, "업데이트 확인", update_unconfigured_message())
+
     def on_sync_finished(self, count: int) -> None:
         self._refresh_school_name_from_db()
         label = provider_label(self.config.normalized_storage_mode)
-        self.sync_badge.setText(f"{label} 연결됨")
-        self.footer.setText(f"{label} 동기화 완료: 제출 기록 {count}건 반영")
+        self.sync_badge.setText(server_badge_text(True, label, "connected"))
+        self.footer.setText(f"{label} 서버 동기화 완료: 제출 기록 {count}건 반영")
         logging.getLogger(__name__).info("%s sync completed", label)
 
     def on_sync_failed(self, message: str) -> None:
         label = provider_label(self.config.normalized_storage_mode)
-        self.sync_badge.setText("동기화 오류")
-        self.footer.setText(f"{label} 동기화 실패: {message}")
+        self.sync_badge.setText(server_badge_text(True, label, "error"))
+        self.footer.setText(f"{label} 서버 동기화 실패: {message}")
         logging.getLogger(__name__).warning("%s sync failed: %s", label, message)
 
     def _clear_sync_refs(self) -> None:

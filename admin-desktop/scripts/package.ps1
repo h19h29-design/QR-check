@@ -57,6 +57,7 @@ foreach ($RelativePath in @(
     "supabase\rls_policies.sql",
     "supabase-submit\index.html",
     "supabase-submit\config.example.js",
+    "admin-desktop\src\resources\app_icon.ico",
     "docs\09_RELEASE_CHECKLIST.md",
     "release\mobile_submit_preview.html",
     "release\mobile_admin_preview.html",
@@ -88,6 +89,7 @@ if (-not $SkipTests) {
 }
 
 $AppName = "QR" + [string]::Concat([char[]](0xBCF4, 0xC548, 0xC810, 0xAC80, 0xD45C)) + " " + [string]::Concat([char[]](0xAD00, 0xB9AC, 0xC790))
+$IconPath = Join-Path $Root "src\resources\app_icon.ico"
 $SpecPath = Join-Path $Root "build\spec"
 $WorkPath = Join-Path $Root "build\pyinstaller"
 $DistPath = Join-Path $Root "dist"
@@ -100,7 +102,9 @@ New-Item -ItemType Directory -Force -Path $WorkPath | Out-Null
     --windowed `
     --noupx `
     --name $AppName `
+    --icon $IconPath `
     --paths "src" `
+    --add-data "src\resources;resources" `
     --exclude-module win32com `
     --exclude-module pythoncom `
     --exclude-module pywintypes `

@@ -52,10 +52,18 @@ function Write-InstallerSource {
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>app_icon.ico</ApplicationIcon>
     <AssemblyName>QR_security_check_setup_stub</AssemblyName>
   </PropertyGroup>
 </Project>
 '@ | Set-Content -LiteralPath (Join-Path $BuildRoot "QrSecurityCheckSetup.csproj") -Encoding UTF8
+
+    $IconPath = Join-Path $Root "src\resources\app_icon.ico"
+    if (-not (Test-Path -LiteralPath $IconPath)) {
+        throw "설치 아이콘을 찾지 못했습니다: $IconPath"
+    }
+    Copy-Item -LiteralPath $IconPath -Destination (Join-Path $BuildRoot "app_icon.ico") -Force
 
     @'
 using System;
@@ -64,6 +72,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Windows.Forms;
 
 internal static class Program
 {
@@ -77,10 +86,14 @@ internal static class Program
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
+    [STAThread]
     private static int Main()
     {
         try
         {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
             string selfPath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? throw new InvalidOperationException("Setup executable path was not found.");
             byte[] self = File.ReadAllBytes(selfPath);
             byte[] marker = Encoding.UTF8.GetBytes(Marker);
@@ -102,7 +115,14 @@ internal static class Program
             ZipFile.ExtractToDirectory(payloadZip, extractRoot, overwriteFiles: true);
 
             string bundleRoot = FindBundleRoot(extractRoot);
-            string installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppRootName);
+            string defaultInstallRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppRootName);
+            string? installRoot = ChooseInstallRoot(defaultInstallRoot);
+            if (string.IsNullOrWhiteSpace(installRoot))
+            {
+                TryDelete(tempRoot);
+                return 0;
+            }
+            installRoot = Path.GetFullPath(installRoot);
             string targetRoot = Path.Combine(installRoot, BundleDirName);
             Directory.CreateDirectory(installRoot);
 
@@ -170,6 +190,20 @@ internal static class Program
                 return dir;
         }
         throw new DirectoryNotFoundException("Deployment package structure was not found.");
+    }
+
+    private static string? ChooseInstallRoot(string defaultInstallRoot)
+    {
+        Directory.CreateDirectory(defaultInstallRoot);
+        using FolderBrowserDialog dialog = new FolderBrowserDialog
+        {
+            Description = "QR보안점검표 관리자 설치 위치를 선택하세요.",
+            SelectedPath = defaultInstallRoot,
+            ShowNewFolderButton = true,
+            UseDescriptionForTitle = true
+        };
+        DialogResult result = dialog.ShowDialog();
+        return result == DialogResult.OK ? dialog.SelectedPath : null;
     }
 
     private static void CopyDirectory(string source, string destination)
@@ -375,8 +409,8 @@ $SetupExe
 버전:
 v$VersionNumber
 
-이 파일은 관리자 권한 없이 현재 사용자 폴더에 설치합니다.
-설치 위치:
+이 파일은 관리자 권한 없이 설치할 수 있으며, 설치 중 원하는 설치 위치를 선택합니다.
+기본 설치 위치:
 %LOCALAPPDATA%\QR보안점검표\배포패키지
 
 설치 후 바탕화면과 시작 메뉴에 'QR보안점검표 관리자' 바로가기를 만듭니다.

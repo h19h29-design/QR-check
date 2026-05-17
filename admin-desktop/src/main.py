@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import sys
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from app.config import load_config
 from app.logging_config import configure_logging
 from app.migrations import init_db
+from app.resources import resource_path
 from ui.main_window import MainWindow
 
 
@@ -19,6 +21,10 @@ def main() -> int:
 
     app = QApplication(sys.argv)
     app.setApplicationName("QR보안점검표 관리자")
+    icon_path = resource_path("app_icon.ico")
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
+
     font = app.font()
     base_size = font.pointSizeF() if font.pointSizeF() > 0 else 10.0
     font.setPointSizeF(base_size * 1.2)
