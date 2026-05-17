@@ -65,6 +65,13 @@ function Write-InstallerSource {
     }
     Copy-Item -LiteralPath $IconPath -Destination (Join-Path $BuildRoot "app_icon.ico") -Force
 
+    $SetupProgram = Join-Path $Root "installer\SetupProgram.cs"
+    if (-not (Test-Path -LiteralPath $SetupProgram)) {
+        throw "설치 프로그램 소스를 찾지 못했습니다: $SetupProgram"
+    }
+    Copy-Item -LiteralPath $SetupProgram -Destination (Join-Path $BuildRoot "Program.cs") -Force
+    return
+
     @'
 using System;
 using System.Diagnostics;
