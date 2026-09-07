@@ -59,6 +59,8 @@ async function initSubmitPage() {
   try {
     const data = await gas('getSubmitBootstrapForUi', params);
     window.__BOOTSTRAP__ = data;
+    // 관찰시간: 점검 화면을 연 시각(KST). 서버 접수시간과 구분해 지연 제출 판정에 쓴다.
+    window.__OBSERVED_AT__ = kstWallMinute_(new Date());
     qs('title').textContent = '보안점검표 - ' + data.room.room_name;
     renderPeople(data.people || []);
     renderItems(data.items || []);
@@ -84,12 +86,12 @@ function renderItems(items) {
     const nameCell = textEl('td', item.item_name);
     const statusCell = document.createElement('td');
     statusCell.className = 'status';
+    // 미선택이 기본이다. '전체 이상 없음' 버튼을 명시적으로 눌러야 일괄 선택된다.
     const normalLabel = document.createElement('label');
     const normal = document.createElement('input');
     normal.type = 'radio';
     normal.name = 'status_' + item.item_key;
     normal.value = STATUS_NORMAL;
-    normal.checked = true;
     normalLabel.appendChild(normal);
     normalLabel.appendChild(document.createTextNode(' ' + STATUS_NORMAL));
     const abnormalLabel = document.createElement('label');
@@ -118,6 +120,32 @@ function renderItems(items) {
       });
     });
   });
+  const bar = document.createElement('div');
+  bar.className = 'bulk-bar';
+  const allNormal = document.createElement('button');
+  allNormal.type = 'button';
+  allNormal.textContent = '전체 이상 없음으로 표시';
+  allNormal.addEventListener('click', function() {
+    items.forEach(function(item) {
+      const radios = Array.prototype.slice.call(document.getElementsByName('status_' + item.item_key));
+      radios.forEach(function(radio) { radio.checked = (radio.value === STATUS_NORMAL); });
+    });
+  });
+  bar.appendChild(allNormal);
+  bar.appendChild(textEl('span', '각 항목을 직접 확인한 뒤 눌러주세요.', 'hint'));
+  tbody.parentElement.parentElement.insertBefore(bar, tbody.parentElement.nextSibling);
+}
+function kstWallMinute_(date) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(date || new Date());
+    const get = function(t) { const p = parts.find(function(x) { return x.type === t; }); return p ? p.value : ''; };
+    return get('year') + '-' + get('month') + '-' + get('day') + 'T' + get('hour') + ':' + get('minute');
+  } catch (err) {
+    return '';
+  }
 }
 async function submitForm(event) {
   event.preventDefault();
@@ -157,6 +185,7 @@ async function buildSubmitPayload_() {
   const responsible = qs('responsibleSelect').value;
   const duty = qs('dutySelect').value;
   if (!responsible && !duty) throw new Error('담당자 또는 당직자를 선택하세요.');
+  if (responsible && duty) throw new Error('담당자와 당직자 중 한 명만 선택하세요.');
   const selected = (responsible || duty).split('|');
   const roleType = duty ? 'duty' : 'responsible';
   const items = window.__BOOTSTRAP__.items || [];
@@ -165,7 +194,8 @@ async function buildSubmitPayload_() {
   for (const item of items) {
     const radios = Array.prototype.slice.call(document.getElementsByName('status_' + item.item_key));
     const checked = radios.find(function(radio) { return radio.checked; });
-    status[item.item_key] = checked ? checked.value : STATUS_NORMAL;
+    // 미선택은 서버로 보내지 않는다. 서버가 빠진 항목을 거부한다.
+    if (checked) status[item.item_key] = checked.value;
     const fileInput = qs('file_' + item.item_key);
     if (fileInput && fileInput.files[0]) attachments[item.item_key] = await readFileAsBase64(fileInput.files[0]);
   }
@@ -179,6 +209,7 @@ async function buildSubmitPayload_() {
     status_json: status,
     remarks: qs('remarks').value,
     attachments: attachments,
+    observed_at: window.__OBSERVED_AT__ || '',
     client_info: { userAgent: navigator.userAgent }
   };
   try {
@@ -211,26 +242,55 @@ function showDone(result) {
 }
 async function resendPending() {
   const keys = Object.keys(localStorage).filter(function(k) { return k.indexOf('qr_pending_') === 0; });
+  let expired = 0;
+  let failed = 0;
   for (const key of keys) {
     try {
       const stored = JSON.parse(localStorage.getItem(key));
       const payload = stored && stored.payload ? stored.payload : stored;
       if (stored && stored.expires_at && Date.now() > Number(stored.expires_at)) {
         localStorage.removeItem(key);
+        expired++;
         continue;
       }
       await gas('submitInspectionForUi', payload);
       localStorage.removeItem(key);
     } catch (err) {
-      qs('offlineBox').classList.remove('hidden');
-      qs('offlineBox').textContent = '미전송 자료가 있습니다. 네트워크가 복구되면 다시 시도하세요.';
+      failed++;
     }
+  }
+  // 만료 삭제·재전송 실패를 사용자에게 반드시 알린다. 완료로 오인시키지 않는다.
+  if (expired || failed) {
+    const box = qs('offlineBox');
+    box.classList.remove('hidden');
+    const lines = [];
+    if (failed) lines.push('미전송 자료 ' + failed + '건이 있습니다. 네트워크가 복구되면 이 화면을 다시 열어 재전송하세요.');
+    if (expired) lines.push('보관기간(24시간)이 지나 삭제된 미전송 자료 ' + expired + '건이 있습니다. 해당 점검은 다시 제출하세요.');
+    clearNode(box);
+    lines.forEach(function(line) { box.appendChild(textEl('p', line)); });
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.textContent = '미전송 자료 모두 삭제';
+    clearButton.addEventListener('click', function() {
+      if (!window.confirm('전송되지 않은 자료를 모두 삭제할까요? 삭제 후에는 복구할 수 없습니다.')) return;
+      Object.keys(localStorage).filter(function(k) { return k.indexOf('qr_pending_') === 0; })
+        .forEach(function(k) { localStorage.removeItem(k); });
+      box.classList.add('hidden');
+    });
+    box.appendChild(clearButton);
   }
 }
 async function loadAdmin() {
   const payload = adminFilterPayload();
   try {
     const data = await gas('adminListForUi', payload);
+    // 서버 날짜(KST)를 우선 사용한다. 클라이언트 UTC 계산으로 오늘을 구하지 않는다.
+    if (data && data.server_date && !qs('adminStartDate').value) {
+      qs('adminStartDate').value = data.server_date;
+      qs('adminEndDate').value = data.server_date;
+      payload.start_date = data.server_date;
+      payload.end_date = data.server_date;
+    }
     renderAdminRooms(data.rooms || []);
     renderAdminRows(data.submissions || []);
   } catch (err) {
@@ -238,9 +298,6 @@ async function loadAdmin() {
   }
 }
 async function initAdminPage() {
-  const today = new Date().toISOString().slice(0, 10);
-  qs('adminStartDate').value = today;
-  qs('adminEndDate').value = today;
   await loadAdmin();
 }
 function adminFilterPayload() {
@@ -294,6 +351,9 @@ async function loadDetail(recordId) {
   detail.classList.remove('hidden');
   clearNode(detail);
   detail.appendChild(textEl('h2', '상세보기'));
+  if (record.save_state && String(record.save_state) === 'PARTIAL') {
+    detail.appendChild(textEl('p', '일부 저장 상태(PARTIAL): 첨부 또는 기록 처리가 끝나지 않았습니다. 첨부 목록을 확인하고 필요하면 재제출을 안내하세요.', 'bad'));
+  }
   const pre = document.createElement('pre');
   pre.textContent = JSON.stringify(record, null, 2);
   detail.appendChild(pre);

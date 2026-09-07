@@ -36,6 +36,9 @@ temp/
 *.tmp
 *.log
 
+# Generated runtime bundles (reproduce with: node tools/build-runtime.mjs)
+release/runtime/
+
 # OS/editor
 .DS_Store
 Thumbs.db

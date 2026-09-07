@@ -15,14 +15,43 @@ function isAdminEmail_(email) {
 
 function verifyAdmin_(payload) {
   const email = activeEmail_();
-  if (isAdminEmail_(email)) return { actor: email, method: 'google_email' };
+  if (email && isAdminEmail_(email)) return { actor: email, method: 'google_email' };
+  if (adminAuthMode_() === 'google_only') {
+    if (!email) {
+      throw new Error('Google 계정을 확인할 수 없습니다. 학교 관리자 Google 계정으로 로그인한 뒤 관리자 주소로 다시 접속하세요.');
+    }
+    logAudit_(email, 'admin_auth_denied', 'admin', '', { mode: 'google_only' });
+    throw new Error('관리자 목록에 없는 계정입니다. 학교 관리자에게 추가를 요청하세요.');
+  }
+  // DEPRECATED(token_compat): 기존 설치 호환용. 신규 설치는 google_only가 기본이다.
   const adminToken = payload && payload.adminToken;
   const tokenHash = setting_('admin_token_hash', '');
   if (adminToken && tokenHash && constantTimeEquals_(hashToken_(adminToken, 'admin'), tokenHash)) {
     return { actor: 'admin_token', method: 'admin_token' };
   }
-  logAudit_(email || 'anonymous', 'admin_auth_failed', 'admin', '', {});
+  logAudit_(email || 'anonymous', 'admin_auth_failed', 'admin', '', { mode: 'token_compat' });
   throw new Error('관리자 권한이 필요합니다. Google 계정 확인이 되지 않으면 관리자 토큰을 입력하세요.');
+}
+
+/**
+ * 신규 관리 웹/API 전용 엄격 검사. Google 이메일 + 관리자 허용목록만 인정한다.
+ * 클라이언트가 보낸 email/role은 보지 않는다. 빈 신원은 거부한다.
+ */
+function requireAdmin_(payload) {
+  const email = activeEmail_();
+  if (email && isAdminEmail_(email)) return { actor: email, method: 'google_email' };
+  if (!email) {
+    throw new Error('Google 계정을 확인할 수 없습니다. 학교 관리자 Google 계정으로 로그인한 뒤 관리자 주소로 다시 접속하세요.');
+  }
+  logAudit_(email, 'admin_auth_denied', 'admin', '', { mode: adminAuthMode_() });
+  throw new Error('관리자 목록에 없는 계정입니다. 학교 관리자에게 추가를 요청하세요.');
+}
+
+/** 관리자 인증 모드. 신규 설치 기본 google_only, 기존 설치 호환 token_compat. */
+function adminAuthMode_() {
+  const mode = setting_('admin_auth_mode', '');
+  if (mode === 'google_only' || mode === 'token_compat') return mode;
+  return setting_('setup_completed', '') === 'true' ? 'token_compat' : 'google_only';
 }
 
 function verifyDesktop_(payload) {

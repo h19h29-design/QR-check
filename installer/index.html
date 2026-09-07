@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR보안점검표 — 학교 설치센터</title>
+  <style>
+    :root { font-size: 18px; line-height: 1.7; }
+    body { font-family: system-ui, 'Malgun Gothic', sans-serif; margin: 0; background: #f6f7f9; color: #111; }
+    main { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    h1 { font-size: 1.5rem; }
+    .panel { background: #fff; border: 1px solid #ddd; border-radius: 0.75rem; padding: 1.25rem; margin: 1rem 0; }
+    button { font-size: 1.05rem; padding: 0.8rem 1.2rem; border-radius: 0.6rem; border: 1px solid #2456a6; background: #2456a6; color: #fff; }
+    button.secondary { background: #fff; color: #2456a6; }
+    ol.steps li { margin: 0.4rem 0; }
+    .notice { background: #fff8e1; border: 1px solid #e0c36a; border-radius: 0.6rem; padding: 0.8rem 1rem; }
+    code { font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>우리 학교 QR보안점검표 만들기</h1>
+  <div class="panel">
+    <p>학교 담당자의 <strong>학교 Google 계정</strong>에 점검 기록용 시트, 첨부 보관 폴더, 점검 웹앱을 만듭니다.
+    점검 기록·사진·직원 정보는 학교 계정에만 저장되며 이 설치센터 서버로 전송되지 않습니다.</p>
+    <p class="notice">설치 중 Google 승인 화면이 <strong>두 번</strong> 나옵니다.
+    ① 설치센터가 학교 파일을 만드는 권한 ② 학교 점검 웹앱 자체의 저장 권한.
+    두 승인을 모두 마치고 시험 제출까지 확인되어야 설치 완료로 표시됩니다.</p>
+  </div>
+  <div class="panel">
+    <h2>진행 단계</h2>
+    <ol class="steps" id="steps"></ol>
+  </div>
+  <div class="panel">
+    <h2>준비물 (학교 담당자)</h2>
+    <ul>
+      <li>학교에서 승인한 Google 계정 1개 (개인 계정 우회 안내를 하지 않습니다)</li>
+      <li>학교명, 관리자 표시 이름, 처음 점검할 장소 몇 곳</li>
+      <li>Windows 프로그램·개발 도구 설치 불필요, API 키 입력 없음</li>
+    </ul>
+    <button type="button" id="start">우리 학교용 만들기</button>
+    <button type="button" class="secondary" id="resume">중단된 설치 이어하기</button>
+  </div>
+  <div class="panel">
+    <h2>개인정보와 권한</h2>
+    <p>자세한 내용은 <code>docs/privacy/DATA_FLOW_AND_PERMISSIONS.md</code>를 보세요.
+    Google 토큰은 브라우저 메모리에만 두고 저장하지 않습니다.
+    언제든 Google 계정 → 보안 → 타사 액세스에서 설치센터 연결을 해제할 수 있으며,
+    해제 후에도 학교 점검·관리자·출력은 계속 작동합니다.</p>
+  </div>
+</main>
+<script type="module">
+  import { STATES } from './src/install/state-machine.mjs';
+  const labels = {
+    DRAFT: '시작', OAUTH_READY: 'Google 연결 확인', API_ACCESS_READY: 'Google 설정 확인',
+    STORAGE_CREATED: '학교 저장소 생성', SCRIPT_CREATED: '학교 스크립트 생성',
+    CODE_UPLOADED: '점검 코드 업로드', DEPLOYED: '점검·관리자 주소 생성',
+    AWAITING_SCHOOL_AUTH: '학교 앱 승인', VERIFIED: '시험 제출 확인', COMPLETE: '완료',
+  };
+  const ol = document.getElementById('steps');
+  for (const s of STATES) {
+    const li = document.createElement('li');
+    li.textContent = labels[s] || s;
+    ol.appendChild(li);
+  }
+  document.getElementById('start').addEventListener('click', () => {
+    alert('Google OAuth client ID 연결 후 동작합니다. docs/operator/INSTALLER_OAUTH_SETUP.md의 제작자 준비 작업을 먼저 확인하세요.');
+  });
+  document.getElementById('resume').addEventListener('click', () => {
+    alert('이어하기는 설치 정보(단계·자원 ID·릴리스) 선택 후 본인 계정으로 다시 승인하면 계속됩니다.');
+  });
+</script>
+</body>
+</html>

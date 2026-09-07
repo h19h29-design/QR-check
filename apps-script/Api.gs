@@ -1,5 +1,10 @@
 function initializeSchoolStorage_(payload) {
   payload = payload || {};
+  // API 설치 경로: 바인딩이 없고 설치센터가 학교 Sheet ID를 함께 보낸 경우, 시트 접근 전에 바인딩한다.
+  if (!schoolProp_('spreadsheet_id', '') && (payload.spreadsheet_id || payload.spreadsheetId)) {
+    verifyInitialSetupKey_(payload);
+    setSchoolProp_('spreadsheet_id', String(payload.spreadsheet_id || payload.spreadsheetId));
+  }
   const lock = LockService.getScriptLock();
   let locked = false;
   lock.waitLock(30000);
@@ -7,6 +12,10 @@ function initializeSchoolStorage_(payload) {
   try {
     ensureSheets_();
     seedDefaults_();
+    try {
+      setSchoolProp_('spreadsheet_id', ss_().getId());
+      setSetting_('spreadsheet_id', schoolProp_('spreadsheet_id', ''));
+    } catch (bindErr) {}
     const alreadySetup = setting_('setup_completed', '') === 'true';
     const auth = alreadySetup ? verifyAdmin_(payload) : verifyInitialSetupKey_(payload);
     validateSetupPayload_(payload, !alreadySetup);
@@ -70,6 +79,10 @@ function adminVerifyForUi(payload) {
 
 function adminBulkVerifyForUi(payload) {
   return adminBulkVerifyNormal_(payload || {});
+}
+
+function reissueRoomTokenForUi(payload) {
+  return reissueRoomTokenFromAdmin_(payload || {});
 }
 
 function adminBootstrapForUi(payload) {

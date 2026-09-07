@@ -1,15 +1,41 @@
 # AGENTS.md
 
+## 목표 (2026-09-07 확정, 이전 중앙 SaaS 설계 폐기)
+
+- 학교가 **자기 Google 계정에 소유하는 독립 웹앱**(Sheet + Drive 폴더 + Apps Script + 공개 QR 주소 + 관리자 주소)을 설치·운영한다.
+- 제작자는 프로그램 개발, 설치센터(정적 웹), 사용법, 업데이트 배포만 담당한다.
+- 학교 점검기록·직원정보·사진·관리자 계정을 제작자 서버나 중앙 DB에 모으지 않는다.
+- 설치센터·제작자 OAuth·제작자 GitHub가 꺼져도 학교 일상 운영(제출·조회·출력)이 작동해야 한다.
+- 학교 사용자에게 Windows EXE, Python/Node/Git/Docker, GitHub·Cloudflare·Vercel·Supabase 계정, API 키, 환경변수 입력을 요구하지 않는다.
+- "Google 로그인 한 번이면 모든 계정에서 무조건 자동 설치" 가정을 폐기한다. 승인 안내는 설치 마법사의 정식 단계다.
+
 ## 작업 원칙
 
-- 이 저장소는 "QR보안점검표 Google Drive 중간서버형 무료배포 시스템"을 끝까지 제작하기 위한 작업 공간이다.
 - PowerShell 기준으로 실행한다. CMD 명령어는 사용하지 않는다.
-- 초보자가 따라 할 수 있도록 문서와 스크립트는 자세하고 복사 가능한 형태로 작성한다.
-- 내 NAS, 내 서버, 유료 클라우드 서버를 중간 서버로 사용하지 않는다.
-- 학교별 Google Drive, Google Sheet, Google Apps Script를 중간 저장소와 서버리스 계층으로 사용한다.
-- 실제 Google Client Secret, 토큰, 관리자 이메일, 동기화 키는 코드에 하드코딩하지 않는다.
-- 민감정보는 `.env`, 로컬 JSON 설정, OS credential store에 두고 `.gitignore`에 포함한다.
+- 현재 브랜치 상태를 먼저 확인하고, 사용자 미커밋 변경을 보존한 작업 브랜치에서 진행한다.
 - 기존 기능보다 후퇴하지 않는다. 특히 QR 제출, 담당자/당직자 선택, 이상 무/이상 유, 항목별 첨부, 특이사항, 상세보기, 관리자 확인, 날짜별 조회, 엑셀 출력, QR 생성, 일괄확인을 유지한다.
+- 설계 → 최소 실패 테스트 → 구현 → 관련 테스트 → 핵심 스모크 순서로 진행한다.
+- `git reset --hard`, `git clean -fd`, 강제 푸시, 자동 push, 저장소 공개 전환, 운영 데이터 삭제, DNS 덮어쓰기, 유료 전환을 승인 없이 하지 않는다.
+- 전역 AGENTS.md·다른 프로젝트·모델 전역 설정은 수정하지 않는다.
+
+## 보안 기준
+
+- 점검자는 Google 로그인 없이 `room_id + submit_token` QR로 제출한다.
+- `submit_token`은 평문 저장하지 않고 hash로 검증한다.
+- 새 웹 관리자 경로는 Google 계정 전용이다. 공용 관리자 토큰 fallback은 신규 경로에서 제거한다(`requireAdmin_()`).
+  기존 Windows 프로그램 호환용 `verifyDesktop_()`(Sync Key)는 유지하되 신규 웹 로그인에 쓰지 않는다.
+- 클라이언트가 보낸 email/role은 권한 근거가 아니다. 빈 신원은 거부한다.
+- 첨부파일은 이미지/PDF만 허용하며 기본 5MB 제한을 둔다. 시그니처 검사를 유지한다.
+- 이상 없음만 일괄확인 가능하고, 이상 있음은 상세보기 후 개별확인만 가능하다.
+- 실제 관리자 이메일, Client Secret, 토큰, Sync Key, 학교 비밀값을 코드·배포물에 넣지 않는다.
+
+## 산출물 위치
+
+- 학교 런타임: `apps-script/`
+- 설치센터(정적): `installer/`
+- 빌드 도구: `tools/build-runtime.mjs`, `tools/build-release.mjs`
+- 검증 문서: `docs/review/` (CURRENT_STATE, GAS_FEASIBILITY, OAUTH_SCOPE_MATRIX, AUTH_DEPLOYMENT_ADR, RELEASE_READINESS)
+- 운영자 문서: `docs/operator/` / 사용자 문서: `docs/user/` / 개인정보: `docs/privacy/`
 
 ## 서브에이전트 운용
 
@@ -26,19 +52,3 @@
 - QA/Release Engineer: 테스트, 패키징, 배포문서 검토
 
 바로 다음 단계가 막히는 핵심 구현은 메인 에이전트가 직접 처리한다.
-
-## 산출물 위치
-
-- 메인 프로젝트: `D:\gpt\QR\qr-security-check`
-- 주요 완성 압축본: `C:\Users\user\Downloads`
-- 작업 요약 가능 위치: `D:\My_Digital_Brain\04_Inbox`
-
-## 보안 기준
-
-- 점검자는 Google 로그인 없이 `room_id + submit_token` QR로 제출한다.
-- `submit_token`은 평문 저장하지 않고 hash로 검증한다.
-- 관리자 웹은 Google 계정 기반을 목표로 하되 Apps Script 이메일 확인 한계 때문에 관리자 토큰 fallback을 병행한다.
-- Desktop sync key는 관리자 토큰과 분리하고 hash 저장을 우선한다.
-- 첨부파일은 이미지/PDF만 허용하며 기본 5MB 제한을 둔다.
-- 이상 없음만 일괄확인 가능하고, 이상 있음은 상세보기 후 개별확인만 가능하다.
-

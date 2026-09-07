@@ -40,28 +40,69 @@ function submitInspection_(payload) {
   lock.waitLock(30000);
   locked = true;
   const attachments = [];
+  let recordCommitted = false;
   try {
-    if (findBy_('submissions', 'record_id', prepared.recordId)) {
-      return { record_id: prepared.recordId, duplicate: true };
+    const existing = findBy_('submissions', 'record_id', prepared.recordId);
+    if (existing) {
+      if (String(existing.payload_digest || '') === String(prepared.digest)) {
+        return {
+          record_id: prepared.recordId,
+          duplicate: true,
+          abnormal: truthy_(existing.abnormal),
+          save_state: saveState_(existing)
+        };
+      }
+      throw new Error('이미 접수된 요청번호와 다른 내용입니다. 새로고침 후 다시 제출하세요. (충돌 방지)');
     }
     prepared.fileKeys.forEach(function(itemKey) {
       const uploaded = createAttachmentFile_(prepared.recordId, itemKey, prepared.files[itemKey]);
       if (uploaded) attachments.push(uploaded);
     });
     appendObject_('submissions', prepared.row);
-    attachments.forEach(function(attachment) {
-      appendObject_('attachments', attachment);
-    });
-    logAudit_(
-      prepared.submitter.person_name || 'anonymous',
-      'submit_create',
-      'submission',
-      prepared.recordId,
-      { room_id: prepared.room.room_id, abnormal: prepared.abnormal }
-    );
-    return { record_id: prepared.recordId, duplicate: false, abnormal: prepared.abnormal, attachments: attachments };
+    recordCommitted = true;
+    try {
+      attachments.forEach(function(attachment) {
+        appendObject_('attachments', attachment);
+      });
+      logAudit_(
+        prepared.submitter.person_name || 'anonymous',
+        'submit_create',
+        'submission',
+        prepared.recordId,
+        { room_id: prepared.room.room_id, abnormal: prepared.abnormal }
+      );
+    } catch (postErr) {
+      // 기록은 확정됨. 첨부/로그 실패가 확정 자료를 훼손하지 않도록 파일을 지우지 않고
+      // save_state=PARTIAL로 표시해 관리자가 누락을 인지·보완할 수 있게 한다.
+      try {
+        const partial = findBy_('submissions', 'record_id', prepared.recordId);
+        if (partial) {
+          partial.save_state = 'PARTIAL';
+          partial.updated_at = nowIso_();
+          upsertObject_('submissions', partial, 'record_id');
+        }
+        logAudit_('system', 'submit_partial', 'submission', prepared.recordId, {
+          message: postErr.message || String(postErr)
+        });
+      } catch (markErr) {}
+      return {
+        record_id: prepared.recordId,
+        duplicate: false,
+        abnormal: prepared.abnormal,
+        attachments: attachments,
+        partial: true,
+        save_state: 'PARTIAL'
+      };
+    }
+    return {
+      record_id: prepared.recordId,
+      duplicate: false,
+      abnormal: prepared.abnormal,
+      attachments: attachments,
+      save_state: 'COMMITTED'
+    };
   } catch (err) {
-    trashDriveFiles_(attachments);
+    if (!recordCommitted) trashDriveFiles_(attachments);
     throw err;
   } finally {
     if (locked) lock.releaseLock();
@@ -90,10 +131,38 @@ function prepareSubmission_(payload) {
     if (!activeItemKeys[itemKey]) throw new Error('알 수 없는 점검항목 첨부입니다: ' + itemKey);
     validateAttachmentPayload_(files[itemKey]);
   });
+  const observedAt = normalizeObservedAt_(payload.observed_at || payload.observedAt || '');
+  const inspectionDate = observedAt ? observedAt.slice(0, 10) : today_();
+  const digest = submissionDigest_({
+    room_id: room.room_id,
+    person_id: submitter.person_id,
+    role_type: submitter.role_type,
+    status: status,
+    remarks: remarks,
+    files: fileKeys.sort().map(function(k) {
+      const f = files[k] || {};
+      return {
+        item_key: k,
+        mime_type: String(f.mime_type || f.mimeType || '').toLowerCase(),
+        file_size: Number(f.file_size || f.fileSize || 0),
+        base64_length: String(f.base64 || '').length
+      };
+    })
+  });
+  const snapshot = {
+    app_version: APP_VERSION,
+    schema_version: SCHEMA_VERSION,
+    room_name: room.room_name,
+    person_name: submitter.person_name,
+    role_type: submitter.role_type,
+    items: activeItems
+      .sort(function(a, b) { return Number(a.sort_order) - Number(b.sort_order); })
+      .map(function(item) { return { key: String(item.item_key), name: String(item.item_name) }; })
+  };
   const row = {
     record_id: recordId,
     submitted_at: now,
-    inspection_date: today_(),
+    inspection_date: inspectionDate,
     room_id: room.room_id,
     room_name: room.room_name,
     person_id: submitter.person_id,
@@ -111,27 +180,58 @@ function prepareSubmission_(payload) {
     desktop_synced: false,
     desktop_synced_at: '',
     created_at: now,
-    updated_at: now
+    updated_at: now,
+    payload_digest: digest,
+    observed_at: observedAt,
+    submit_snapshot: JSON.stringify(snapshot),
+    save_state: 'COMMITTED'
   };
-  return { room: room, recordId: recordId, row: row, abnormal: abnormal, submitter: submitter, files: files, fileKeys: fileKeys };
+  return { room: room, recordId: recordId, row: row, digest: digest, abnormal: abnormal, submitter: submitter, files: files, fileKeys: fileKeys };
+}
+
+/** 관찰시간(KST wall time, yyyy-MM-ddTHH:mm). 빈 값 허용, 형식 오류는 거부한다. */
+function normalizeObservedAt_(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return '';
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(text)) {
+    throw new Error('관찰시간 형식이 올바르지 않습니다.');
+  }
+  return text;
 }
 
 function normalizeStatus_(input, activeItems) {
-  let raw = input || {};
+  let raw = input;
   if (typeof raw === 'string') {
     try {
       raw = JSON.parse(raw);
     } catch (err) {
-      raw = {};
+      throw new Error('점검 상태값을 해석할 수 없습니다. 다시 선택 후 제출하세요.');
     }
   }
-  if (Object.prototype.toString.call(raw) !== '[object Object]') raw = {};
+  if (!raw || Object.prototype.toString.call(raw) !== '[object Object]') {
+    throw new Error('점검 상태값을 해석할 수 없습니다. 다시 선택 후 제출하세요.');
+  }
   const normalized = {};
+  const missing = [];
+  const unknown = [];
   activeItems.forEach(function(item) {
     const key = String(item.item_key || '');
     if (!key) return;
-    normalized[key] = String(raw[key] || STATUS_NORMAL) === STATUS_ABNORMAL ? STATUS_ABNORMAL : STATUS_NORMAL;
+    if (!Object.prototype.hasOwnProperty.call(raw, key)) {
+      missing.push(String(item.item_name || key));
+      return;
+    }
+    const value = String(raw[key]);
+    if (value !== STATUS_NORMAL && value !== STATUS_ABNORMAL) {
+      throw new Error('올바르지 않은 점검 상태값입니다: ' + String(item.item_name || key));
+    }
+    normalized[key] = value;
   });
+  Object.keys(raw).forEach(function(key) {
+    if (!Object.prototype.hasOwnProperty.call(normalized, key)) unknown.push(key);
+  });
+  if (unknown.length) throw new Error('알 수 없는 점검항목이 있습니다: ' + unknown.join(', '));
+  if (missing.length) throw new Error('선택하지 않은 항목이 있습니다: ' + missing.join(', '));
   return normalized;
 }
 
@@ -143,10 +243,15 @@ function resolveSubmitter_(payload, room) {
   if (person.room_id && String(person.room_id) !== String(room.room_id)) {
     throw new Error('해당 실에 등록된 담당자 또는 당직자가 아닙니다.');
   }
+  const requestedRole = String(payload.role_type || payload.roleType || '');
+  const personRole = String(person.role_type || '');
+  if (requestedRole && personRole && requestedRole !== personRole) {
+    throw new Error('선택한 역할과 등록된 역할이 일치하지 않습니다. 다시 선택하세요.');
+  }
   return {
     person_id: String(person.person_id || ''),
     person_name: String(person.person_name || ''),
-    role_type: String(person.role_type || payload.role_type || payload.roleType || '')
+    role_type: personRole || requestedRole
   };
 }
 

@@ -7,6 +7,7 @@
 <body>
 <main class="container wide">
   <h1>QR보안점검표 관리자</h1>
+  <p class="notice">학교 관리자 Google 계정으로 로그인한 뒤 이 주소로 접속하세요. 신규 설치는 Google 계정으로만 확인되며, 아래 토큰 입력란은 기존 설치 호환용입니다.</p>
   <section class="toolbar">
     <label>시작일 <input id="adminStartDate" type="date" aria-label="조회 시작일"></label>
     <label>종료일 <input id="adminEndDate" type="date" aria-label="조회 종료일"></label>
@@ -24,7 +25,7 @@
         <option value="verified">확인 완료</option>
       </select>
     </label>
-    <label>관리자 토큰 <input id="adminToken" type="password" placeholder="이메일 확인 실패 시 입력" aria-label="관리자 토큰"></label>
+    <label>관리자 토큰(기존 설치 호환용) <input id="adminToken" type="password" placeholder="신규 설치에서는 비워 두세요" aria-label="관리자 토큰(기존 설치 호환용)"></label>
     <button onclick="loadAdmin()" title="현재 조건으로 점검기록을 조회합니다">조회</button>
     <button onclick="bulkVerify()" title="현재 조건 중 이상 없음 미확인 기록만 확인 처리합니다">이상 없음 일괄확인</button>
     <button onclick="openCsv()" title="현재 조회 조건을 CSV로 내려받습니다">CSV 다운로드</button>

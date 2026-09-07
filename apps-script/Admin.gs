@@ -12,6 +12,7 @@ function adminListSubmissions_(payload) {
     return acc;
   }, {});
   return {
+    server_date: today_(),
     submissions: rows,
     attachments: readTable_('attachments').filter(function(row) { return recordIds[String(row.record_id)]; }),
     rooms: readTable_('settings_rooms').filter(activeRow_)
@@ -62,19 +63,46 @@ function saveRoomFromAdmin_(payload) {
   const auth = verifyAdmin_(payload || {});
   const now = nowIso_();
   const roomId = payload.room_id || uuid_('room');
-  const token = payload.submitToken || Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  const existing = payload.room_id ? findBy_('settings_rooms', 'room_id', payload.room_id) : null;
+  // 실 이름·순서·활성 수정은 기존 QR 토큰을 유지한다. 토큰 교체는 reissueRoomTokenFromAdmin_ 전용.
+  let tokenHash = existing ? String(existing.submit_token_hash || '') : '';
+  let plainToken = '';
+  if (!existing || !tokenHash) {
+    plainToken = payload.submitToken
+      || Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    tokenHash = hashToken_(plainToken, roomId);
+  }
   const row = {
     room_id: roomId,
     room_name: payload.room_name,
-    room_order: payload.room_order || 100,
-    submit_token_hash: hashToken_(token, roomId),
+    room_order: payload.room_order || (existing ? existing.room_order : 100),
+    submit_token_hash: tokenHash,
     active: payload.active !== false,
-    created_at: payload.created_at || now,
-    updated_at: now
+    created_at: (existing && existing.created_at) || payload.created_at || now,
+    updated_at: now,
+    token_version: existing ? tokenVersion_(existing) : 1
   };
   upsertObject_('settings_rooms', row, 'room_id');
-  logAudit_(auth.actor, 'admin_save_room', 'room', roomId, {});
-  return { room: row, submitToken: token };
+  logAudit_(auth.actor, 'admin_save_room', 'room', roomId, { token_kept: !plainToken });
+  const result = { room: row, token_kept: !plainToken };
+  if (plainToken) result.submitToken = plainToken;
+  return result;
+}
+
+/** QR 토큰 명시적 재발급. 이전 토큰은 즉시 무효가 되며 이름을 바꿔도 호출되지 않는다. */
+function reissueRoomTokenFromAdmin_(payload) {
+  const auth = verifyAdmin_(payload || {});
+  const roomId = payload && (payload.room_id || payload.roomId);
+  if (!roomId) throw new Error('재발급할 실을 지정하세요.');
+  const existing = findBy_('settings_rooms', 'room_id', roomId);
+  if (!existing) throw new Error('실을 찾을 수 없습니다.');
+  const plainToken = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  existing.submit_token_hash = hashToken_(plainToken, roomId);
+  existing.token_version = tokenVersion_(existing) + 1;
+  existing.updated_at = nowIso_();
+  upsertObject_('settings_rooms', existing, 'room_id');
+  logAudit_(auth.actor, 'admin_reissue_room_token', 'room', roomId, { token_version: existing.token_version });
+  return { room_id: roomId, token_version: existing.token_version, submitToken: plainToken };
 }
 
 function exportCsv_(params) {

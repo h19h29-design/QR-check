@@ -32,6 +32,7 @@ function doPost(e) {
     else if (action === 'admin.getDetail') data = adminGetDetail_(payload);
     else if (action === 'admin.verifyRecord') data = adminVerifyRecord_(payload);
     else if (action === 'admin.bulkVerifyNormal') data = adminBulkVerifyNormal_(payload);
+    else if (action === 'admin.reissueRoomToken') data = reissueRoomTokenFromAdmin_(payload);
     else if (action === 'desktop.syncPull') data = desktopSyncPull_(payload);
     else if (action === 'desktop.pushSettings') data = desktopPushSettings_(payload);
     else if (action === 'desktop.verifyRecord') data = desktopVerifyRecord_(payload);

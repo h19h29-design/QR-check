@@ -1,14 +1,14 @@
 const SHEET_SCHEMAS = {
   settings_school: ['key', 'value'],
   settings_admins: ['admin_id', 'email', 'name', 'role', 'active', 'created_at', 'updated_at'],
-  settings_rooms: ['room_id', 'room_name', 'room_order', 'submit_token_hash', 'active', 'created_at', 'updated_at'],
+  settings_rooms: ['room_id', 'room_name', 'room_order', 'submit_token_hash', 'active', 'created_at', 'updated_at', 'token_version'],
   settings_people: ['person_id', 'person_name', 'role_type', 'room_id', 'active', 'sort_order', 'created_at', 'updated_at'],
   settings_check_items: ['item_id', 'item_key', 'item_name', 'sort_order', 'active', 'created_at', 'updated_at'],
   submissions: [
     'record_id', 'submitted_at', 'inspection_date', 'room_id', 'room_name', 'person_id', 'person_name',
     'role_type', 'status_json', 'abnormal', 'remarks', 'client_info', 'source', 'admin_verified',
     'admin_verified_by', 'admin_verified_at', 'admin_memo', 'desktop_synced', 'desktop_synced_at',
-    'created_at', 'updated_at'
+    'created_at', 'updated_at', 'payload_digest', 'observed_at', 'submit_snapshot', 'save_state'
   ],
   attachments: ['attachment_id', 'record_id', 'item_key', 'file_name', 'mime_type', 'file_size', 'drive_file_id', 'drive_url', 'created_at'],
   audit_log: ['log_id', 'created_at', 'actor', 'action', 'target_type', 'target_id', 'detail_json']
@@ -23,7 +23,7 @@ const DEFAULT_ITEMS = [
 ];
 
 function ss_() {
-  return SpreadsheetApp.getActiveSpreadsheet();
+  return getSpreadsheet_();
 }
 
 function ensureSheets_() {
@@ -133,6 +133,7 @@ function seedDefaults_() {
       });
     }
   });
+  ensureSchemaVersion_();
 }
 
 function bootstrapForClient_() {
@@ -140,6 +141,8 @@ function bootstrapForClient_() {
   seedDefaults_();
   return {
     school: tableToSettings_(readTable_('settings_school')),
+    server_date: today_(),
+    server_time: nowIso_(),
     rooms: readTable_('settings_rooms').filter(activeRow_),
     people: readTable_('settings_people').filter(activeRow_),
     items: readTable_('settings_check_items').filter(activeRow_)
