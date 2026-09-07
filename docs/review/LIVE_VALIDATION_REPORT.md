@@ -4,17 +4,30 @@
 
 ## 환경
 
-- 테스트 날짜: (미실시)
-- 테스트 계정 유형: Gmail 개인 1개 (승인됨, 미사용)
-- 브라우저: (기록 예정)
-- runtime version: v0.1.0 (현행), 업데이트 검증용 `1.1.1-test` 예정
+- 테스트 날짜: 2026-09-08 (KST 21:32 setup 완료)
+- 테스트 계정 유형: Gmail 개인 1개 (h19h29@gmail.com, 소유자 실행 확인)
+- runtime version: v7 (deployment AKfycbwBOB87... 동일 ID 유지)
+- 브라우저: 사용자 PC Chrome (수동) + 서버측 fetch 검증
 
 ## 기준점 (Phase 0, 2026-09-08)
 
-- `node --test`: 50/50 PASS (tests/gas 5종 35 + installer 3종 15)
+- `node --test`: 52/52 PASS (tests/gas 6종 35 + installer 3종 17)
 - `node tools/build-runtime.mjs`: PASS (public 12/admin 18, manifest+sha256)
 - secret scan: 0건
-- 커밋: `work/school-owned-web` (live 전 HMAC QR + 웹 실 관리 포함)
+
+## 생성된 Google 리소스
+
+| 항목 | 값 |
+|---|---|
+| Spreadsheet ID | 1nJbfnom7R6IC8v18lkBGi8T4plUtz9wtQQcYDLLtx4E (`QR_CHECK_E2E_20260908_점검기록`) |
+| Drive folder ID | 학교 시트 기준 자동 생성 (설치 응답 확인, ID 별도 기록 예정) |
+| Script ID | 1gOWQ3SCoawcVUo3Z4oBpfRFRZ__283LqyT8sEnacI2KXtk5bG4QfvFxd (컨테이너: 기존 테스트 시트, 독립 바인딩으로 E2E 시트 사용) |
+| version number | v7 (v1 사용자 배포 → v2~v7 API 업데이트, 동일 deployment ID 유지) |
+| deployment ID | AKfycbwBOB87gJ8cW6iQzgL8_GpXZN-o4oU3CdcmhyXNIt3DFptYmn6676agyiXD-deMQgC9 |
+| web app URL | 발급됨, 진입점 복구 후 200 확인 (URL은 사용자 보관) |
+
+테스트 리소스 prefix: `QR_CHECK_E2E_20260908_`. 테스트 데이터는 가상값만
+(학교명 `QR체크 테스트학교`, 행정실/교무실/도서실, 테스트관리자).
 
 ## 생성된 Google 리소스
 
@@ -24,8 +37,8 @@
 | Drive folder ID | (미생성) |
 | Script ID | (미생성) |
 | version number | (미생성) |
-| deployment ID | (미생성) |
-| web app URL | (미생성) |
+| deployment ID | AKfycbwBOB87gJ8cW6iQzgL8_GpXZN-o4oU3CdcmhyXNIt3DFptYmn6676agyiXD-deMQgC9 (2026-09-08 발급 확인) |
+| web app URL | (발급됨, 사용자 보관. URL 발급 ≠ 동작 검증) |
 
 테스트 리소스 prefix: `QR_CHECK_E2E_YYYYMMDD_`. 테스트 데이터는 가상값만
 (학교명 `QR체크 테스트학교`, 행정실/교무실/도서실, 테스트담당자1/테스트당직자1).
@@ -34,14 +47,15 @@
 
 | Test | Result | Evidence |
 |---|---|---|
-| Installer OAuth | NOT_TESTED | client ID 미설정(제작자 준비 미완) |
-| Spreadsheet creation | NOT_TESTED | |
-| Drive creation | NOT_TESTED | |
-| Apps Script creation | NOT_TESTED | |
-| Runtime upload | NOT_TESTED | |
-| Deployment | NOT_TESTED | |
-| Admin auth (google_only) | NOT_TESTED | |
-| Normal submission | NOT_TESTED | |
+| Installer OAuth | NOT_TESTED | 수동 경로로 진행 (client ID 미설정). 자동 설치기는 코드·단위검증만 완료 |
+| Spreadsheet creation | PASS | setup.initialize가 E2E 시트에 8개 테이블 생성 (setup_completed=true) |
+| Drive creation | PASS | ensureDriveFolders_ 성공 (루트+uploads+exports) |
+| Apps Script creation | PASS | 기존 테스트 프로젝트 활용 (소유자 h19h29@gmail.com 확인) |
+| Runtime upload | PASS | clasp 전체교체 18파일 + 원격 재조회 일치 확인 |
+| Deployment | PASS | /exec 200, health 200, 동일 deployment ID로 v1→v7 업데이트 유지 |
+| setup.initialize | PASS | 2026-09-07T21:32+09:00, 학교·관리자·장소 3곳 생성 |
+| Admin auth (google_only) | PASS | 소유자 ?page=admin 접속, 장소 3곳·제출 주소 표시 확인 (2026-09-08) |
+| Normal submission | NOT_TESTED | 다음 단계 (휴대폰 제출) |
 | Abnormal submission | NOT_TESTED | |
 | Attachment | NOT_TESTED | |
 | Duplicate request | NOT_TESTED | |

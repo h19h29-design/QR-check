@@ -44,6 +44,11 @@ live에서 `drive.file` 부족이 증명되면 호출·HTTP 상태·본문을 `L
 | `drive` (전체) | 첨부 저장/폴더 생성 | 과도. `drive.file`로 축소 가능한지 live 검증 (이번 작업에서 시도, 실패 시 문서화 후 유지) |
 | `userinfo.email` | 관리자 Google 이메일 확인 | 유지 |
 
+2026-09-08 live 판정: `spreadsheets.currentonly`는 독립형(API 설치) 프로젝트에서
+`openById` 바인딩 시트를 열지 못해 거부됨 → 학교 런타임을 `spreadsheets`로 확대.
+이유: 설치센터/API가 만든 전용 시트를 ID로 여는 구조이며 컨테이너 바인딩이 없다.
+drive.file만으로는 설치센터가 만든 시트를 학교 앱 권한으로 여는 경로가 보장되지 않음.
+
 ## C. 학교 런타임 목표
 
 - 공개 제출 경로: QR 토큰 검증만. Google 로그인 불필요 유지.

@@ -5,7 +5,19 @@ function doGet(e) {
   const params = (e && e.parameter) || {};
   const page = params.page || params.route || 'submit';
   if (page === 'health') {
-    return jsonResponse_({ ok: true, app: 'QR보안점검표', version: APP_VERSION, now: nowIso_() });
+    // TEMP-DEBUG-DIAG (live 진단 후 제거)
+    const diag = { ok: true, app: 'QR보안점검표', version: APP_VERSION, now: nowIso_() };
+    try { diag.active = activeEmail_(); } catch (emailErr) { diag.active = 'ERR'; }
+    try { diag.effective = effectiveEmail_(); } catch (effErr) { diag.effective = 'ERR'; }
+    try {
+      diag.prop_id = PropertiesService.getScriptProperties().getProperty('spreadsheet_id') || '(empty)';
+    } catch (propErr) { diag.prop_id = 'PROP_ERR'; }
+    try {
+      const id = PropertiesService.getScriptProperties().getProperty('spreadsheet_id') || '';
+      const t = SpreadsheetApp.openById(id);
+      diag.raw_open = 'OK:' + t.getId();
+    } catch (rawErr) { diag.raw_open = 'RAWFAIL: ' + (rawErr.message || rawErr); }
+    return jsonResponse_(diag);
   }
   if (page === 'setup') {
     return renderPage_('WebApp', { page: 'setup', title: '초기 설정', params: params });
