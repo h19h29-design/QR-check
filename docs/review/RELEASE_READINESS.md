@@ -1,20 +1,23 @@
-# RELEASE_READINESS — 출시 판정표 (2026-09-07, 정직 기록용)
+# RELEASE_READINESS — 출시 판정표 (2026-09-08, 정직 기록용)
 
-작업 브랜치: `work/school-owned-web` (커밋 후 해시 기록).
+작업 브랜치: `work/school-owned-web` (현 HEAD `78efdf8`, clean).
 `통과`는 실제 실행 근거가 있을 때만 표기한다.
 
 ## 로컬 검증 (통과)
 
 | 묶음 | 결과 | 근거 |
 |---|---|---|
-| 저장 일관성 | 통과 9/9 | `node --test tests/gas/submit.test.mjs` (엄격 상태값, 멱등, 충돌, snapshot, 관찰시간, 역할) |
-| 인증·QR 분리 | 통과 7/7 | `node --test tests/gas/auth-rooms.test.mjs` (google_only, 빈신원/비관리자 거부, 이름수정 QR유지, 재발급 무효, 바인딩 오류) |
-| 클라이언트 정적 | 통과 4/4 | `tests/gas/client.test.mjs` (파싱, UTC 제거, 명시적 전체정상, 기본값 제거) |
-| 설치 상태머신 | 통과 7/7 | `node --test installer/src/install/state-machine.test.mjs` |
-| 빌드 분리 | 통과 | `node tools/build-runtime.mjs` (public 11/admin 17, 시크릿 스캔, manifest+sha256) |
-| 시크릿 스캔 | 통과 | 저장소 전수 grep 0건, 빌드 스캔 통과 |
+| 저장 일관성 | 통과 9/9 | `tests/gas/submit.test.mjs` |
+| 인증·QR 분리 | 통과 7/7 | `tests/gas/auth-rooms.test.mjs` |
+| 클라이언트 정적 | 통과 4/4 | `tests/gas/client.test.mjs` |
+| PARTIAL 복구 | 통과 4/4 | `tests/gas/partial.test.mjs` (신규) |
+| 설치 상태머신 | 통과 7/7 | `state-machine.test.mjs` |
+| 설치 Google 계층 | 통과 8/8 | `installer.test.mjs` (신규: 토큰 메모리, 오류분류, 재시도, 재개) |
+| 업데이트·롤백 | 통과 4/4 | `update.test.mjs` (신규) |
+| 빌드 분리 | 통과 | `node tools/build-runtime.mjs` (public 11/admin 17, 시크릿 스캔, dirty:false) |
+| 시크릿 스캔 | 통과 | 저장소 전수 grep 0건 |
 
-## 실계정·실기기 (미검증 — 승인 후 진행)
+## 실계정·실기기 (미검증 — 상세: `LIVE_VALIDATION_REPORT.md`, 전 항목 NOT_TESTED)
 
 - GAS_FEASIBILITY 9항목 live: NOT_TESTED (Gmail 1개 승인됨, 테스트 실행은 다음 단계)
 - 학교 A/B 분리, 익명 제출→관리자 조회, deployment ID 업데이트 주소 보존
