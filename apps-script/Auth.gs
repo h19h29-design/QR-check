@@ -76,6 +76,18 @@ function createInitialSetupKey() {
   return key;
 }
 
+/**
+ * 소유자용 1회 발급. 편집기에서 이 함수를 실행한 뒤 [실행 로그]에서 키를 복사한다.
+ * (createInitialSetupKey의 반환값은 편집기 화면에 표시되지 않기 때문)
+ */
+function showSetupKeyForOwner() {
+  const key = createInitialSetupKey();
+  try {
+    Logger.log('SETUP_KEY:' + key);
+  } catch (logErr) {}
+  return key;
+}
+
 function verifyInitialSetupKey_(payload) {
   const expected = PropertiesService.getScriptProperties().getProperty('initial_setup_key_hash') || '';
   if (!expected) {

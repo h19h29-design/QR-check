@@ -89,6 +89,14 @@ test('스키마 버전·school_id가 기록된다', () => {
   assert.match(api.setting_('school_id', ''), /^school_/);
 });
 
+test('소유자 키 발급 함수는 키 문자열을 반환한다', () => {
+  const { api } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
+  api.ensureSheets_();
+  api.seedDefaults_();
+  const key = api.showSetupKeyForOwner();
+  assert.match(key, /^[0-9a-f]{40,}$/);
+});
+
 test('바인딩 ID가 잘못되면 명확한 오류를 낸다', () => {
   const { api } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
   seedSchool(api, { adminEmail: ADMIN });

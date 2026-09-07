@@ -148,6 +148,7 @@ export function createGasContext({ activeEmail = '', effectiveEmail = '' } = {})
     LockService: {
       getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }),
     },
+    Logger: { log: () => {}, getLog: () => '' },
     Utilities: {
       getUuid: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
       formatDate: (d, tz, pattern) => formatDateKST(d, pattern),

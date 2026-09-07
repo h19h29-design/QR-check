@@ -40,7 +40,7 @@ export function loadGas(options) {
       ensureSchemaVersion_, saveState_, tokenVersion_, canonicalJson_, submissionDigest_,
       // Auth
       activeEmail_, isAdminEmail_, verifyAdmin_, requireAdmin_, adminAuthMode_,
-      createInitialSetupKey, hashToken_,
+      createInitialSetupKey, showSetupKeyForOwner, hashToken_,
       // Submit
       submitInspection_, prepareSubmission_, normalizeStatus_, validateRoomToken_,
       roomToken_, ensureQrSecret_,
