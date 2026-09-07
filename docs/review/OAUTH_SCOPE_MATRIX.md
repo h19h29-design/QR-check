@@ -4,6 +4,25 @@
 
 ## A. 설치센터 (브라우저, token model, 메모리 보관)
 
+## A-2. 설치센터 호출 endpoint ↔ scope (코드 기준, 2026-09-08)
+
+구현: `installer/src/google/resources.mjs`, `installer/src/auth/google-auth.mjs`.
+
+| 호출 | endpoint | 필요 scope |
+|---|---|---|
+| 폴더 중복 조회·생성 | `drive/v3/files` (q/list/create) | `drive.file` |
+| 시트 중복 조회 | `drive/v3/files` (q/list) | `drive.file` |
+| 시트 생성(ko_KR/Asia/Seoul) | `sheets/v4/spreadsheets` | `drive.file` 우선 live 확인 |
+| 시트 폴더 이동 | `drive/v3/files/{id}:move` | `drive.file` (본인 생성 파일만) |
+| 연결검사 확인 읽기 | `sheets/v4/spreadsheets/{id}/values/settings_school!A1:B200` | `drive.file` 우선 live 확인 |
+| 스크립트 생성 | `script/v1/projects` | `script.projects` |
+| 코드 업로드(전체 교체) | `script/v1/projects/{id}/content` | `script.projects` |
+| 코드 백업 읽기 | `script/v1/projects/{id}/content` | `script.projects` |
+| 버전 생성 | `script/v1/projects/{id}/versions` | `script.deployments` |
+| 배포 생성·갱신·조회 | `script/v1/projects/{id}/deployments*` | `script.deployments` |
+
+live에서 `drive.file` 부족이 증명되면 호출·HTTP 상태·본문을 `LIVE_VALIDATION_REPORT.md`에 먼저 기록한 뒤 확대를 검토한다.
+
 | scope | 용도 | 비고 |
 |---|---|---|
 | `openid email profile` | 학교 계정 확인 | 최소 식별 |
