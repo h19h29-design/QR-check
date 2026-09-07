@@ -12,6 +12,9 @@
       <label>초기 설정 키 <input id="setupKey" type="password" placeholder="createInitialSetupKey 실행 결과"></label>
       <label>학교명 <input id="schoolName" placeholder="예: 서울○○학교"></label>
       <label>관리자 Google 이메일 <input id="adminEmail" placeholder="admin@example.com"></label>
+      <label>처음 점검할 장소 (한 줄에 하나, 최대 20곳)
+        <textarea id="initialRooms" rows="4" placeholder="행정실&#10;교무실&#10;도서실"></textarea>
+      </label>
       <label>현재 관리자 토큰 <input id="adminToken" type="password" placeholder="재실행 또는 토큰 재발급 시 입력"></label>
       <label><input id="rotateTokens" type="checkbox" class="inline-check"> 관리자 토큰과 Desktop Sync Key 재발급</label>
       <button onclick="runSetup()">Google 저장소 만들기</button>
@@ -24,6 +27,7 @@
         setupKey: document.getElementById('setupKey').value,
         school_name: document.getElementById('schoolName').value,
         admin_email: document.getElementById('adminEmail').value,
+        rooms: document.getElementById('initialRooms').value.split('\n'),
         adminToken: document.getElementById('adminToken').value,
         rotateTokens: document.getElementById('rotateTokens').checked
       };

@@ -156,6 +156,8 @@ export function createGasContext({ activeEmail = '', effectiveEmail = '' } = {})
         getBytes: () => [...bytes], getContentType: () => mime, getName: () => name,
       }),
       computeDigest: (algo, str) => signed(crypto.createHash('sha256').update(String(str), 'utf8').digest()),
+      computeHmacSha256Signature: (value, key) =>
+        signed(crypto.createHmac('sha256', String(key)).update(String(value), 'utf8').digest()),
       DigestAlgorithm: { SHA_256: 'SHA_256' },
       Charset: { UTF_8: 'UTF_8' },
     },

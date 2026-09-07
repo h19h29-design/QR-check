@@ -22,17 +22,6 @@ function getSubmitBootstrap_(payload) {
   };
 }
 
-function validateRoomToken_(roomId, submitToken) {
-  const room = findBy_('settings_rooms', 'room_id', roomId);
-  if (!room || !activeRow_(room)) throw new Error('유효하지 않은 QR 코드입니다.');
-  const expected = String(room.submit_token_hash || '');
-  if (!submitToken || !expected || !constantTimeEquals_(hashToken_(submitToken, room.room_id), expected)) {
-    logAudit_('anonymous', 'submit_token_failed', 'room', roomId, {});
-    throw new Error('유효하지 않은 QR 코드입니다.');
-  }
-  return room;
-}
-
 function submitInspection_(payload) {
   const prepared = prepareSubmission_(payload || {});
   const lock = LockService.getScriptLock();

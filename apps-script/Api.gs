@@ -39,11 +39,12 @@ function initializeSchoolStorage_(payload) {
     const rotate = payload.rotateTokens === true;
     const adminToken = (!setting_('admin_token_hash', '') || rotate) ? generateAdminTokenForSetup_(payload) : '(기존 관리자 토큰 유지)';
     const syncKey = (!setting_('sync_key_hash', '') || rotate) ? generateSyncKeyForSetup_(payload) : '(기존 Desktop Sync Key 유지)';
+    const createdRooms = createInitialRooms_(payload.rooms || payload.initialRooms || []);
     setSetting_('setup_completed', 'true');
     setSetting_('updated_at', now);
     if (!alreadySetup) clearInitialSetupKey_();
     logAudit_(auth ? auth.actor : adminEmail, 'setup_initialize', 'school', schoolName || setting_('school_name', ''), { rotateTokens: rotate });
-    return { folders: folders, adminToken: adminToken, syncKey: syncKey, version: APP_VERSION, setup_completed: true };
+    return { folders: folders, adminToken: adminToken, syncKey: syncKey, rooms: createdRooms, version: APP_VERSION, setup_completed: true };
   } finally {
     if (locked) lock.releaseLock();
   }
@@ -97,8 +98,46 @@ function adminDiscardPartialForUi(payload) {
   return adminDiscardPartial_(payload || {});
 }
 
+function adminRoomsForUi(payload) {
+  return adminListRooms_(payload || {});
+}
+
+function adminSaveRoomForUi(payload) {
+  return saveRoomFromAdmin_(payload || {});
+}
+
 function adminBootstrapForUi(payload) {
   return adminBootstrap_(payload || {});
+}
+
+/** 초기 설정 시 기본 장소 생성. 토큰은 이 응답에서만 1회 확인 가능하다. */
+function createInitialRooms_(roomsInput) {
+  var names = [];
+  if (Array.isArray(roomsInput)) names = roomsInput;
+  else if (typeof roomsInput === 'string') names = String(roomsInput).split('\n');
+  names = names.map(function(n) { return String(n == null ? '' : n).trim(); })
+    .filter(function(n) { return n !== ''; })
+    .slice(0, 20);
+  var created = [];
+  var order = 10;
+  names.forEach(function(roomName) {
+    if (roomName.length > 80) throw new Error('장소 이름은 80자 이하로 입력하세요: ' + roomName);
+    var roomId = uuid_('room');
+    var row = {
+      room_id: roomId,
+      room_name: roomName,
+      room_order: order,
+      submit_token_hash: '',
+      active: true,
+      created_at: nowIso_(),
+      updated_at: nowIso_(),
+      token_version: 1
+    };
+    upsertObject_('settings_rooms', row, 'room_id');
+    created.push({ room_id: roomId, room_name: roomName, token_version: 1, submit_token: roomToken_(roomId, 1) });
+    order += 10;
+  });
+  return created;
 }
 
 function validateSetupPayload_(payload, requireInitialFields) {

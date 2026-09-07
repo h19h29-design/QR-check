@@ -33,6 +33,8 @@ function doPost(e) {
     else if (action === 'admin.verifyRecord') data = adminVerifyRecord_(payload);
     else if (action === 'admin.bulkVerifyNormal') data = adminBulkVerifyNormal_(payload);
     else if (action === 'admin.reissueRoomToken') data = reissueRoomTokenFromAdmin_(payload);
+    else if (action === 'admin.listRooms') data = adminListRooms_(payload);
+    else if (action === 'admin.saveRoom') data = saveRoomFromAdmin_(payload);
     else if (action === 'admin.listPartials') data = adminListPartials_(payload);
     else if (action === 'admin.reconcileRecord') data = adminReconcileRecord_(payload);
     else if (action === 'admin.discardPartial') data = adminDiscardPartial_(payload);

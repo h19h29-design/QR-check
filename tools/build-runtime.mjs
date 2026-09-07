@@ -16,6 +16,7 @@ const PUBLIC_FILES = [
   'SchemaMigrations.gs',
   'Sheets.gs',
   'Submit.gs',
+  'QrTokens.gs',
   'DriveFiles.gs',
   'Templates.gs',
   'Client.js.html',

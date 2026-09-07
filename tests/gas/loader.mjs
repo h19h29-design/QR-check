@@ -16,6 +16,7 @@ const LOAD_ORDER = [
   'Auth.gs',
   'DriveFiles.gs',
   'Submit.gs',
+  'QrTokens.gs',
   'Admin.gs',
   'Api.gs',
   'DesktopSync.gs',
@@ -42,8 +43,9 @@ export function loadGas(options) {
       createInitialSetupKey, hashToken_,
       // Submit
       submitInspection_, prepareSubmission_, normalizeStatus_, validateRoomToken_,
+      roomToken_, ensureQrSecret_,
       // Admin
-      saveRoomFromAdmin_, reissueRoomTokenFromAdmin_,
+      saveRoomFromAdmin_, reissueRoomTokenFromAdmin_, adminListRooms_,
       adminListSubmissions_, adminVerifyRecord_,
       adminListPartials_, adminReconcileRecord_, adminDiscardPartial_,
       // Api

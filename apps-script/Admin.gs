@@ -64,45 +64,55 @@ function saveRoomFromAdmin_(payload) {
   const now = nowIso_();
   const roomId = payload.room_id || uuid_('room');
   const existing = payload.room_id ? findBy_('settings_rooms', 'room_id', payload.room_id) : null;
-  // 실 이름·순서·활성 수정은 기존 QR 토큰을 유지한다. 토큰 교체는 reissueRoomTokenFromAdmin_ 전용.
-  let tokenHash = existing ? String(existing.submit_token_hash || '') : '';
-  let plainToken = '';
-  if (!existing || !tokenHash) {
-    plainToken = payload.submitToken
-      || Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-    tokenHash = hashToken_(plainToken, roomId);
-  }
+  // 실 이름·순서·활성 수정은 token_version을 그대로 두므로 기존 QR이 계속 작동한다.
+  // 토큰 교체는 reissueRoomTokenFromAdmin_ 전용.
+  const version = existing ? tokenVersion_(existing) : 1;
   const row = {
     room_id: roomId,
     room_name: payload.room_name,
     room_order: payload.room_order || (existing ? existing.room_order : 100),
-    submit_token_hash: tokenHash,
+    submit_token_hash: existing ? String(existing.submit_token_hash || '') : '',
     active: payload.active !== false,
     created_at: (existing && existing.created_at) || payload.created_at || now,
     updated_at: now,
-    token_version: existing ? tokenVersion_(existing) : 1
+    token_version: version
   };
   upsertObject_('settings_rooms', row, 'room_id');
-  logAudit_(auth.actor, 'admin_save_room', 'room', roomId, { token_kept: !plainToken });
-  const result = { room: row, token_kept: !plainToken };
-  if (plainToken) result.submitToken = plainToken;
-  return result;
+  logAudit_(auth.actor, 'admin_save_room', 'room', roomId, { token_kept: !!existing, token_version: version });
+  return { room: row, token_kept: !!existing, token_version: version, submitToken: roomToken_(roomId, version) };
 }
 
-/** QR 토큰 명시적 재발급. 이전 토큰은 즉시 무효가 되며 이름을 바꿔도 호출되지 않는다. */
+/** QR 토큰 명시적 재발급. version+1 → 이전 QR 즉시 무효. 랜덤 hash는 비워 HMAC으로 수렴. */
 function reissueRoomTokenFromAdmin_(payload) {
   const auth = verifyAdmin_(payload || {});
   const roomId = payload && (payload.room_id || payload.roomId);
   if (!roomId) throw new Error('재발급할 실을 지정하세요.');
   const existing = findBy_('settings_rooms', 'room_id', roomId);
   if (!existing) throw new Error('실을 찾을 수 없습니다.');
-  const plainToken = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-  existing.submit_token_hash = hashToken_(plainToken, roomId);
+  existing.submit_token_hash = '';
   existing.token_version = tokenVersion_(existing) + 1;
   existing.updated_at = nowIso_();
   upsertObject_('settings_rooms', existing, 'room_id');
   logAudit_(auth.actor, 'admin_reissue_room_token', 'room', roomId, { token_version: existing.token_version });
-  return { room_id: roomId, token_version: existing.token_version, submitToken: plainToken };
+  return { room_id: roomId, token_version: existing.token_version, submitToken: roomToken_(roomId, existing.token_version) };
+}
+
+/** 실 목록 + 제출 URL용 토큰. 관리자 전용. hash·비밀키는 반환하지 않는다. */
+function adminListRooms_(payload) {
+  verifyAdmin_(payload || {});
+  const rooms = readTable_('settings_rooms')
+    .sort(function(a, b) { return Number(a.room_order || 100) - Number(b.room_order || 100); })
+    .map(function(room) {
+      return {
+        room_id: room.room_id,
+        room_name: room.room_name,
+        room_order: room.room_order,
+        active: activeRow_(room),
+        token_version: tokenVersion_(room),
+        submit_token: roomToken_(room.room_id, tokenVersion_(room))
+      };
+    });
+  return { server_date: today_(), rooms: rooms };
 }
 
 /** 저장 미완료(PARTIAL/DISCARDED 제외·COMMITTED 제외) 기록 목록. */

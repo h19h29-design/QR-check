@@ -11,10 +11,10 @@
 
 ## 기준점 (Phase 0, 2026-09-08)
 
-- `node --test`: 43/43 PASS (tests/gas 4종 28 + installer 3종 15)
-- `node tools/build-runtime.mjs`: PASS (public 11/admin 17, dirty:false)
+- `node --test`: 49/49 PASS (tests/gas 5종 34 + installer 3종 15)
+- `node tools/build-runtime.mjs`: PASS (public 12/admin 18, manifest+sha256)
 - secret scan: 0건
-- 커밋: `78efdf8` (work/school-owned-web, clean)
+- 커밋: `work/school-owned-web` (live 전 HMAC QR + 웹 실 관리 포함)
 
 ## 생성된 Google 리소스
 

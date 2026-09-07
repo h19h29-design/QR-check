@@ -46,7 +46,7 @@ test('실 이름 수정은 QR을 유지하고 재발급만 토큰을 바꾼다',
 
   const renamed = api.saveRoomFromAdmin_({ room_id: roomId, room_name: '3-2반' });
   assert.equal(renamed.token_kept, true);
-  assert.equal(renamed.submitToken, undefined);
+  assert.equal(renamed.submitToken, oldToken); // HMAC 결정적 토큰: 이름 변경 후 동일
   // 기존 QR 토큰으로 제출 가능
   const items = api.readTable_('settings_check_items');
   const status = {};

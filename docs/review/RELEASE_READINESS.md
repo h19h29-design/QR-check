@@ -14,7 +14,8 @@
 | 설치 상태머신 | 통과 7/7 | `state-machine.test.mjs` |
 | 설치 Google 계층 | 통과 8/8 | `installer.test.mjs` (신규: 토큰 메모리, 오류분류, 재시도, 재개) |
 | 업데이트·롤백 | 통과 4/4 | `update.test.mjs` (신규) |
-| 빌드 분리 | 통과 | `node tools/build-runtime.mjs` (public 11/admin 17, 시크릿 스캔, dirty:false) |
+| 빌드 분리 | 통과 | `node tools/build-runtime.mjs` (public 12/admin 18, 시크릿 스캔) |
+| HMAC QR·실 관리 | 통과 6/6 | `tests/gas/qr-tokens.test.mjs` (재인쇄·이름유지·재발급·레거시·초기장소·목록제출) |
 | 시크릿 스캔 | 통과 | 저장소 전수 grep 0건 |
 
 ## 실계정·실기기 (미검증 — 상세: `LIVE_VALIDATION_REPORT.md`, 전 항목 NOT_TESTED)

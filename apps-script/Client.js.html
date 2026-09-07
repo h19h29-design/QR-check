@@ -299,6 +299,77 @@ async function loadAdmin() {
 }
 async function initAdminPage() {
   await loadAdmin();
+  await loadRooms();
+}
+function submitBaseUrl_() {
+  return String(window.location.href).split('?')[0];
+}
+function roomSubmitUrl_(room) {
+  return submitBaseUrl_() + '?roomId=' + encodeURIComponent(room.room_id) +
+    '&submitToken=' + encodeURIComponent(room.submit_token);
+}
+async function loadRooms() {
+  try {
+    const data = await gas('adminRoomsForUi', { adminToken: qs('adminToken').value });
+    renderRooms(data.rooms || []);
+  } catch (err) {
+    alert(err.message || err);
+  }
+}
+function renderRooms(rooms) {
+  const tbody = qs('roomTable').querySelector('tbody');
+  clearNode(tbody);
+  rooms.forEach(function(room) {
+    const tr = document.createElement('tr');
+    tr.appendChild(textEl('td', room.room_name));
+    tr.appendChild(textEl('td', room.active ? '사용' : '중지'));
+    tr.appendChild(textEl('td', 'v' + room.token_version));
+    const urlCell = document.createElement('td');
+    const link = document.createElement('a');
+    link.href = roomSubmitUrl_(room);
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = '제출 주소 열기';
+    urlCell.appendChild(link);
+    const copy = document.createElement('input');
+    copy.readOnly = true;
+    copy.value = roomSubmitUrl_(room);
+    copy.setAttribute('aria-label', room.room_name + ' 제출 주소');
+    urlCell.appendChild(copy);
+    tr.appendChild(urlCell);
+    const actionCell = document.createElement('td');
+    const renameButton = document.createElement('button');
+    renameButton.type = 'button';
+    renameButton.textContent = '이름 변경';
+    renameButton.addEventListener('click', function() { renameRoom(room); });
+    const reissueButton = document.createElement('button');
+    reissueButton.type = 'button';
+    reissueButton.textContent = 'QR 재발급';
+    reissueButton.addEventListener('click', function() { reissueRoom(room); });
+    actionCell.appendChild(renameButton);
+    actionCell.appendChild(reissueButton);
+    tr.appendChild(actionCell);
+    tbody.appendChild(tr);
+  });
+}
+async function createRoom() {
+  const name = window.prompt('새 장소 이름:');
+  if (!name || !name.trim()) return;
+  await gas('adminSaveRoomForUi', { room_name: name.trim(), adminToken: qs('adminToken').value });
+  await loadRooms();
+}
+async function renameRoom(room) {
+  const name = window.prompt('장소 이름 변경 (QR은 그대로 유지됩니다):', room.room_name);
+  if (!name || !name.trim() || name.trim() === room.room_name) return;
+  await gas('adminSaveRoomForUi', { room_id: room.room_id, room_name: name.trim(), adminToken: qs('adminToken').value });
+  await loadRooms();
+  await loadAdmin();
+}
+async function reissueRoom(room) {
+  if (!window.confirm('"' + room.room_name + '"의 QR을 새로 발급할까요? 기존 QR은 즉시 사용할 수 없게 됩니다.')) return;
+  const result = await gas('reissueRoomTokenForUi', { room_id: room.room_id, adminToken: qs('adminToken').value });
+  alert('재발급 완료 (토큰 버전 v' + result.token_version + '). 부착된 QR을 교체하세요.');
+  await loadRooms();
 }
 function adminFilterPayload() {
   return {
