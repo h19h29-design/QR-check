@@ -353,6 +353,16 @@ async function loadDetail(recordId) {
   detail.appendChild(textEl('h2', '상세보기'));
   if (record.save_state && String(record.save_state) === 'PARTIAL') {
     detail.appendChild(textEl('p', '일부 저장 상태(PARTIAL): 첨부 또는 기록 처리가 끝나지 않았습니다. 첨부 목록을 확인하고 필요하면 재제출을 안내하세요.', 'bad'));
+    const reconcileButton = document.createElement('button');
+    reconcileButton.type = 'button';
+    reconcileButton.textContent = '첨부 확인 후 복구 확정';
+    reconcileButton.addEventListener('click', function() { reconcileDetail(record.record_id); });
+    detail.appendChild(reconcileButton);
+    const discardButton = document.createElement('button');
+    discardButton.type = 'button';
+    discardButton.textContent = '오류 기록으로 정리';
+    discardButton.addEventListener('click', function() { discardDetail(record.record_id); });
+    detail.appendChild(discardButton);
   }
   const pre = document.createElement('pre');
   pre.textContent = JSON.stringify(record, null, 2);
@@ -386,6 +396,17 @@ async function loadDetail(recordId) {
 }
 async function verifyDetail(recordId) {
   await gas('adminVerifyForUi', { record_id: recordId, admin_memo: qs('adminMemo').value, adminToken: qs('adminToken').value });
+  await loadAdmin();
+}
+async function reconcileDetail(recordId) {
+  if (!window.confirm('첨부 목록을 확인했으면 복구 확정합니다. 계속할까요?')) return;
+  await gas('adminReconcileForUi', { record_id: recordId, adminToken: qs('adminToken').value });
+  await loadAdmin();
+  await loadDetail(recordId);
+}
+async function discardDetail(recordId) {
+  if (!window.confirm('이 기록을 오류 정리 상태로 바꿀까요? 일반 조회에서 제외됩니다.')) return;
+  await gas('adminDiscardPartialForUi', { record_id: recordId, confirm: true, adminToken: qs('adminToken').value });
   await loadAdmin();
 }
 async function bulkVerify() {

@@ -105,6 +105,56 @@ function reissueRoomTokenFromAdmin_(payload) {
   return { room_id: roomId, token_version: existing.token_version, submitToken: plainToken };
 }
 
+/** 저장 미완료(PARTIAL/DISCARDED 제외·COMMITTED 제외) 기록 목록. */
+function adminListPartials_(payload) {
+  verifyAdmin_(payload || {});
+  const rows = readTable_('submissions')
+    .filter(function(row) { return saveState_(row) === 'PARTIAL'; })
+    .sort(function(a, b) { return String(b.submitted_at).localeCompare(String(a.submitted_at)); });
+  return { server_date: today_(), partials: rows };
+}
+
+/**
+ * PARTIAL 복구 확인. 관리자가 첨부·내용을 눈으로 확인한 뒤 확정 상태로 되돌린다.
+ * 파일을 다시 만들지 않으며, 기존 확정 자료를 지우지 않는다.
+ */
+function adminReconcileRecord_(payload) {
+  const auth = verifyAdmin_(payload || {});
+  const recordId = payload && (payload.record_id || payload.recordId);
+  const record = findBy_('submissions', 'record_id', recordId);
+  if (!record) throw new Error('기록을 찾을 수 없습니다.');
+  if (saveState_(record) === 'COMMITTED') {
+    return { record_id: record.record_id, save_state: 'COMMITTED', changed: false };
+  }
+  if (saveState_(record) === 'DISCARDED') throw new Error('이미 정리된 기록입니다.');
+  const attachments = readTable_('attachments').filter(function(row) { return String(row.record_id) === String(recordId); });
+  record.save_state = 'COMMITTED';
+  record.admin_memo = (record.admin_memo ? String(record.admin_memo) + '\n' : '') +
+    '[복구확인 ' + nowIso_() + '] 첨부 ' + attachments.length + '건 확인';
+  record.updated_at = nowIso_();
+  upsertObject_('submissions', record, 'record_id');
+  logAudit_(auth.actor, 'admin_reconcile_partial', 'submission', record.record_id, { attachments: attachments.length });
+  return { record_id: record.record_id, save_state: 'COMMITTED', changed: true, attachments: attachments.length };
+}
+
+/**
+ * PARTIAL 정리. 명시적 confirm 없이는 동작하지 않으며 행을 삭제하지 않고 DISCARDED로 표시한다.
+ * 일반 조회·엑셀에서 제외되지만 감사 추적용으로 남는다.
+ */
+function adminDiscardPartial_(payload) {
+  const auth = verifyAdmin_(payload || {});
+  if (!payload || payload.confirm !== true) throw new Error('정리하려면 확인 표시(confirm)가 필요합니다.');
+  const recordId = payload.record_id || payload.recordId;
+  const record = findBy_('submissions', 'record_id', recordId);
+  if (!record) throw new Error('기록을 찾을 수 없습니다.');
+  if (saveState_(record) === 'COMMITTED') throw new Error('확정된 기록은 정리할 수 없습니다.');
+  record.save_state = 'DISCARDED';
+  record.updated_at = nowIso_();
+  upsertObject_('submissions', record, 'record_id');
+  logAudit_(auth.actor, 'admin_discard_partial', 'submission', record.record_id, {});
+  return { record_id: record.record_id, save_state: 'DISCARDED' };
+}
+
 function exportCsv_(params) {
   verifyAdmin_(params || {});
   const csv = buildAdminCsv_(params || {});
@@ -141,6 +191,7 @@ function filterAdminSubmissions_(rows, payload) {
   const roomId = payload.room_id || payload.roomId || '';
   const state = payload.state || payload.status || '';
   return rows.filter(function(row) {
+    if (saveState_(row) === 'DISCARDED') return false;
     const rowDate = dateText_(row.inspection_date);
     if (startDate && rowDate < startDate) return false;
     if (endDate && rowDate > endDate) return false;

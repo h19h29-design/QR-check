@@ -45,6 +45,7 @@ export function loadGas(options) {
       // Admin
       saveRoomFromAdmin_, reissueRoomTokenFromAdmin_,
       adminListSubmissions_, adminVerifyRecord_,
+      adminListPartials_, adminReconcileRecord_, adminDiscardPartial_,
       // Api
       initializeSchoolStorage_,
       // misc

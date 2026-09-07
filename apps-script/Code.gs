@@ -33,6 +33,9 @@ function doPost(e) {
     else if (action === 'admin.verifyRecord') data = adminVerifyRecord_(payload);
     else if (action === 'admin.bulkVerifyNormal') data = adminBulkVerifyNormal_(payload);
     else if (action === 'admin.reissueRoomToken') data = reissueRoomTokenFromAdmin_(payload);
+    else if (action === 'admin.listPartials') data = adminListPartials_(payload);
+    else if (action === 'admin.reconcileRecord') data = adminReconcileRecord_(payload);
+    else if (action === 'admin.discardPartial') data = adminDiscardPartial_(payload);
     else if (action === 'desktop.syncPull') data = desktopSyncPull_(payload);
     else if (action === 'desktop.pushSettings') data = desktopPushSettings_(payload);
     else if (action === 'desktop.verifyRecord') data = desktopVerifyRecord_(payload);

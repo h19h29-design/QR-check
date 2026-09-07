@@ -85,6 +85,18 @@ function reissueRoomTokenForUi(payload) {
   return reissueRoomTokenFromAdmin_(payload || {});
 }
 
+function adminPartialsForUi(payload) {
+  return adminListPartials_(payload || {});
+}
+
+function adminReconcileForUi(payload) {
+  return adminReconcileRecord_(payload || {});
+}
+
+function adminDiscardPartialForUi(payload) {
+  return adminDiscardPartial_(payload || {});
+}
+
 function adminBootstrapForUi(payload) {
   return adminBootstrap_(payload || {});
 }
