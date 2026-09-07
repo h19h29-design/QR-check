@@ -302,6 +302,9 @@ async function initAdminPage() {
   await loadRooms();
 }
 function submitBaseUrl_() {
+  // 서버가 알려준 공개 /exec 주소를 우선 사용한다.
+  // iframe 내부 주소(window.location)는 1회용 샌드박스 주소라 QR·공유에 쓰면 안 된다.
+  if (window.__EXEC_URL__) return String(window.__EXEC_URL__).split('?')[0];
   return String(window.location.href).split('?')[0];
 }
 function roomSubmitUrl_(room) {

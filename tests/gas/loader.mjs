@@ -51,7 +51,7 @@ export function loadGas(options) {
       // Api
       initializeSchoolStorage_,
       // misc
-      nowIso_, today_, uuid_
+      nowIso_, today_, uuid_, publicExecUrl_
     })`,
     ctx,
   );

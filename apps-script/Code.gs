@@ -4,6 +4,7 @@ const TIMEZONE = 'Asia/Seoul';
 function doGet(e) {
   const params = (e && e.parameter) || {};
   const page = params.page || params.route || 'submit';
+  const execUrl = publicExecUrl_();
   if (page === 'health') {
     // TEMP-DEBUG-DIAG (live 진단 후 제거)
     const diag = { ok: true, app: 'QR보안점검표', version: APP_VERSION, now: nowIso_() };
@@ -20,17 +21,26 @@ function doGet(e) {
     return jsonResponse_(diag);
   }
   if (page === 'setup') {
-    return renderPage_('WebApp', { page: 'setup', title: '초기 설정', params: params });
+    return renderPage_('WebApp', { page: 'setup', title: '초기 설정', params: params, execUrl: execUrl });
   }
   if (page === 'admin') {
-    return renderPage_('AdminView', { page: 'admin', title: '관리자 화면', params: params });
+    return renderPage_('AdminView', { page: 'admin', title: '관리자 화면', params: params, execUrl: execUrl });
   }
   if (page === 'csv') {
     const safeParams = Object.assign({}, params);
     delete safeParams.adminToken;
     return exportCsv_(safeParams);
   }
-  return renderPage_('SubmitView', { page: 'submit', title: '보안점검표', params: params });
+  return renderPage_('SubmitView', { page: 'submit', title: '보안점검표', params: params, execUrl: execUrl });
+}
+
+/** 이 배포의 공개 /exec 주소. 제출·QR 주소 생성용. iframe 내부 주소(location)가 아니다. */
+function publicExecUrl_() {
+  try {
+    const url = ScriptApp.getService().getUrl();
+    if (url) return String(url).split('?')[0];
+  } catch (urlErr) {}
+  return '';
 }
 
 function doPost(e) {

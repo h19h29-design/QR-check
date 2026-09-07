@@ -29,3 +29,8 @@ test('명시적 전체 정상 버튼이 있다', () => {
 test('미선택 기본값이 남아 있지 않다', () => {
   assert.ok(!html.includes('normal.checked = true'));
 });
+
+test('제출 주소는 서버 공개 URL 우선, iframe 주소 경고가 있다', () => {
+  assert.ok(html.includes('__EXEC_URL__'));
+  assert.ok(html.includes('1회용'));
+});
