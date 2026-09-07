@@ -1,0 +1,5 @@
+# clasp push 제외 목록. 런타임 파일만 업로드한다.
+README_DEPLOY.md
+**/README_DEPLOY.md
+.clasp.json
+.gitignore

@@ -20,7 +20,7 @@ const PUBLIC_FILES = [
   'DriveFiles.gs',
   'Templates.gs',
   'Client.js.html',
-  'Submit.html',
+  'SubmitView.html',
   'Styles.html',
   'appsscript.json',
 ];
@@ -30,12 +30,12 @@ const ADMIN_ONLY_FILES = [
   'Admin.gs',
   'Api.gs',
   'DesktopSync.gs',
-  'Admin.html',
+  'AdminView.html',
   'WebApp.html',
 ];
 
 // 公开 묶음에 관리자·설정 API가 file 이름 기준으로 들어가지 않았는지 강제한다.
-const FORBIDDEN_IN_PUBLIC = ['Auth.gs', 'Admin.gs', 'Api.gs', 'DesktopSync.gs', 'Admin.html', 'WebApp.html'];
+const FORBIDDEN_IN_PUBLIC = ['Auth.gs', 'Admin.gs', 'Api.gs', 'DesktopSync.gs', 'AdminView.html', 'WebApp.html'];
 
 const SECRET_PATTERNS = [
   /AIza[0-9A-Za-z_-]{10,}/,

@@ -11,14 +11,14 @@ function doGet(e) {
     return renderPage_('WebApp', { page: 'setup', title: '초기 설정', params: params });
   }
   if (page === 'admin') {
-    return renderPage_('Admin', { page: 'admin', title: '관리자 화면', params: params });
+    return renderPage_('AdminView', { page: 'admin', title: '관리자 화면', params: params });
   }
   if (page === 'csv') {
     const safeParams = Object.assign({}, params);
     delete safeParams.adminToken;
     return exportCsv_(safeParams);
   }
-  return renderPage_('Submit', { page: 'submit', title: '보안점검표', params: params });
+  return renderPage_('SubmitView', { page: 'submit', title: '보안점검표', params: params });
 }
 
 function doPost(e) {

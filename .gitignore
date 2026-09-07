@@ -30,6 +30,11 @@ credentials*.json
 *sync_key*
 *admin_token*
 
+# Google Apps Script auth (never commit: tokens + target project binding)
+.clasp.json
+.clasprc.json
+**/.clasp.json
+
 # Temporary files
 tmp/
 temp/
