@@ -71,6 +71,19 @@ async function initSubmitPage() {
   }
   qs('submitForm').addEventListener('submit', submitForm);
 }
+function showSubmitInitError_(err) {
+  try {
+    const box = qs('offlineBox');
+    if (!box) return;
+    box.classList.remove('hidden');
+    const detail = (err && err.message) || String(err || '');
+    box.textContent = '제출 화면을 초기화하지 못했습니다. QR 주소 또는 네트워크를 확인하세요. ' + detail;
+  } catch (ignored) {}
+}
+function startSubmitPage_(initializer) {
+  const run = (typeof initializer === 'function') ? initializer : initSubmitPage;
+  return Promise.resolve().then(run).catch(showSubmitInitError_);
+}
 function renderPeople(people) {
   people.forEach(function(p) {
     const option = new Option(p.person_name, p.person_id + '|' + p.person_name);

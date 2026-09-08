@@ -11,11 +11,36 @@ const html = fs.readFileSync(
   path.resolve(here, '..', '..', 'apps-script', 'Client.js.html'),
   'utf8',
 );
+const blocks = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 
 test('Client.js.html 스크립트가 파싱된다', () => {
-  const blocks = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
   assert.ok(blocks.length >= 1);
   for (const code of blocks) new vm.Script(code, { filename: 'Client.js.html' });
+});
+
+test('제출 초기화 Promise 거부를 점검 화면에 표시한다', async () => {
+  const removedClasses = [];
+  const offlineBox = {
+    classList: { remove: (name) => removedClasses.push(name) },
+    textContent: '',
+  };
+  const context = vm.createContext({
+    document: {
+      getElementById: (id) => (id === 'offlineBox' ? offlineBox : null),
+    },
+    Promise,
+  });
+  for (const code of blocks) new vm.Script(code, { filename: 'Client.js.html' }).runInContext(context);
+  const startSubmitPage = vm.runInContext(
+    'typeof startSubmitPage_ === "function" ? startSubmitPage_ : null',
+    context,
+  );
+  assert.notEqual(startSubmitPage, null, '초기화 거부를 화면에 연결하는 진입점이 필요하다');
+
+  await startSubmitPage(() => Promise.reject(new Error('synthetic init failure')));
+
+  assert.ok(removedClasses.includes('hidden'));
+  assert.match(offlineBox.textContent, /synthetic init failure/);
 });
 
 test('UTC 날짜 계산이 남아 있지 않다', () => {
