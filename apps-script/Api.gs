@@ -1,17 +1,9 @@
 function initializeSchoolStorage_(payload) {
   payload = payload || {};
   // API 설치 경로: 바인딩이 없고 설치센터가 학교 Sheet ID를 함께 보낸 경우, 시트 접근 전에 바인딩한다.
-  // TEMP-TEST-BOOTSTRAP: 독립형 스크립트는 바인딩 전에는 setup_completed를 읽을 수 없으므로,
-  // 키 미발급 + testBootstrap 요청이면 기존 값과 무관하게 바인딩한다 (live 검증 후 제거).
   const wantBind = String(payload.spreadsheet_id || payload.spreadsheetId || '');
   if (wantBind) {
-    const noSetupKeyHash = !PropertiesService.getScriptProperties().getProperty('initial_setup_key_hash');
-    const bootstrapBind = payload.testBootstrap === true && noSetupKeyHash;
-    if (!bootstrapBind && schoolProp_('spreadsheet_id', '')) {
-      verifyInitialSetupKey_(payload);
-    } else if (!bootstrapBind) {
-      verifyInitialSetupKey_(payload);
-    }
+    verifyInitialSetupKey_(payload);
     setSchoolProp_('spreadsheet_id', wantBind);
   }
   const lock = LockService.getScriptLock();
@@ -26,15 +18,9 @@ function initializeSchoolStorage_(payload) {
       setSetting_('spreadsheet_id', schoolProp_('spreadsheet_id', ''));
     } catch (bindErr) {}
     const alreadySetup = setting_('setup_completed', '') === 'true';
-    // TEMP-TEST-BOOTSTRAP (live 검증 후 제거): 미설치 + 키 미발급 상태에서만 1회 허용.
-    // 이 호출이 성공하면 setup_completed=true가 되어 같은 경로로 재진입이 불가능하다.
-    const hasSetupKeyHash = !!PropertiesService.getScriptProperties().getProperty('initial_setup_key_hash');
-    const allowTestBootstrap = !alreadySetup && !hasSetupKeyHash && payload.testBootstrap === true;
     const auth = alreadySetup
       ? verifyAdmin_(payload)
-      : (allowTestBootstrap
-        ? { actor: 'test_bootstrap', method: 'test_bootstrap' }
-        : verifyInitialSetupKey_(payload));
+      : verifyInitialSetupKey_(payload);
     validateSetupPayload_(payload, !alreadySetup);
 
     const now = nowIso_();
@@ -67,64 +53,79 @@ function initializeSchoolStorage_(payload) {
   }
 }
 
+/** google.script.run은 Date 객체를 왕복할 수 없으므로 UI 경계에서 재귀적으로 문자열화한다. */
+function clientSafeValue_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    if (isNaN(value.getTime())) return null;
+    return Utilities.formatDate(value, TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+  }
+  if (Array.isArray(value)) return value.map(clientSafeValue_);
+  if (value && typeof value === 'object') {
+    const out = {};
+    Object.keys(value).forEach(function(key) { out[key] = clientSafeValue_(value[key]); });
+    return out;
+  }
+  return value;
+}
+
 function setupInitializeForUi(payload) {
-  return initializeSchoolStorage_(payload || {});
+  return clientSafeValue_(initializeSchoolStorage_(payload || {}));
 }
 
 function getBootstrapForUi(payload) {
-  return adminBootstrap_(payload || {});
+  return clientSafeValue_(adminBootstrap_(payload || {}));
 }
 
 function getSubmitBootstrapForUi(payload) {
-  return getSubmitBootstrap_(payload || {});
+  return clientSafeValue_(getSubmitBootstrap_(payload || {}));
 }
 
 function submitInspectionForUi(payload) {
-  return submitInspection_(payload || {});
+  return clientSafeValue_(submitInspection_(payload || {}));
 }
 
 function adminListForUi(payload) {
-  return adminListSubmissions_(payload || {});
+  return clientSafeValue_(adminListSubmissions_(payload || {}));
 }
 
 function adminDetailForUi(payload) {
-  return adminGetDetail_(payload || {});
+  return clientSafeValue_(adminGetDetail_(payload || {}));
 }
 
 function adminVerifyForUi(payload) {
-  return adminVerifyRecord_(payload || {});
+  return clientSafeValue_(adminVerifyRecord_(payload || {}));
 }
 
 function adminBulkVerifyForUi(payload) {
-  return adminBulkVerifyNormal_(payload || {});
+  return clientSafeValue_(adminBulkVerifyNormal_(payload || {}));
 }
 
 function reissueRoomTokenForUi(payload) {
-  return reissueRoomTokenFromAdmin_(payload || {});
+  return clientSafeValue_(reissueRoomTokenFromAdmin_(payload || {}));
 }
 
 function adminPartialsForUi(payload) {
-  return adminListPartials_(payload || {});
+  return clientSafeValue_(adminListPartials_(payload || {}));
 }
 
 function adminReconcileForUi(payload) {
-  return adminReconcileRecord_(payload || {});
+  return clientSafeValue_(adminReconcileRecord_(payload || {}));
 }
 
 function adminDiscardPartialForUi(payload) {
-  return adminDiscardPartial_(payload || {});
+  return clientSafeValue_(adminDiscardPartial_(payload || {}));
 }
 
 function adminRoomsForUi(payload) {
-  return adminListRooms_(payload || {});
+  return clientSafeValue_(adminListRooms_(payload || {}));
 }
 
 function adminSaveRoomForUi(payload) {
-  return saveRoomFromAdmin_(payload || {});
+  return clientSafeValue_(saveRoomFromAdmin_(payload || {}));
 }
 
 function adminBootstrapForUi(payload) {
-  return adminBootstrap_(payload || {});
+  return clientSafeValue_(adminBootstrap_(payload || {}));
 }
 
 /** 초기 설정 시 기본 장소 생성. 토큰은 이 응답에서만 1회 확인 가능하다. */

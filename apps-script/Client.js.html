@@ -318,10 +318,12 @@ function submitBaseUrl_() {
   // 서버가 알려준 공개 /exec 주소를 우선 사용한다.
   // iframe 내부 주소(window.location)는 1회용 샌드박스 주소라 QR·공유에 쓰면 안 된다.
   if (window.__EXEC_URL__) return String(window.__EXEC_URL__).split('?')[0];
-  return String(window.location.href).split('?')[0];
+  return '';
 }
 function roomSubmitUrl_(room) {
-  return submitBaseUrl_() + '?roomId=' + encodeURIComponent(room.room_id) +
+  const base = submitBaseUrl_();
+  if (!base) return '';
+  return base + '?roomId=' + encodeURIComponent(room.room_id) +
     '&submitToken=' + encodeURIComponent(room.submit_token);
 }
 async function loadRooms() {
@@ -341,15 +343,21 @@ function renderRooms(rooms) {
     tr.appendChild(textEl('td', room.active ? '사용' : '중지'));
     tr.appendChild(textEl('td', 'v' + room.token_version));
     const urlCell = document.createElement('td');
+    const submitUrl = roomSubmitUrl_(room);
     const link = document.createElement('a');
-    link.href = roomSubmitUrl_(room);
     link.target = '_blank';
     link.rel = 'noopener';
-    link.textContent = '제출 주소 열기';
+    if (submitUrl) {
+      link.href = submitUrl;
+      link.textContent = '제출 주소 열기';
+    } else {
+      link.textContent = '공개 제출 주소를 확인하세요';
+    }
     urlCell.appendChild(link);
     const copy = document.createElement('input');
     copy.readOnly = true;
-    copy.value = roomSubmitUrl_(room);
+    copy.value = submitUrl;
+    copy.disabled = !submitUrl;
     copy.setAttribute('aria-label', room.room_name + ' 제출 주소');
     urlCell.appendChild(copy);
     tr.appendChild(urlCell);

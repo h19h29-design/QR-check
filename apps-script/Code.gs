@@ -1,4 +1,5 @@
 const APP_VERSION = '0.1.0';
+const BUILD_ID = 'qrcheck-20260908-admin-ui';
 const TIMEZONE = 'Asia/Seoul';
 
 function doGet(e) {
@@ -6,19 +7,13 @@ function doGet(e) {
   const page = params.page || params.route || 'submit';
   const execUrl = publicExecUrl_();
   if (page === 'health') {
-    // TEMP-DEBUG-DIAG (live 진단 후 제거)
-    const diag = { ok: true, app: 'QR보안점검표', version: APP_VERSION, now: nowIso_() };
-    try { diag.active = activeEmail_(); } catch (emailErr) { diag.active = 'ERR'; }
-    try { diag.effective = effectiveEmail_(); } catch (effErr) { diag.effective = 'ERR'; }
-    try {
-      diag.prop_id = PropertiesService.getScriptProperties().getProperty('spreadsheet_id') || '(empty)';
-    } catch (propErr) { diag.prop_id = 'PROP_ERR'; }
-    try {
-      const id = PropertiesService.getScriptProperties().getProperty('spreadsheet_id') || '';
-      const t = SpreadsheetApp.openById(id);
-      diag.raw_open = 'OK:' + t.getId();
-    } catch (rawErr) { diag.raw_open = 'RAWFAIL: ' + (rawErr.message || rawErr); }
-    return jsonResponse_(diag);
+    return jsonResponse_({
+      ok: true,
+      app: 'QR보안점검표',
+      app_version: APP_VERSION,
+      build_id: BUILD_ID,
+      now: nowIso_()
+    });
   }
   if (page === 'setup') {
     return renderPage_('WebApp', { page: 'setup', title: '초기 설정', params: params, execUrl: execUrl });
@@ -38,7 +33,8 @@ function doGet(e) {
 function publicExecUrl_() {
   try {
     const url = ScriptApp.getService().getUrl();
-    if (url) return String(url).split('?')[0];
+    const base = String(url || '').split('?')[0];
+    if (/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(base)) return base;
   } catch (urlErr) {}
   return '';
 }

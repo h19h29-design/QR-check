@@ -26,8 +26,6 @@
       const rawKey = document.getElementById('setupKey').value;
       const payload = {
         setupKey: rawKey,
-        // 임시 live 부트스트랩: 키 칸에 TEST-SETUP 입력 시 1회용으로 허용 (설치 완료 후 제거 예정)
-        testBootstrap: rawKey.trim() === 'TEST-SETUP',
         school_name: document.getElementById('schoolName').value,
         admin_email: document.getElementById('adminEmail').value,
         rooms: document.getElementById('initialRooms').value.split('\n'),

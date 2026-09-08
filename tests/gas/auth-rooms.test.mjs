@@ -6,6 +6,18 @@ import { loadGas, seedSchool } from './loader.mjs';
 const ADMIN = 'owner201@test.example';
 const OTHER = 'stranger@test.example';
 
+test('testBootstrap 플래그로 초기 설정 인증을 우회할 수 없다', () => {
+  const { api } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
+  assert.throws(
+    () => api.initializeSchoolStorage_({
+      testBootstrap: true,
+      school_name: '테스트학교',
+      admin_email: ADMIN,
+    }),
+    /초기 설정 키/,
+  );
+});
+
 test('신규 설치 기본 모드는 google_only, 토큰 fallback이 거부된다', () => {
   const { api, stubs } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
   const seed = seedSchool(api, { adminEmail: ADMIN });
