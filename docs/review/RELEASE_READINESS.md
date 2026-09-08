@@ -1,5 +1,25 @@
 # RELEASE_READINESS — 출시 판정표 (2026-09-08)
 
+## 2026-09-08 local-only addendum — current status (no live Google calls)
+
+- Date/scope: 2026-09-08, local-only. No live Google calls, push, merge, deployment, QR reissue, sharing, DNS, OAuth configuration, or rollback were performed.
+- Historical Gmail live PASS evidence below is preserved as historical; full IDs/accounts/tokens are not exposed.
+- Local checks: Node 172/172 PASS; Python 16/16 PASS; `git diff --check` clean; secret-pattern scan no matches.
+- Runtime build: 0.1.0 `dirty=true`, public 12 / admin 18; therefore NOT_READY_TO_PUBLISH until reviewed clean commit and `dirty=false` rebuild.
+- Static site: unpublished, 20 files, `runtime_file_count` 0, HTTP root/demo/update 200 locally.
+- Pages: main/maker/demo/guide/help/update implemented. Maker intentionally blocked until OAuth client ID / allowed origin configured. Update intentionally unpublished with no apply action.
+- Local E: identical payload idempotent; now covers `observed_at` and equal-length attachment-content conflict. Live E still NOT_TESTED.
+- Local F: remains PASS for rename/reprint/reissue. Live F still NOT_TESTED.
+- Local G2: covers `google_only` and `token_compat` empty/unregistered rejection; invalid setup key creates no seed sheets. Live G2 still NOT_TESTED.
+- Local I boundary: reviewed/build passes, but live independence still NOT_TESTED.
+- Browser: responsive/blocked-state evidence PASS as in `HOMEPAGE_VALIDATION_REPORT.md`; later final demo submit/batch click NOT_COMPLETED because in-app input API failed. This is not a PASS.
+- Overall readiness: LOCAL_IMPLEMENTATION_VERIFIED, PUBLIC_SITE_NOT_DEPLOYED, LIVE_INSTALLER_NOT_VERIFIED, RELEASE_BLOCKED_BY_APPROVAL_AND_CLEAN_BUILD.
+- Remaining: live OAuth/resource creation with disposable account, education Workspace, printed/mobile QR, live E/F/G2/I, real rollback, confirmed hostname/OAuth/DNS approval, clean commit/build.
+- Related: `HOMEPAGE_VALIDATION_REPORT.md`, `../operator/MAIN_SITE_DEPLOY.md`.
+- Executor: exact model `opencode/muse-spark-1.3-contributor-free`, fallback none, `liveProviderAttested` false.
+
+## Historical baseline (earlier 2026-09-08 Gmail live session)
+
 작업 브랜치: `work/school-owned-web`. 코드 기준 `5f4df10`, 테스트 배포 version 11.
 `PASS`는 이번 실행 증거가 있을 때만 사용한다. 상세 증거는 `LIVE_VALIDATION_REPORT.md`를 따른다.
 
@@ -9,7 +29,7 @@
 
 Gmail 테스트에서 핵심 경로(관리자 주소 → 다른 브라우저 제출 → 실제 Sheet → 관리자 동일 기록)와 이상 있음 사진 첨부·Drive 비공개는 PASS다. 실제 QR 스캔, 미등록 관리자 live, 설치센터 차단, 실기기·교육기관 Workspace가 아직 남아 있다.
 
-## 완료된 게이트
+## 완료된 게이트 (historical — see addendum for current local counts)
 
 | 게이트 | 결과 | 근거 |
 |---|---|---|
@@ -25,7 +45,7 @@ Gmail 테스트에서 핵심 경로(관리자 주소 → 다른 브라우저 제
 | 업데이트 주소 보존 | PASS | 동일 deployment ID로 version 11 갱신, 기존 URL·QR 토큰·기록 유지 |
 | 배포 복구 자료 | PASS | 고정 v10/v11 및 원격 소스 백업 존재 |
 
-## 보류 게이트
+## 보류 게이트 (live — still NOT_TESTED; local E/F/G2/I coverage in addendum above)
 
 | 게이트 | 결과 | 해제 조건 |
 |---|---|---|

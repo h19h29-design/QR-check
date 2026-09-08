@@ -121,3 +121,35 @@ test('담당자·당직자 중복 선택은 서버에서 거부된다', () => {
   p.role_type = 'responsible'; // 등록은 duty
   assert.throws(() => api.prepareSubmission_(p), /역할/);
 });
+
+test('같은 요청번호에 관찰시간이 다르면 충돌하고 원본이 보존된다', () => {
+  const { api, seed } = fresh();
+  const p = basePayload(seed, { record_id: 'rec_obs_conflict', observed_at: '2026-09-01T08:40' });
+  p.status_json = fullStatus(api);
+  api.submitInspection_(p);
+  const p2 = basePayload(seed, { record_id: 'rec_obs_conflict', observed_at: '2026-09-02T09:15' });
+  p2.status_json = fullStatus(api);
+  assert.throws(() => api.submitInspection_(p2), /충돌/);
+  const rows = api.readTable_('submissions').filter((r) => String(r.record_id) === 'rec_obs_conflict');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].observed_at, '2026-09-01T08:40');
+});
+
+test('첨부 동일 재전송은 멱등, 동길이 변경분은 충돌한다', () => {
+  const { api, seed } = fresh();
+  const firstKey = Object.keys(fullStatus(api))[0];
+  const att = (b64) => ({ file_name: 'synthetic.gif', mime_type: 'image/gif', file_size: 12, base64: b64 });
+  const p = basePayload(seed, { record_id: 'rec_att_1', attachments: { [firstKey]: att('R0lGODlhaGVsbG8x') } });
+  p.status_json = fullStatus(api);
+  api.submitInspection_(p);
+  const same = basePayload(seed, { record_id: 'rec_att_1', attachments: { [firstKey]: att('R0lGODlhaGVsbG8x') } });
+  same.status_json = fullStatus(api);
+  assert.equal(api.submitInspection_(same).duplicate, true);
+  const before = api.findBy_('submissions', 'record_id', 'rec_att_1');
+  const changed = basePayload(seed, { record_id: 'rec_att_1', attachments: { [firstKey]: att('R0lGODlhaGVsbG8y') } });
+  changed.status_json = fullStatus(api);
+  assert.throws(() => api.submitInspection_(changed), /충돌/);
+  const rows = api.readTable_('submissions').filter((r) => String(r.record_id) === 'rec_att_1');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].payload_digest, before.payload_digest);
+});

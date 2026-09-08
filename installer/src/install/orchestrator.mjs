@@ -4,57 +4,115 @@
 import { advance } from './state-machine.mjs';
 import { names } from '../google/resources.mjs';
 
+const PAST_STORAGE = ['STORAGE_CREATED', 'SCRIPT_CREATED', 'CODE_UPLOADED', 'DEPLOYED', 'AWAITING_SCHOOL_AUTH', 'VERIFIED', 'COMPLETE'];
+const PAST_DEPLOYED = ['DEPLOYED', 'AWAITING_SCHOOL_AUTH', 'VERIFIED', 'COMPLETE'];
+
 export async function runToStorage({ install, accountEmail, res, prefix }) {
-  advance(install, 'OAUTH_READY', { accountEmail });
+  if (install.state === 'DRAFT') {
+    advance(install, 'OAUTH_READY', { accountEmail });
+  }
+  // 이미 저장소 이후 단계면 기존 자원을 그대로 재사용하고 중단한다.
+  if (PAST_STORAGE.includes(install.state)) {
+    return install;
+  }
   // API_ACCESS_READY는 첫 실제 호출 성공으로 증명한다. 실패하면 안내 단계로 중단된다.
-  let folder;
-  try {
-    folder = await res.createDriveFolder(names(prefix).folder);
-  } catch (e) {
-    if (e && e.kind === 'SCRIPT_API_DISABLED') throw e;
-    throw e;
+  if (install.state === 'OAUTH_READY') {
+    let folder;
+    try {
+      folder = await res.createDriveFolder(names(prefix).folder);
+    } catch (e) {
+      if (e && e.kind === 'SCRIPT_API_DISABLED') throw e;
+      throw e;
+    }
+    advance(install, 'API_ACCESS_READY', { accountEmail, resource: { folder_id: folder.id } });
   }
-  advance(install, 'API_ACCESS_READY', { accountEmail });
-  const sheet = await res.createSpreadsheet(names(prefix).sheet);
-  try {
-    await res.moveIntoFolder(sheet.spreadsheetId, folder.id);
-  } catch (e) {
-    // 이동 실패는 치명적이지 않다. 폴더 정리는 안내로 남긴다.
-    install.resources.sheet_outside_folder = 'true';
+  if (install.state === 'API_ACCESS_READY') {
+    let folderId = install.resources.folder_id || '';
+    if (!folderId) {
+      const folder = await res.createDriveFolder(names(prefix).folder);
+      folderId = folder.id;
+    }
+    let sheetId = install.resources.spreadsheet_id || '';
+    if (!sheetId) {
+      const sheet = await res.createSpreadsheet(names(prefix).sheet);
+      sheetId = sheet.spreadsheetId;
+    }
+    try {
+      await res.moveIntoFolder(sheetId, folderId);
+    } catch (e) {
+      // 이동 실패는 치명적이지 않다. 폴더 정리는 안내로 남긴다.
+      install.resources.sheet_outside_folder = 'true';
+    }
+    advance(install, 'STORAGE_CREATED', {
+      accountEmail,
+      resource: { folder_id: folderId, spreadsheet_id: sheetId },
+    });
   }
-  advance(install, 'STORAGE_CREATED', {
-    accountEmail,
-    resource: { folder_id: folder.id, spreadsheet_id: sheet.spreadsheetId },
-  });
   return install;
 }
 
 export async function runToDeployed({ install, accountEmail, res, prefix, runtimeFiles, versionDescription }) {
-  if (install.state === 'STORAGE_CREATED' || !install.resources.script_id) {
-    const script = await res.createScriptProject(names(prefix).script);
-    advance(install, 'SCRIPT_CREATED', { accountEmail, resource: { script_id: script.scriptId } });
+  // 이미 배포 이후 단계면 중복 생성 없이 기존 자원을 재사용한다.
+  if (PAST_DEPLOYED.includes(install.state)) {
+    return install;
   }
-  await res.uploadRuntime(install.resources.script_id, runtimeFiles);
-  advance(install, 'CODE_UPLOADED', { accountEmail });
-  const version = await res.createVersion(install.resources.script_id, versionDescription);
-  const dep = await res.createDeployment(install.resources.script_id, version.versionNumber, versionDescription);
-  if (!dep.webAppUrl) {
-    throw new Error('배포 주소가 발급되지 않았습니다. Apps Script 배포 설정을 확인하세요.');
+  if (['DRAFT', 'OAUTH_READY', 'API_ACCESS_READY'].includes(install.state)) {
+    throw new Error('저장소가 먼저 만들어져야 합니다. 리소스 만들기를 먼저 하세요.');
   }
-  advance(install, 'DEPLOYED', {
-    accountEmail,
-    resource: {
-      version_number: String(version.versionNumber),
-      deployment_id: dep.deploymentId,
-      web_app_url: dep.webAppUrl,
-    },
-  });
-  advance(install, 'AWAITING_SCHOOL_AUTH', { accountEmail });
+  if (install.state === 'STORAGE_CREATED') {
+    const existingScript = install.resources.script_id || '';
+    if (!existingScript) {
+      const script = await res.createScriptProject(names(prefix).script);
+      advance(install, 'SCRIPT_CREATED', { accountEmail, resource: { script_id: script.scriptId } });
+    } else {
+      advance(install, 'SCRIPT_CREATED', { accountEmail, resource: { script_id: existingScript } });
+    }
+  }
+  if (install.state === 'SCRIPT_CREATED') {
+    await res.uploadRuntime(install.resources.script_id, runtimeFiles);
+    advance(install, 'CODE_UPLOADED', { accountEmail });
+  }
+  if (install.state === 'CODE_UPLOADED') {
+    const version = await res.createVersion(install.resources.script_id, versionDescription);
+    const versionNumber = String(version.versionNumber);
+    const existingDep = install.resources.deployment_id || '';
+    if (existingDep) {
+      const dep = await res.updateDeployment(
+        install.resources.script_id,
+        existingDep,
+        version.versionNumber,
+        versionDescription,
+      );
+      const depId = (dep && dep.deploymentId) || existingDep;
+      const url = (dep && dep.webAppUrl) || install.resources.web_app_url || '';
+      if (!url) {
+        throw new Error('배포 주소가 발급되지 않았습니다. Apps Script 배포 설정을 확인하세요.');
+      }
+      advance(install, 'DEPLOYED', {
+        accountEmail,
+        resource: { version_number: versionNumber, deployment_id: depId, web_app_url: url },
+      });
+    } else {
+      const dep = await res.createDeployment(install.resources.script_id, version.versionNumber, versionDescription);
+      if (!dep.webAppUrl) {
+        throw new Error('배포 주소가 발급되지 않았습니다. Apps Script 배포 설정을 확인하세요.');
+      }
+      advance(install, 'DEPLOYED', {
+        accountEmail,
+        resource: {
+          version_number: versionNumber,
+          deployment_id: dep.deploymentId,
+          web_app_url: dep.webAppUrl,
+        },
+      });
+    }
+    advance(install, 'AWAITING_SCHOOL_AUTH', { accountEmail });
+  }
   return install;
 }
 
 /** 학교 관리자 웹이 Sheet에 기록한 setup_completed를 설치센터 권한으로 확인한다. */
-export async function checkSchoolVerified({ install, res }) {
+export async function checkSchoolVerified({ install, res, accountEmail }) {
   const values = await res.getSheetValues(install.resources.spreadsheet_id, 'settings_school!A1:B200');
   const map = {};
   for (const row of values) {
@@ -62,7 +120,8 @@ export async function checkSchoolVerified({ install, res }) {
   }
   const done = map.setup_completed === 'true' || map.setup_completed === true;
   if (done) {
-    advance(install, 'VERIFIED', {});
+    if (accountEmail) advance(install, 'VERIFIED', { accountEmail });
+    else advance(install, 'VERIFIED', {});
     return { verified: true, school_name: map.school_name || '' };
   }
   return { verified: false, school_name: map.school_name || '' };

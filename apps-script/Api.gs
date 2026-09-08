@@ -11,16 +11,16 @@ function initializeSchoolStorage_(payload) {
   lock.waitLock(30000);
   locked = true;
   try {
+    const alreadySetup = setupCompletedPeek_();
+    const auth = alreadySetup
+      ? verifyAdmin_(payload)
+      : verifyInitialSetupKey_(payload);
     ensureSheets_();
     seedDefaults_();
     try {
       setSchoolProp_('spreadsheet_id', ss_().getId());
       setSetting_('spreadsheet_id', schoolProp_('spreadsheet_id', ''));
     } catch (bindErr) {}
-    const alreadySetup = setting_('setup_completed', '') === 'true';
-    const auth = alreadySetup
-      ? verifyAdmin_(payload)
-      : verifyInitialSetupKey_(payload);
     validateSetupPayload_(payload, !alreadySetup);
 
     const now = nowIso_();
@@ -50,6 +50,21 @@ function initializeSchoolStorage_(payload) {
     return { folders: folders, adminToken: adminToken, syncKey: syncKey, rooms: createdRooms, version: APP_VERSION, setup_completed: true };
   } finally {
     if (locked) lock.releaseLock();
+  }
+}
+
+/** 시트 생성 없이 설치 완료 여부를 확인한다. 인증 전에 변이를 만들지 않기 위한 읽기 전용 조회다. */
+function setupCompletedPeek_() {
+  try {
+    const sheet = ss_().getSheetByName('settings_school');
+    if (!sheet) return false;
+    const values = sheet.getDataRange().getValues();
+    for (let i = 0; i < values.length; i++) {
+      if (String(values[i][0]) === 'setup_completed' && String(values[i][1]) === 'true') return true;
+    }
+    return false;
+  } catch (err) {
+    return false;
   }
 }
 

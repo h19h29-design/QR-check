@@ -74,3 +74,29 @@ test('상태 목록이 스펙과 일치한다', () => {
     'CODE_UPLOADED', 'DEPLOYED', 'AWAITING_SCHOOL_AUTH', 'VERIFIED', 'COMPLETE',
   ]);
 });
+
+test('값에 secretarial이 들어가도 재개 정보는 허용된다', () => {
+  const ins = createInstall({ installId: 'b1', accountEmail: 'o@t.e', release: 'v0.1.0' });
+  advance(ins, 'OAUTH_READY', { accountEmail: 'o@t.e' });
+  advance(ins, 'API_ACCESS_READY', { accountEmail: 'o@t.e' });
+  advance(ins, 'STORAGE_CREATED', { accountEmail: 'o@t.e', resource: { notes: 'secretarial duties' } });
+  const r = resumeInfo(ins);
+  assert.equal(r.resources.notes, 'secretarial duties');
+});
+
+test('중첩된 refresh_token 키는 재개 정보에서 거부된다', () => {
+  const ins = createInstall({ installId: 'b2', accountEmail: 'o@t.e', release: 'v0.1.0' });
+  advance(ins, 'OAUTH_READY', { accountEmail: 'o@t.e' });
+  advance(ins, 'API_ACCESS_READY', { accountEmail: 'o@t.e' });
+  advance(ins, 'STORAGE_CREATED', { accountEmail: 'o@t.e', resource: { outer: { refresh_token: 'x' } } });
+  assert.throws(() => resumeInfo(ins), /비밀값/);
+});
+
+test('AWAITING_SCHOOL_AUTH에서 다른 계정의 VERIFIED 전진은 거부된다', () => {
+  const ins = createInstall({ installId: 'b3', accountEmail: 'o@t.e', release: 'v0.1.0' });
+  for (const s of ['OAUTH_READY', 'API_ACCESS_READY', 'STORAGE_CREATED', 'SCRIPT_CREATED', 'CODE_UPLOADED', 'DEPLOYED', 'AWAITING_SCHOOL_AUTH']) {
+    advance(ins, s, { accountEmail: 'o@t.e' });
+  }
+  assert.equal(ins.state, 'AWAITING_SCHOOL_AUTH');
+  assert.throws(() => advance(ins, 'VERIFIED', { accountEmail: 'evil@t.e' }), /다릅니다/);
+});

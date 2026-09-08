@@ -73,6 +73,19 @@ export function advance(install, toState, { accountEmail, resource } = {}) {
   return install;
 }
 
+/** 객체 키를 재귀 검사한다. 값 부분문자열은 거부하지 않는다. */
+export function hasForbiddenSecretKey(value) {
+  if (Array.isArray(value)) return value.some(hasForbiddenSecretKey);
+  if (value && typeof value === 'object') {
+    for (const k of Object.keys(value)) {
+      const lower = String(k).toLowerCase();
+      if (FORBIDDEN_KEYS.some((f) => lower.includes(f))) return true;
+      if (hasForbiddenSecretKey(value[k])) return true;
+    }
+  }
+  return false;
+}
+
 /** 이어하기용 정보. 단계·자원 ID·릴리스만 포함한다. */
 export function resumeInfo(install) {
   const info = {
@@ -82,10 +95,7 @@ export function resumeInfo(install) {
     state: install.state,
     resources: { ...(install.resources || {}) },
   };
-  const blob = JSON.stringify(info);
-  for (const k of FORBIDDEN_KEYS) {
-    if (blob.toLowerCase().includes(k)) throw new Error('재개 정보에 비밀값이 포함되어 있습니다.');
-  }
+  if (hasForbiddenSecretKey(info)) throw new Error('재개 정보에 비밀값이 포함되어 있습니다.');
   return info;
 }
 

@@ -1,76 +1,79 @@
-# Codex ↔ OpenCode 인수인계 — 2026-09-08
+# Codex ↔ OpenCode handoff — 2026-09-08 local work
 
-## 현재 상태
+## Current local work
 
-- 저장소: `D:\opencode\QR-check`
-- 브랜치: `work/school-owned-web`
-- 코드 기준: `5f4df10`
-- 검증 문서 기준: `ba7d707`
-- 작업트리는 인수인계 프롬프트 작성 전 clean
-- GitHub push/merge 없음
-- 테스트 Apps Script 활성 version: 11
-- 기존 deployment ID 유지(끝자리 `-deMQgC9`)
-- health build: `qrcheck-20260908-admin-ui`
-- 현재 Codex 세션 실제 모델: 실행 환경에서 확인 방법이 없어 `미확인`
+- Date: 2026-09-08, local only.
+- Branch: `work/school-owned-web`.
+- No push, no merge, no deploy.
+- Public/synthetic inputs only; no real IDs, accounts, tokens, or deployment URLs in this doc.
 
-## 핵심 결론
+## Static installer site (implemented, unpublished)
 
-- `n-*.script.googleusercontent.com`은 HTML Service의 정상 iframe 호스트다. 이를 구버전 판별자로 쓰면 안 된다.
-- 주소 장애의 실제 원인은 `AdminView.html`에서 JSON 문자열을 `<?=`로 다시 이스케이프해 URL 값에 따옴표가 포함된 것이었다. `<?!=`로 수정했다.
-- 관리자 조회 장애의 실제 원인은 Sheets `Date` 객체가 `google.script.run` 응답에 남아 성공 핸들러가 `null`을 받은 것이었다. `clientSafeValue_`로 UI 경계에서 KST 문자열화했다.
-- public exec는 canonical `https://script.google.com/macros/s/<id>/exec`만 허용하고 iframe·`/dev`·임의 호스트 fallback을 금지한다.
-- health는 안전한 `app_version`/`build_id`만 반환한다. 이메일·Sheet ID·raw open 진단은 제거했다.
-- `TEST-SETUP`/`testBootstrap` 초기설정 우회도 제거했다.
+- Pages: main, maker, demo, guide, help, update.
+- Explicit 20-file build allowlist enforced.
+- Unpublished update page has no action.
+- Site status: unpublished, 20 files.
+- Local preview `http://127.0.0.1:57917/` was ephemeral unpublished preview only.
 
-## 관련 커밋
+## Maker (still blocked pending operator setup)
 
-- `428bd90` `fix(live): force-print admin exec URL`
-- `64ef59a` `fix(live): surface submit bootstrap failures`
-- `5f4df10` `fix(live): restore admin records and harden exec URL`
-- `8ad4ce0` `docs(live): record v11 end-to-end validation`
-- `ba7d707` `docs(live): record photo attachment validation`
+- Blocked until operator sets OAuth client ID and allowed origin.
+- Now verifies actual Drive-about token email and rejects mismatch.
+- Tokens kept memory-only.
+- Retries partial install by current state.
+- Reuses script/deployment IDs; does not fake completion.
 
-## 검증 완료
+## Demo (local-only)
 
-- Apps Script/클라이언트 43/43
-- Windows 관리자 16/16
-- 런타임 빌드 public 12/admin 18
-- 비밀 패턴 0
-- 원격 HEAD와 고정 v11 각각 로컬 18파일 SHA-256 일치
-- 기존 `/exec` health build 표식 확인
-- 행정실 정상 점검 1건: 제출 완료 → 실제 Sheet → 관리자 상세 동일 `record_id`/비고
-- 행정실 이상 있음 점검 1건: Chrome UI에서 합성 PNG 제출 → `COMMITTED` → 관리자 상세 동일 `record_id`/비고와 PNG 첨부 1건
-- Drive 첨부 권한 owner-only, 쿠키·인증 없는 직접 요청은 303이고 이미지 본문 미반환
-- 기존 deployment 주소, 행정실 QR 토큰, 기존 기록 유지
+- In-memory only; no network, no persistent storage.
+- Korean sample copy.
+- Formula-safe CSV.
+- Responsive table.
 
-## OpenCode/Muse
+## Local synthetic results
 
-- OpenCode CLI: 1.18.29
-- 고정 모델: `opencode/muse-spark-1.3-contributor-free`
-- doctor와 합성 smoke PASS, smoke 응답 `MUSE_SMOKE_OK`
-- wrapper `liveProviderAttested=false`: provider 내부 모델의 독립 attestation으로 주장하지 않는다.
-- Muse는 URL 조사, 격리 AdminView 수정, bootstrap 조사, 격리 오류 경계 수정, Date 직렬화 리뷰를 수행했다.
-- Google 인증·배포·브라우저·학교 테스트 데이터는 Muse에 전달하지 않았다.
+- E local synthetic: `observed_at` and same-length attachment-content changes now conflict; identical payload remains idempotent.
+- F local synthetic: rename/reprint/reissue tests remain PASS.
+- G2 local synthetic: `google_only` and `token_compat` reject empty/unregistered identity; bad setup key causes no seed mutation.
+- I local code boundary: runtime build independent; site release/update remains optional/unpublished. Live I still NOT_TESTED.
 
-## Google 테스트 변경
+## Final evidence (local)
 
-- `settings_people`: 합성 담당자/당직자 2행 추가
-- `submissions`: 정상 합성 점검 1행, 이상 있음 합성 점검 1행 추가
-- Drive: 이상 있음 기록에 합성 PNG 1개 추가, owner-only 유지
-- QR 재발급·장소 변경·공유 권한 변경 없음
+- Node 172/172 PASS.
+- Python 16/16 PASS.
+- Runtime version 0.1.0, dirty true; public 12/admin 18.
+- Site unpublished 20 files.
+- `git diff --check` clean.
+- Secret scan no matches.
 
-## 남은 항목
+## Browser validation
 
-1. `NOT_TESTED`: 실제 QR/휴대폰, live 멱등/충돌, live 이름 유지/재발급, 미등록 관리자, 설치센터 차단, Workspace.
-2. 실제 rollback은 하지 않았으나 고정 v10/v11과 원격 백업은 보존돼 있다.
+- Homepage 360/390/768/1440: no overflow.
+- CTA and blocked maker checked.
+- Demo banner checked.
+- Later in-app input API failure means final demo submit/batch click NOT_COMPLETED.
+- See `HOMEPAGE_VALIDATION_REPORT.md` for detail.
 
-## 다음 재개 순서
+## Live Google status (not changed / not revalidated)
 
-1. 실제 출력 QR 또는 휴대폰 1종으로 점검 화면을 연다.
-2. 동일 record ID 재전송/충돌을 승인된 테스트 창에서 검증한다.
-3. 테스트 전용 장소에서 이름 유지/재발급 live 시험을 진행한다.
-4. 별도 미등록 계정, 설치센터 차단, 교육기관 Workspace를 확보되는 순서로 검증한다.
+- Actual Google live status from older report was not changed or revalidated.
+- Still NOT_TESTED: printed/mobile QR, live E/F/G2/I, education Workspace, real rollback, live maker OAuth/resource creation, public homepage deployment.
 
-원본 QR 토큰, OAuth 토큰, 관리자 토큰을 문서나 Muse task에 넣지 않는다.
+## Historical live evidence (preserved, identifiers redacted)
 
-다음 OpenCode 실행에는 `docs/review/OPENCODE_NEXT_PROMPT.md`를 그대로 사용한다.
+- Prior live run used fixed active Apps Script version with existing deployment retained.
+- Prior checks covered canonical exec health build marker, admin submit-to-sheet-to-admin record match, synthetic PNG attachment case, and owner-only Drive attachment behavior.
+- Prior local regression baseline was Apps Script/client plus Windows admin suites PASS with runtime public/admin file checks PASS.
+- No live QR tokens, OAuth tokens, admin tokens, or full deployment/script/sheet/drive identifiers are recorded here.
+
+## New docs
+
+- `HOMEPAGE_VALIDATION_REPORT.md`.
+- `../operator/MAIN_SITE_DEPLOY.md`.
+
+## Executor and boundaries
+
+- Executor exact model: `opencode/muse-spark-1.3-contributor-free`.
+- Fallback: none.
+- `liveProviderAttested` remains false.
+- Tests run by this worker: NONE (shell/test execution disabled; evidence above is recorded local status, not a new test claim).

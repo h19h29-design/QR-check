@@ -110,6 +110,15 @@ export function createResourceClients(deps) {
     return rest.get(`${SCRIPT}/projects/${encodeURIComponent(scriptId)}/deployments/${encodeURIComponent(deploymentId)}`);
   }
 
+  async function getVerifiedEmail() {
+    // 이미 승인된 Drive 권한으로 토큰 소유자를 확인한다. 새 도메인·의존성 없음.
+    const res = await rest.get(`${DRIVE}/about?fields=user/emailAddress`);
+    const raw = res && res.user && res.user.emailAddress ? String(res.user.emailAddress) : '';
+    const norm = raw.trim().toLowerCase();
+    if (!norm) throw new Error('Google 계정 정보를 확인할 수 없습니다. 다시 연결하세요.');
+    return norm;
+  }
+
   async function getSheetValues(spreadsheetId, range) {
     // 설치센터가 만든 시트에 한해 drive.file 범위로 읽는다. CORS 가능한 REST 호출.
     // 학교 관리자 웹이 기록한 연결검사 결과(setup_completed 등) 확인용.
@@ -123,5 +132,6 @@ export function createResourceClients(deps) {
     findDriveFolder, createDriveFolder, findSpreadsheet, createSpreadsheet,
     moveIntoFolder, createScriptProject, uploadRuntime, createVersion,
     createDeployment, updateDeployment, getContent, getDeployment, getSheetValues,
+    getVerifiedEmail,
   };
 }

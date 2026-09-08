@@ -14,7 +14,7 @@ function isAdminEmail_(email) {
 }
 
 function verifyAdmin_(payload) {
-  const email = activeEmail_();
+  const email = String(activeEmail_() || '').trim().toLowerCase();
   if (email && isAdminEmail_(email)) return { actor: email, method: 'google_email' };
   if (adminAuthMode_() === 'google_only') {
     if (!email) {
@@ -24,12 +24,21 @@ function verifyAdmin_(payload) {
     throw new Error('관리자 목록에 없는 계정입니다. 학교 관리자에게 추가를 요청하세요.');
   }
   // DEPRECATED(token_compat): 기존 설치 호환용. 신규 설치는 google_only가 기본이다.
+  // token_compat에서도 비어 있지 않은 Google 신원을 요구한다. 토큰은 호환용 확인 수단이며 신원을 대체하지 않는다.
+  if (!email) {
+    logAudit_('anonymous', 'admin_auth_failed', 'admin', '', { mode: 'token_compat' });
+    throw new Error('관리자 권한이 필요합니다. Google 계정 확인이 되지 않으면 관리자 토큰을 입력하세요.');
+  }
+  if (!isAdminEmail_(email)) {
+    logAudit_(email, 'admin_auth_denied', 'admin', '', { mode: 'token_compat' });
+    throw new Error('관리자 목록에 없는 계정입니다. 학교 관리자에게 추가를 요청하세요.');
+  }
   const adminToken = payload && payload.adminToken;
   const tokenHash = setting_('admin_token_hash', '');
   if (adminToken && tokenHash && constantTimeEquals_(hashToken_(adminToken, 'admin'), tokenHash)) {
-    return { actor: 'admin_token', method: 'admin_token' };
+    return { actor: email, method: 'admin_token' };
   }
-  logAudit_(email || 'anonymous', 'admin_auth_failed', 'admin', '', { mode: 'token_compat' });
+  logAudit_(email, 'admin_auth_failed', 'admin', '', { mode: 'token_compat' });
   throw new Error('관리자 권한이 필요합니다. Google 계정 확인이 되지 않으면 관리자 토큰을 입력하세요.');
 }
 

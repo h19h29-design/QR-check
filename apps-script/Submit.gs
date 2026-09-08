@@ -122,19 +122,25 @@ function prepareSubmission_(payload) {
   });
   const observedAt = normalizeObservedAt_(payload.observed_at || payload.observedAt || '');
   const inspectionDate = observedAt ? observedAt.slice(0, 10) : today_();
+  const clientInfoText = stringifyLimited_(payload.client_info || {}, MAX_CLIENT_INFO_LENGTH, 'client_info');
   const digest = submissionDigest_({
     room_id: room.room_id,
     person_id: submitter.person_id,
     role_type: submitter.role_type,
     status: status,
     remarks: remarks,
+    observed_at: observedAt,
+    inspection_date: inspectionDate,
+    client_info: clientInfoText,
     files: fileKeys.sort().map(function(k) {
       const f = files[k] || {};
+      const b64 = String(f.base64 || '');
       return {
         item_key: k,
         mime_type: String(f.mime_type || f.mimeType || '').toLowerCase(),
         file_size: Number(f.file_size || f.fileSize || 0),
-        base64_length: String(f.base64 || '').length
+        base64_length: b64.length,
+        content_sha256: contentSha256Hex_(b64)
       };
     })
   });
@@ -160,7 +166,7 @@ function prepareSubmission_(payload) {
     status_json: JSON.stringify(status),
     abnormal: abnormal,
     remarks: remarks,
-    client_info: stringifyLimited_(payload.client_info || {}, MAX_CLIENT_INFO_LENGTH, 'client_info'),
+    client_info: clientInfoText,
     source: 'mobile',
     admin_verified: false,
     admin_verified_by: '',

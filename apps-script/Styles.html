@@ -1,34 +1,82 @@
 <style>
+/* QR-check school runtime shared theme. Matches installer palette. Plain CSS, no external assets. */
 * { box-sizing: border-box; font-family: 'Malgun Gothic', system-ui, sans-serif; }
-body { margin: 0; background: #f4f6f8; color: #17202a; font-size: 18px; line-height: 1.45; }
+:root {
+  --ink: #142d45;
+  --muted: #4a5d75;
+  --cobalt: #2864eb;
+  --cobalt-dark: #1e4fc4;
+  --pale: #eaf1fe;
+  --line: #d9e2f0;
+  --mint-bg: #e7f7ee;
+  --mint-line: #2fa36b;
+  --mint-ink: #0b6b3a;
+  --issue-bg: #fef2f2;
+  --issue-line: #dc2626;
+  --issue-ink: #991b1b;
+}
+body { margin: 0; background: #f2f6fc; color: var(--ink); font-size: 18px; line-height: 1.6; }
 .container { max-width: 820px; margin: 0 auto; padding: 18px; }
 .container.wide { max-width: 1120px; }
-h1 { font-size: 28px; margin: 12px 0 18px; padding-bottom: 10px; border-bottom: 3px solid #2b6cb0; }
-.panel { background: #fff; border: 1px solid #d8dee4; border-radius: 6px; padding: 16px; margin-bottom: 14px; }
+.app-header {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #ffffff; border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 14px;
+}
+.app-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 30px; padding: 2px 10px; border-radius: 8px;
+  background: var(--ink); color: #fff; font-size: 14px; font-weight: 800;
+}
+.app-name { font-weight: 800; color: var(--ink); }
+h1 { font-size: 28px; line-height: 1.35; margin: 12px 0 18px; padding-bottom: 10px; border-bottom: 3px solid var(--cobalt); color: var(--ink); }
+h2 { color: var(--ink); }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+.who-group { background: var(--pale); border: 1px solid #c4d6f7; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
-label { display: block; font-weight: 700; margin: 10px 0; }
-input, select, textarea { width: 100%; min-height: 48px; padding: 10px; border: 1px solid #c9d1d9; border-radius: 4px; font-size: 18px; margin-top: 6px; }
-textarea { min-height: 92px; resize: vertical; }
-button, .button { display: inline-block; background: #2b6cb0; color: #fff; border: 0; border-radius: 4px; padding: 13px 16px; font-size: 20px; font-weight: 700; text-decoration: none; cursor: pointer; }
-button:hover, .button:hover { background: #1f5a96; }
+label { display: block; font-weight: 700; margin: 10px 0; color: var(--ink); }
+input[type="text"], input[type="date"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], input[type="url"], input[type="search"], select, textarea { width: 100%; min-height: 48px; padding: 10px; border: 1px solid #c9d1d9; border-radius: 8px; font-size: 18px; margin-top: 6px; background: #fff; color: var(--ink); font-family: inherit; }
+textarea { min-height: 120px; resize: vertical; }
+input[type="radio"], input[type="checkbox"] { width: auto; min-height: auto; min-width: auto; accent-color: var(--cobalt); width: 22px; height: 22px; }
+input[type="hidden"] { display: none; }
+input[type="file"] { width: 100%; max-width: 100%; min-height: 44px; margin-top: 6px; font-size: 16px; overflow-wrap: anywhere; }
+button, .button { display: inline-block; background: var(--cobalt); color: #fff; border: 0; border-radius: 8px; padding: 13px 16px; font-size: 20px; font-weight: 700; text-decoration: none; cursor: pointer; min-height: 44px; }
+button:hover, .button:hover { background: var(--cobalt-dark); }
+button[type="submit"] { width: 100%; margin-top: 12px; }
+:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 2px; border-radius: 6px; }
 table { width: 100%; border-collapse: collapse; background: #fff; }
 th, td { border-bottom: 1px solid #e5e7eb; padding: 12px; text-align: left; vertical-align: top; }
-th { background: #f1f5f9; }
-.status { display: inline-flex; gap: 10px; align-items: center; }
-.status label { font-weight: 400; margin: 0; }
+th { background: var(--pale); color: var(--ink); }
+#itemsTable tbody tr { border: 1px solid var(--line); border-radius: 12px; }
+.status { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.status label { font-weight: 400; margin: 0; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; }
+/* Client.js.html renders bare text nodes (no span): normal value '이상 무', abnormal value '이상 유'. Only OK gets mint/green. */
+.status label:has(input[value="이상 무"]:checked) { background: var(--mint-bg); border-color: var(--mint-line); }
+.status label:has(input[value="이상 무"]:checked) { color: var(--mint-ink); font-weight: 800; }
+.status label:has(input[value="이상 유"]:checked) { background: var(--issue-bg); border-color: var(--issue-line); color: var(--issue-ink); font-weight: 800; }
+.bulk-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; min-width: 0; }
+.bulk-bar .hint { color: var(--muted); font-size: 16px; overflow-wrap: anywhere; }
 .file-cell.issue { background: #fff7ed; }
-.divider { text-align: center; color: #6b7280; font-weight: 700; margin: 8px; }
-.notice { padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; margin-bottom: 12px; }
-.hidden { display: none; }
+th, td, .file-cell, .status { min-width: 0; overflow-wrap: anywhere; }
+.file-cell { max-width: 100%; }
+.divider { text-align: center; color: var(--muted); font-weight: 700; margin: 8px; }
+.notice { padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; margin-bottom: 12px; }
+.hidden { display: none !important; }
+[hidden] { display: none !important; }
 .bad { color: #b91c1c; font-weight: 700; }
-.ok { color: #047857; font-weight: 700; }
-pre { white-space: pre-wrap; word-break: break-all; background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 6px; }
+.ok { color: var(--mint-ink); font-weight: 700; }
+pre { white-space: pre-wrap; word-break: break-all; background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; }
 @media (max-width: 640px) {
   .container { padding: 10px; }
   table, thead, tbody, tr, th, td { display: block; width: 100%; }
   thead { display: none; }
-  tr { border: 1px solid #e5e7eb; margin-bottom: 10px; border-radius: 6px; overflow: hidden; }
+  tr { border: 1px solid #e5e7eb; margin-bottom: 10px; border-radius: 12px; overflow: hidden; background: #fff; }
   td { border: 0; }
-  button, .button { width: 100%; text-align: center; margin-top: 6px; }
+  .status label { width: 100%; }
+  button, .button { text-align: center; margin-top: 6px; }
+  button[type="submit"] { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 </style>

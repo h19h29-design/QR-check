@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createGoogleAuth, createMemoryTokenStore } from '../auth/google-auth.mjs';
 import { classifyError, createRestClient } from '../google/rest.mjs';
 import { runToStorage, runToDeployed, checkSchoolVerified } from './orchestrator.mjs';
-import { createInstall } from './state-machine.mjs';
+import { advance, createInstall } from './state-machine.mjs';
 
 function fakeGis({ token = 'ya29.test', denied = false } = {}) {
   return {
@@ -124,4 +124,68 @@ test('다른 계정으로 재개하면 중단된다', async () => {
     runToStorage({ install, accountEmail: 'attacker@t.e', res, prefix: 'P_' }),
     /다른|다릅니다/,
   );
+});
+
+test('upload 실패 후 재개: 같은 스크립트 재사용', async () => {
+  let uploads = 0;
+  let scriptCalls = 0;
+  let deploymentCalls = 0;
+  const res = {
+    async createDriveFolder() { return { id: 'f1' }; },
+    async createSpreadsheet() { return { spreadsheetId: 's1' }; },
+    async moveIntoFolder() {},
+    async createScriptProject() { scriptCalls++; return { scriptId: 'sc1' }; },
+    async uploadRuntime() { uploads++; if (uploads === 1) throw new Error('upload 실패'); },
+    async createVersion() { return { versionNumber: 1 }; },
+    async createDeployment() {
+      deploymentCalls++;
+      return { deploymentId: 'd1', webAppUrl: 'https://script.google.com/macros/s/XYZ/exec' };
+    },
+  };
+  const install = createInstall({ installId: 'i-resume', accountEmail: 'o@t.e', release: 'v0.1.0' });
+  await runToStorage({ install, accountEmail: 'o@t.e', res, prefix: 'P_' });
+  const args = {
+    install, accountEmail: 'o@t.e', res, prefix: 'P_',
+    runtimeFiles: [{ name: 'Code.gs', source: 'x' }], versionDescription: 'v0.1.0',
+  };
+  await assert.rejects(() => runToDeployed(args), /upload/);
+  const scriptIdBefore = install.resources.script_id;
+  await runToDeployed(args);
+  assert.equal(install.state, 'AWAITING_SCHOOL_AUTH');
+  assert.equal(install.resources.script_id, scriptIdBefore);
+  assert.equal(scriptCalls, 1);
+  assert.equal(deploymentCalls, 1);
+});
+
+test('기존 배포는 updateDeployment로 갱신', async () => {
+  let updateCalls = 0;
+  let createCalls = 0;
+  const res = {
+    async createVersion() { return { versionNumber: 2 }; },
+    async updateDeployment() {
+      updateCalls++;
+      return { deploymentId: 'd9', webAppUrl: 'https://script.google.com/macros/s/XYZ/exec' };
+    },
+    async createDeployment() {
+      createCalls++;
+      return { deploymentId: 'dX', webAppUrl: 'https://script.google.com/macros/s/XYZ/exec' };
+    },
+  };
+  const install = createInstall({ installId: 'i-exist', accountEmail: 'o@t.e', release: 'v0.1.0' });
+  advance(install, 'OAUTH_READY', { accountEmail: 'o@t.e' });
+  advance(install, 'API_ACCESS_READY', { accountEmail: 'o@t.e', resource: { folder_id: 'f1' } });
+  advance(install, 'STORAGE_CREATED', {
+    accountEmail: 'o@t.e', resource: { folder_id: 'f1', spreadsheet_id: 's1' },
+  });
+  advance(install, 'SCRIPT_CREATED', { accountEmail: 'o@t.e', resource: { script_id: 'sc1' } });
+  advance(install, 'CODE_UPLOADED', {
+    accountEmail: 'o@t.e',
+    resource: { deployment_id: 'd9', web_app_url: 'https://script.google.com/macros/s/XYZ/exec' },
+  });
+  await runToDeployed({
+    install, accountEmail: 'o@t.e', res, prefix: 'P_',
+    runtimeFiles: [{ name: 'Code.gs', source: 'x' }], versionDescription: 'v0.1.0',
+  });
+  assert.equal(updateCalls, 1);
+  assert.equal(createCalls, 0);
 });

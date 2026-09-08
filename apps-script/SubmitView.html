@@ -2,14 +2,17 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <?!= include_('Styles'); ?>
 </head>
 <body>
 <main class="container">
+  <header class="app-header"><span class="app-mark" aria-hidden="true">QR</span><span class="app-name">학교 점검표</span></header>
   <h1 id="title">보안점검표</h1>
   <section id="offlineBox" class="notice hidden"></section>
   <form id="submitForm" class="panel">
     <input type="hidden" id="recordId">
+    <div class="who-group">
     <label>담당자
       <select id="responsibleSelect"><option value="">담당자 선택</option></select>
     </label>
@@ -17,6 +20,7 @@
     <label>당직자
       <select id="dutySelect"><option value="">당직자 선택</option></select>
     </label>
+    </div>
     <table id="itemsTable">
       <thead><tr><th>항목</th><th>상태</th><th>첨부파일</th></tr></thead>
       <tbody></tbody>

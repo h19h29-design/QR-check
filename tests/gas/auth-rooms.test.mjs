@@ -115,3 +115,34 @@ test('바인딩 ID가 잘못되면 명확한 오류를 낸다', () => {
   api.setSchoolProp_('spreadsheet_id', 'ss_missing');
   assert.throws(() => api.ss_(), /바인딩 ID 오류/);
 });
+
+test('token_compat에서 빈 신원은 유효 토큰으로도 Google 신원 오류가 난다', () => {
+  const { api, stubs } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
+  const seed = seedSchool(api, { adminEmail: ADMIN });
+  api.setSetting_('admin_auth_mode', 'token_compat');
+  assert.equal(api.adminAuthMode_(), 'token_compat');
+  stubs.setEmails('', '');
+  assert.throws(() => api.verifyAdmin_({ adminToken: seed.setup.adminToken }), /Google 계정|관리자 권한/);
+});
+
+test('token_compat에서 미등록 이메일은 유효 토큰으로도 미등록 오류가 난다', () => {
+  const { api, stubs } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
+  const seed = seedSchool(api, { adminEmail: ADMIN });
+  api.setSetting_('admin_auth_mode', 'token_compat');
+  stubs.setEmails(OTHER, OTHER);
+  assert.throws(() => api.verifyAdmin_({ adminToken: seed.setup.adminToken }), /관리자 목록/);
+});
+
+test('잘못된 setupKey로는 초기 설정이 거부되고 시드 변이가 없다', () => {
+  const { api, stubs } = loadGas({ activeEmail: ADMIN, effectiveEmail: ADMIN });
+  assert.throws(() => api.initializeSchoolStorage_({
+    setupKey: 'bad-setup-key',
+    school_name: '테스트학교',
+    admin_email: ADMIN,
+    admin_name: '관리자',
+  }), /초기 설정 키/);
+  const ss = stubs.spreadsheets.get('ss_active_1');
+  for (const name of ['settings_school', 'settings_check_items', 'settings_people', 'settings_rooms', 'audit_log']) {
+    assert.equal(ss.getSheetByName(name), null);
+  }
+});

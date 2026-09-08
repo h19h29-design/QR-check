@@ -49,7 +49,18 @@ function canonicalJson_(value) {
   return JSON.stringify(value);
 }
 
-/** 제출 내용 다이제스트. base64 원문 대신 파일 메타+길이로 계산한다. */
+/** 제출 내용 다이제스트. 첨부 원문 식별은 content_sha256으로 계산한다. */
 function submissionDigest_(parts) {
   return sha256_(canonicalJson_(parts || {}));
+}
+
+/** 첨부 base64 원문 식별용 SHA-256 hex (GAS 호환). sha256_ 재사용, 중복 정의 금지. */
+function contentSha256Hex_(value) {
+  var text = String(value == null ? '' : value);
+  if (typeof sha256_ === 'function') return sha256_(text);
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8);
+  return raw.map(function(byte) {
+    var v = (byte < 0 ? byte + 256 : byte).toString(16);
+    return v.length === 1 ? '0' + v : v;
+  }).join('');
 }

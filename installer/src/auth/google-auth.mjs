@@ -23,6 +23,26 @@ export function createMemoryTokenStore() {
   };
 }
 
+export function normalizeAccountEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+/** 입력 이메일과 토큰 소유자 이메일을 비교한다. 불일치·누락은 닫힌 실패. */
+export function assertVerifiedAccount({ typedEmail, verifiedEmail } = {}) {
+  const verified = normalizeAccountEmail(verifiedEmail);
+  if (!verified) {
+    throw new Error('Google 계정 정보를 확인할 수 없습니다. 다시 연결하세요.');
+  }
+  const typed = normalizeAccountEmail(typedEmail);
+  if (!typed) {
+    throw new Error('설치용 Google 계정 이메일을 입력하세요.');
+  }
+  if (typed !== verified) {
+    throw new Error('설치를 시작한 Google 계정과 다릅니다. 처음 계정으로 다시 로그인하세요.');
+  }
+  return verified;
+}
+
 export function createGoogleAuth({ gis, store, clientId, scopes, onDenied } = {}) {
   const mem = store || createMemoryTokenStore();
   const id = clientId !== undefined ? clientId : GOOGLE_OAUTH_CLIENT_ID;

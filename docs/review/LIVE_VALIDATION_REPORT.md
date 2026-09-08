@@ -2,7 +2,25 @@
 
 > 계획·단위 테스트·HTTP 200만으로 live PASS를 만들지 않는다. 실행하지 못한 항목은 `NOT_TESTED`, 도구나 권한 조건 때문에 중단된 항목은 `BLOCKED`로 남긴다.
 
-## 환경과 기준점
+## 2026-09-08 local-only addendum — current status (no live Google calls)
+
+- Date/scope: 2026-09-08, local-only. No live Google calls, push, merge, deployment, QR reissue, sharing, DNS, OAuth configuration, or rollback were performed.
+- Below historical sections (Gmail live session earlier on 2026-09-08) are preserved as historical evidence. Full IDs/accounts/tokens are not exposed.
+- Local checks: Node 172/172 PASS; Python 16/16 PASS; `git diff --check` clean; secret-pattern scan no matches.
+- Runtime build: 0.1.0 `dirty=true`, public 12 / admin 18; therefore NOT_READY_TO_PUBLISH until reviewed clean commit and `dirty=false` rebuild.
+- Static site: unpublished, 20 files, `runtime_file_count` 0, HTTP root/demo/update 200 locally.
+- Pages: main/maker/demo/guide/help/update implemented. Maker intentionally blocked until OAuth client ID / allowed origin configured. Update intentionally unpublished with no apply action.
+- Local E (supersedes stale row below): identical payload remains idempotent; now also covers `observed_at` and equal-length attachment-content conflict.
+- Local F: remains PASS for rename/reprint/reissue.
+- Local G2 (supersedes stale row below): covers `google_only` and `token_compat` empty/unregistered rejection; invalid setup key creates no seed sheets.
+- Local I boundary (supersedes stale row below): reviewed/build passes, but live independence still NOT_TESTED.
+- Browser: responsive/blocked-state evidence PASS as in `HOMEPAGE_VALIDATION_REPORT.md`; later final demo submit/batch click NOT_COMPLETED because in-app input API failed. This is not a PASS.
+- Overall: LOCAL_IMPLEMENTATION_VERIFIED, PUBLIC_SITE_NOT_DEPLOYED, LIVE_INSTALLER_NOT_VERIFIED, RELEASE_BLOCKED_BY_APPROVAL_AND_CLEAN_BUILD.
+- Remaining: live OAuth/resource creation with disposable account, education Workspace, printed/mobile QR, live E/F/G2/I, real rollback, confirmed hostname/OAuth/DNS approval, clean commit/build.
+- Related: `HOMEPAGE_VALIDATION_REPORT.md`, `../operator/MAIN_SITE_DEPLOY.md`.
+- Executor: exact model `opencode/muse-spark-1.3-contributor-free`, fallback none, `liveProviderAttested` false.
+
+## Historical environment and baseline (earlier 2026-09-08 Gmail live session)
 
 - 테스트 일자: 2026-09-08 (KST)
 - 계정 유형: Gmail 개인 테스트 소유자 1개
@@ -16,7 +34,7 @@
 
 식별자는 문서에서 최소화한다. Script ID 끝자리 `QfvFxd`, Spreadsheet ID 끝자리 `tx4E`가 이번 승인된 테스트 대상이다. QR 토큰·clasp OAuth 토큰·관리자 토큰은 기록하지 않는다.
 
-## 로컬 검증
+## 로컬 검증 (historical — superseded by 2026-09-08 addendum above for current counts)
 
 | 항목 | 결과 | 근거 |
 |---|---|---|
@@ -57,12 +75,12 @@
 | C3 | 관리자 동일 기록 | PASS | 2026-09-08 조회 1건, 상세의 `record_id`·비고·행정실·합성 담당자·`COMMITTED`가 제출/Sheet와 일치 |
 | D1 | 이상 있음 + 합성 사진 UI 제출 | PASS | Chrome에서 합성 담당자, 1개 `이상 유`·4개 `이상 무`, 고유 합성 비고, PNG 1개로 제출 완료. 신규 기록은 `COMMITTED`이며 관리자 상세의 같은 `record_id`·비고·상태와 일치 |
 | D2 | Drive 파일/관리자 첨부/비공개 | PASS | 관리자 상세에 PNG 1건이 `drive.google.com` HTTPS 링크로 표시. Drive API에서 권한은 소유자 user 1건뿐이며, 쿠키·인증 없는 직접 요청은 303이고 이미지 본문을 반환하지 않음 |
-| E | 동일 ID 재전송/충돌 | NOT_TESTED | 로컬 테스트는 멱등·충돌 모두 PASS, live 재전송은 미실시 |
-| F | 이름 변경 QR 유지/명시적 재발급 | NOT_TESTED | 로컬 HMAC 테스트 PASS. 관리자 prompt 자동화가 열리지 않았고 Sheets API는 테스트 OAuth 프로젝트에서 비활성이라 live 변경을 강행하지 않음 |
-| G1 | 등록 관리자 허용 | PASS | `google_only` 등록 소유자가 관리자 조회·상세 사용 |
-| G2 | 미등록/빈 신원 거부 | NOT_TESTED | 로컬 테스트 PASS. 별도 미등록 Google 계정 live 세션 없음 |
+| E | 동일 ID 재전송/충돌 | NOT_TESTED (live); local PASS | Live re-send NOT_TESTED. Local (see 2026-09-08 addendum): identical payload idempotent, `observed_at` + equal-length attachment-content conflict covered |
+| F | 이름 변경 QR 유지/명시적 재발급 | NOT_TESTED (live); local PASS | Live change NOT_TESTED for same reason as historical. Local remains PASS for rename/reprint/reissue |
+| G1 | 등록 관리자 허용 | PASS (historical live) | `google_only` 등록 소유자가 관리자 조회·상세 사용 |
+| G2 | 미등록/빈 신원 거부 | NOT_TESTED (live); local PASS | No separate unregistered live session. Local (see 2026-09-08 addendum): `google_only` + `token_compat` empty/unregistered rejection; invalid setup key creates no seed sheets |
 | H | 업데이트 후 주소·QR·기록 유지 | PASS | 동일 deployment ID로 v8→v9→v10→v11, 기존 행정실 링크로 제출 성공, 토큰 재발급 없음, v11 뒤 기존 기록 관리자 조회 성공 |
-| I | 설치센터 독립성 | NOT_TESTED | 런타임에 중앙 DB/설치센터 호출 없음은 정적 확인. 실제 차단·권한 철회 시험은 미실시 |
+| I | 설치센터 독립성 | NOT_TESTED (live); local boundary PASS | Runtime has no central DB/install-center calls per static review and build passes (see 2026-09-08 addendum). Actual block/revoke test NOT_TESTED |
 | M | 실제 휴대폰 | NOT_TESTED | 브라우저 테스트만 수행 |
 | W | 교육기관 Workspace | NOT_TESTED | Gmail 테스트 결과를 Workspace 전체로 확대하지 않음 |
 
