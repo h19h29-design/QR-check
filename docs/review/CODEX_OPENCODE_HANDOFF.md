@@ -5,7 +5,8 @@
 - 저장소: `D:\opencode\QR-check`
 - 브랜치: `work/school-owned-web`
 - 코드 기준: `5f4df10`
-- 작업트리는 이 문서 갱신 전 clean
+- 검증 문서 기준: `ba7d707`
+- 작업트리는 인수인계 프롬프트 작성 전 clean
 - GitHub push/merge 없음
 - 테스트 Apps Script 활성 version: 11
 - 기존 deployment ID 유지(끝자리 `-deMQgC9`)
@@ -26,6 +27,8 @@
 - `428bd90` `fix(live): force-print admin exec URL`
 - `64ef59a` `fix(live): surface submit bootstrap failures`
 - `5f4df10` `fix(live): restore admin records and harden exec URL`
+- `8ad4ce0` `docs(live): record v11 end-to-end validation`
+- `ba7d707` `docs(live): record photo attachment validation`
 
 ## 검증 완료
 
@@ -69,3 +72,5 @@
 4. 별도 미등록 계정, 설치센터 차단, 교육기관 Workspace를 확보되는 순서로 검증한다.
 
 원본 QR 토큰, OAuth 토큰, 관리자 토큰을 문서나 Muse task에 넣지 않는다.
+
+다음 OpenCode 실행에는 `docs/review/OPENCODE_NEXT_PROMPT.md`를 그대로 사용한다.
