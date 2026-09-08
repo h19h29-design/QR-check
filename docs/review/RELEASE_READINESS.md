@@ -1,41 +1,48 @@
-# RELEASE_READINESS — 출시 판정표 (2026-09-08, 정직 기록용)
+# RELEASE_READINESS — 출시 판정표 (2026-09-08)
 
-작업 브랜치: `work/school-owned-web` (현 HEAD `78efdf8`, clean).
-`통과`는 실제 실행 근거가 있을 때만 표기한다.
+작업 브랜치: `work/school-owned-web`. 코드 기준 `5f4df10`, 테스트 배포 version 11.
+`PASS`는 이번 실행 증거가 있을 때만 사용한다. 상세 증거는 `LIVE_VALIDATION_REPORT.md`를 따른다.
 
-## 로컬 검증 (통과)
+## 현재 판정
 
-| 묶음 | 결과 | 근거 |
+**일반 학교 출시: 보류**
+
+Gmail 테스트에서 핵심 경로(관리자 주소 → 다른 브라우저 제출 → 실제 Sheet → 관리자 동일 기록)는 PASS다. 사진 첨부 live, 실제 QR 스캔, 미등록 관리자 live, 설치센터 차단, 실기기·교육기관 Workspace가 아직 남아 있다.
+
+## 완료된 게이트
+
+| 게이트 | 결과 | 근거 |
 |---|---|---|
-| 저장 일관성 | 통과 9/9 | `tests/gas/submit.test.mjs` |
-| 인증·QR 분리 | 통과 7/7 | `tests/gas/auth-rooms.test.mjs` |
-| 클라이언트 정적 | 통과 4/4 | `tests/gas/client.test.mjs` |
-| PARTIAL 복구 | 통과 4/4 | `tests/gas/partial.test.mjs` (신규) |
-| 설치 상태머신 | 통과 7/7 | `state-machine.test.mjs` |
-| 설치 Google 계층 | 통과 8/8 | `installer.test.mjs` (신규: 토큰 메모리, 오류분류, 재시도, 재개) |
-| 업데이트·롤백 | 통과 4/4 | `update.test.mjs` (신규) |
-| 빌드 분리 | 통과 | `node tools/build-runtime.mjs` (public 12/admin 18, 시크릿 스캔) |
-| HMAC QR·실 관리 | 통과 6/6 | `tests/gas/qr-tokens.test.mjs` (재인쇄·이름유지·재발급·레거시·초기장소·목록제출) |
-| 시크릿 스캔 | 통과 | 저장소 전수 grep 0건 |
+| 로컬 회귀 | PASS | Apps Script 43 + Windows 관리자 16 = 59 |
+| 빌드 분리 | PASS | public 12/admin 18, 비밀 패턴 0 |
+| 안전한 실행 식별 | PASS | health에 `app_version`·`build_id`만 포함, 이메일/Sheet ID 진단 제거 |
+| 테스트용 인증 우회 제거 | PASS | `TEST-SETUP`/`testBootstrap` 우회 제거 및 회귀 테스트 |
+| canonical 제출 URL | PASS | iframe fallback 제거, `/dev`·임의 호스트 거부, 관리자 링크/복사 live 일치 |
+| 정상 제출 E2E | PASS | 다른 브라우저 → `COMMITTED` → 실제 Sheet → 관리자 상세 동일 기록 |
+| 관리자 조회 직렬화 | PASS | Sheets Date를 UI 경계 KST 문자열로 변환, live 1건 조회/상세 |
+| 업데이트 주소 보존 | PASS | 동일 deployment ID로 version 11 갱신, 기존 URL·QR 토큰·기록 유지 |
+| 배포 복구 자료 | PASS | 고정 v10/v11 및 원격 소스 백업 존재 |
 
-## 실계정·실기기 (미검증 — 상세: `LIVE_VALIDATION_REPORT.md`, 전 항목 NOT_TESTED)
+## 보류 게이트
 
-- GAS_FEASIBILITY 9항목 live: NOT_TESTED (Gmail 1개 승인됨, 테스트 실행은 다음 단계)
-- 학교 A/B 분리, 익명 제출→관리자 조회, deployment ID 업데이트 주소 보존
-- Workspace/교육 계정: 계정 미확보 → NOT_TESTED
-- Android Chrome / iPhone Safari 실기기: 미확보 → NOT_TESTED
-- 비숙련자 관찰 테스트: 계획만 (docs/user/01_설치.md 초안 기준)
+| 게이트 | 결과 | 해제 조건 |
+|---|---|---|
+| 이상 있음 + 사진 | BLOCKED | Chrome 확장의 파일 URL 접근을 허용하고 합성 PNG 제출 |
+| Drive 첨부 비공개 | NOT_TESTED | 위 제출 후 로그아웃/별도 세션에서 접근 거부 확인 |
+| 실제 QR 스캔 | NOT_TESTED | 실제 출력 QR 또는 휴대폰 스캔 1회 |
+| live 멱등/충돌 | NOT_TESTED | 동일 record ID 같은/다른 payload 재전송 |
+| live 이름 유지/재발급 | NOT_TESTED | 테스트 전용 장소에서 이름 변경·재발급·구 QR 거부 |
+| 미등록/빈 관리자 | NOT_TESTED | 별도 미등록 계정/익명 관리자 세션 |
+| 설치센터 독립성 | NOT_TESTED | 설치센터 차단/권한 철회와 학교 runtime 권한을 분리해 시험 |
+| 교육기관 Workspace | NOT_TESTED | 기관 테스트 계정 확보 |
+| Android/iPhone 실기기 | NOT_TESTED | 실기기 1종 이상 |
+| 실제 rollback | NOT_TESTED | 승인된 테스트 창에서 v10 복귀 후 v11 재적용 |
 
-## 출시 게이트 (남은 조건)
+## 출시 전 필수 조건
 
-1. Gmail 테스트 계정에서 설치→승인→시험제출→관리자조회 1사이클
-2. 설치센터 OAuth 제작자 준비 (`docs/operator/INSTALLER_OAUTH_SETUP.md` 체크리스트)
-3. 실기기 1종 이상 확인 또는 미검증 명시
-4. 일반 학교 배포 승인 (사용자 결정)
+1. 이상 있음 사진 1건과 Drive 비공개를 live PASS로 만든다.
+2. 실제 QR/휴대폰 1종을 확인한다.
+3. 설치센터 OAuth 제작자 준비와 학교 runtime 독립성 시험을 마친다.
+4. 일반 학교 배포는 별도 사용자 승인 뒤 진행한다.
 
-## 구현/배포/검증 구분
-
-- 구현 완료: Phase 0~2 + 빌드 도구 + 설치센터 골격 (본 브랜치)
-- 배포 완료: 해당 없음 (테스트 배포도 미실시)
-- 실사용 검증 완료: 해당 없음
-- 일반 학교 배포 승인: 해당 없음 (사용자 승인 필요)
+GitHub push/merge, 운영 학교 배포, 유료 연결, 중앙 DB 전환은 수행하지 않았다.
