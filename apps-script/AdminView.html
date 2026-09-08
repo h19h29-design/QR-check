@@ -53,7 +53,7 @@
 </main>
 <?!= include_('Client.js'); ?>
 <script>
-  window.__EXEC_URL__ = <?= jsonForHtmlScript_(data.execUrl || '') ?>;
+  window.__EXEC_URL__ = <?!= jsonForHtmlScript_(data.execUrl || '') ?>;
   initAdminPage();
 </script>
 </body>
