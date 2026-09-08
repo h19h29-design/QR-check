@@ -7,7 +7,7 @@
 - 테스트 일자: 2026-09-08 (KST)
 - 계정 유형: Gmail 개인 테스트 소유자 1개
 - 브랜치: `work/school-owned-web`
-- 코드 기준: `5f4df10` (`fix(live): restore admin records and harden exec URL`)
+- 코드 기준: `5f4df10` (`fix(live): restore admin records and harden exec URL`), 기존 검증 문서 기준 `8ad4ce0`
 - Apps Script: 기존 테스트 Script/Sheet, 단일 public+admin 배포
 - 활성 배포: 기존 deployment ID 끝자리 `-deMQgC9`, version `11`
 - 안전한 실행 표식: `app_version=0.1.0`, `build_id=qrcheck-20260908-admin-ui`
@@ -55,8 +55,8 @@
 | C1 | 정상 점검 제출 | PASS | 합성 담당자, 5개 `이상 무`, 고유 합성 비고로 제출 완료 및 `COMMITTED` 확인 |
 | C2 | 실제 Sheet 동일 기록 | PASS | 제출 완료 `record_id`와 `submissions!A2`, 합성 비고와 `K2`가 정확히 일치 |
 | C3 | 관리자 동일 기록 | PASS | 2026-09-08 조회 1건, 상세의 `record_id`·비고·행정실·합성 담당자·`COMMITTED`가 제출/Sheet와 일치 |
-| D1 | 이상 있음 + 합성 사진 UI 제출 | BLOCKED | IAB와 Chrome 모두 파일 chooser 이벤트가 열리지 않음. 합성 PNG는 생성했지만 업로드/제출하지 않음 |
-| D2 | Drive 파일/관리자 첨부/비공개 | NOT_TESTED | D1이 완료되지 않아 live 증거 없음. 소스상 공개 공유 호출은 없지만 이를 live PASS로 확대하지 않음 |
+| D1 | 이상 있음 + 합성 사진 UI 제출 | PASS | Chrome에서 합성 담당자, 1개 `이상 유`·4개 `이상 무`, 고유 합성 비고, PNG 1개로 제출 완료. 신규 기록은 `COMMITTED`이며 관리자 상세의 같은 `record_id`·비고·상태와 일치 |
+| D2 | Drive 파일/관리자 첨부/비공개 | PASS | 관리자 상세에 PNG 1건이 `drive.google.com` HTTPS 링크로 표시. Drive API에서 권한은 소유자 user 1건뿐이며, 쿠키·인증 없는 직접 요청은 303이고 이미지 본문을 반환하지 않음 |
 | E | 동일 ID 재전송/충돌 | NOT_TESTED | 로컬 테스트는 멱등·충돌 모두 PASS, live 재전송은 미실시 |
 | F | 이름 변경 QR 유지/명시적 재발급 | NOT_TESTED | 로컬 HMAC 테스트 PASS. 관리자 prompt 자동화가 열리지 않았고 Sheets API는 테스트 OAuth 프로젝트에서 비활성이라 live 변경을 강행하지 않음 |
 | G1 | 등록 관리자 허용 | PASS | `google_only` 등록 소유자가 관리자 조회·상세 사용 |
@@ -69,10 +69,10 @@
 ## 테스트 데이터 변경
 
 - `settings_people`에 전역 합성 담당자·당직자 2행 추가
-- `submissions`에 정상 합성 점검 1행 추가
+- `submissions`에 정상 합성 점검 1행과 이상 있음 합성 점검 1행 추가
+- 이상 있음 기록에 합성 PNG 1개를 Drive에 추가. 공유 권한은 owner-only이며 관리자 상세에서 같은 기록의 첨부 1건으로 확인
 - QR 토큰은 재발급하지 않음
-- 장소 이름/공유 권한/Drive 권한은 변경하지 않음
-- 합성 PNG는 로컬에만 생성됐고 Google에 업로드되지 않음
+- 장소 이름/기존 공유 권한은 변경하지 않음
 
 ## OpenCode/Muse 실행 기록
 
@@ -86,6 +86,6 @@
 | 제출 초기화 오류 노출 | build | 격리 복사본 2파일 | Client/SubmitView 수정, Codex 테스트 후 반영 |
 | Date 직렬화 독립 리뷰 | review | Api + 합성 테스트 | 변경/테스트 없음, invalid Date 위험 지적 및 Codex 보강 |
 
-## 남은 가장 작은 사용자 작업
+## 남은 항목
 
-Chrome에서 `chrome://extensions` → ChatGPT 브라우저 확장 `세부정보` → **파일 URL에 대한 액세스 허용**을 켠 뒤 알려준다. 그러면 D1/D2만 이어서 실행할 수 있다.
+실제 QR 출력물/휴대폰, live 멱등·충돌, 테스트 전용 장소 이름 유지·재발급, 미등록 관리자, 설치센터 차단, 교육기관 Workspace, 실제 rollback은 아직 `NOT_TESTED`다.
