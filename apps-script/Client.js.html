@@ -177,7 +177,11 @@ async function submitForm(event) {
     showDone(result);
     localStorage.removeItem('qr_pending_' + payload.record_id);
   } catch (err) {
-    if (payload) {
+    if (payload && isReviewRequired_(err)) {
+      storePending_(payload, { review_required: true });
+      showReviewRequiredNotice_(reviewRequiredNoticeText_());
+      alert(reviewRequiredNoticeText_());
+    } else if (payload) {
       if (storePending_(payload)) {
         alert('전송 실패로 임시 저장했습니다. 이 화면을 다시 열면 24시간 안에 재전송을 시도합니다.');
       } else {
@@ -232,12 +236,46 @@ async function buildSubmitPayload_() {
   }
   return payload;
 }
-function storePending_(payload) {
+function isReviewRequired_(err) {
   try {
-    localStorage.setItem('qr_pending_' + payload.record_id, JSON.stringify({
+    const msg = String((err && err.message) || err || '');
+    return msg.indexOf('[SUBMISSION_REVIEW_REQUIRED]') !== -1;
+  } catch (ignored) {
+    return false;
+  }
+}
+function reviewRequiredNoticeText_() {
+  return '기존에 접수된 요청과 내용이 다릅니다(충돌 가능, 구버전 요청일 수 있음). 기존 기록은 그대로 보존되어 있습니다. 다시 제출하지 말고 관리자에게 확인을 요청하세요.';
+}
+function showReviewRequiredNotice_(detail) {
+  try {
+    const box = qs('offlineBox');
+    if (!box) return;
+    box.classList.remove('hidden');
+    clearNode(box);
+    box.appendChild(textEl('p', detail || reviewRequiredNoticeText_()));
+  } catch (ignored) {}
+}
+function storePending_(payload, opts) {
+  try {
+    const key = 'qr_pending_' + payload.record_id;
+    let reviewRequired = !!(opts && opts.review_required);
+    let expiresAt = Date.now() + PENDING_TTL_MS;
+    try {
+      const prevRaw = localStorage.getItem(key);
+      if (prevRaw) {
+        const prev = JSON.parse(prevRaw);
+        if (prev && prev.expires_at != null && !isNaN(Number(prev.expires_at))) {
+          expiresAt = Number(prev.expires_at);
+        }
+        if (prev && prev.review_required === true) reviewRequired = true;
+      }
+    } catch (ignored) {}
+    localStorage.setItem(key, JSON.stringify({
       saved_at: new Date().toISOString(),
-      expires_at: Date.now() + PENDING_TTL_MS,
-      payload: payload
+      expires_at: expiresAt,
+      payload: payload,
+      review_required: reviewRequired
     }));
     return true;
   } catch (err) {
@@ -257,28 +295,62 @@ async function resendPending() {
   const keys = Object.keys(localStorage).filter(function(k) { return k.indexOf('qr_pending_') === 0; });
   let expired = 0;
   let failed = 0;
+  let review = 0;
+  let reviewExpired = 0;
   for (const key of keys) {
+    let stored = null;
     try {
-      const stored = JSON.parse(localStorage.getItem(key));
+      stored = JSON.parse(localStorage.getItem(key));
+    } catch (parseErr) {
+      failed++;
+      continue;
+    }
+    try {
       const payload = stored && stored.payload ? stored.payload : stored;
+      const marked = !!(stored && stored.review_required === true);
       if (stored && stored.expires_at && Date.now() > Number(stored.expires_at)) {
         localStorage.removeItem(key);
-        expired++;
+        if (marked) reviewExpired++;
+        else expired++;
         continue;
       }
-      await gas('submitInspectionForUi', payload);
-      localStorage.removeItem(key);
+      if (marked) {
+        review++;
+        continue;
+      }
+      try {
+        await gas('submitInspectionForUi', payload);
+        localStorage.removeItem(key);
+      } catch (err) {
+        if (isReviewRequired_(err)) {
+          try {
+            const exp = (stored && stored.expires_at != null) ? Number(stored.expires_at) : (Date.now() + PENDING_TTL_MS);
+            localStorage.setItem(key, JSON.stringify({
+              saved_at: (stored && stored.saved_at) || new Date().toISOString(),
+              expires_at: exp,
+              payload: payload,
+              review_required: true
+            }));
+          } catch (persistErr) {}
+          review++;
+        } else {
+          failed++;
+        }
+      }
     } catch (err) {
       failed++;
     }
   }
   // 만료 삭제·재전송 실패를 사용자에게 반드시 알린다. 완료로 오인시키지 않는다.
-  if (expired || failed) {
+  // 관리자 확인이 필요한 항목은 성공으로 표시하지 않고, 재전송하지 않으며, 다시 제출을 안내하지 않는다.
+  if (expired || failed || review || reviewExpired) {
     const box = qs('offlineBox');
     box.classList.remove('hidden');
     const lines = [];
+    if (review) lines.push('관리자 확인이 필요한 제출 ' + review + '건이 있습니다. 기존 기록이 보존되어 있으니 다시 제출하지 말고 관리자에게 확인을 요청하세요.');
     if (failed) lines.push('미전송 자료 ' + failed + '건이 있습니다. 네트워크가 복구되면 이 화면을 다시 열어 재전송하세요.');
     if (expired) lines.push('보관기간(24시간)이 지나 삭제된 미전송 자료 ' + expired + '건이 있습니다. 해당 점검은 다시 제출하세요.');
+    if (reviewExpired) lines.push('관리자 확인이 필요한 자료 ' + reviewExpired + '건이 보관기간(24시간) 만료로 삭제되었습니다. 다시 제출하지 말고 관리자에게 기록 확인을 요청하세요.');
     clearNode(box);
     lines.forEach(function(line) { box.appendChild(textEl('p', line)); });
     const clearButton = document.createElement('button');

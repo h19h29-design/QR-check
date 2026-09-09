@@ -153,3 +153,106 @@ test('첨부 동일 재전송은 멱등, 동길이 변경분은 충돌한다', (
   assert.equal(rows.length, 1);
   assert.equal(rows[0].payload_digest, before.payload_digest);
 });
+test('구버전 digest 불일치는 관리자 확인 오류로 거부되고 원본이 보존된다', () => {
+  const { api, seed } = fresh();
+  const p = basePayload(seed, { record_id: 'rec_legacy_1' });
+  p.status_json = fullStatus(api);
+  api.submitInspection_(p);
+  const saved = api.findBy_('submissions', 'record_id', 'rec_legacy_1');
+  saved.payload_digest = 'deadbeef-old-digest-0001';
+  api.upsertObject_('submissions', saved, 'record_id');
+  const seeded = api.findBy_('submissions', 'record_id', 'rec_legacy_1');
+  const before = JSON.stringify(seeded);
+  const retry = basePayload(seed, { record_id: 'rec_legacy_1' });
+  retry.status_json = fullStatus(api);
+  assert.throws(
+    () => api.submitInspection_(retry),
+    (err) => {
+      const msg = String((err && err.message) || err);
+      assert.match(msg, /\[SUBMISSION_REVIEW_REQUIRED\]/);
+      assert.match(msg, /충돌/);
+      assert.match(msg, /관리자/);
+      assert.match(msg, /확인/);
+      assert.doesNotMatch(msg, /새로고침/);
+      assert.doesNotMatch(msg, /다시 제출하세요/);
+      assert.ok(!msg.includes('전혀 다른 내용'), 'payload를 echo하면 안 된다');
+      return true;
+    },
+  );
+  const rows = api.readTable_('submissions').filter((r) => String(r.record_id) === 'rec_legacy_1');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].payload_digest, 'deadbeef-old-digest-0001');
+  assert.equal(JSON.stringify(api.findBy_('submissions', 'record_id', 'rec_legacy_1')), before);
+});
+
+test('동일 길이 다른 첨부는 관리자 확인 오류로 거부되고 기록·첨부가 불변이다', () => {
+  const { api, seed } = fresh();
+  const firstKey = Object.keys(fullStatus(api))[0];
+  const att = (b64) => ({ file_name: 'synthetic.gif', mime_type: 'image/gif', file_size: 12, base64: b64 });
+  const p = basePayload(seed, { record_id: 'rec_att_review', attachments: { [firstKey]: att('R0lGODlhaGVsbG8x') } });
+  p.status_json = fullStatus(api);
+  api.submitInspection_(p);
+  const subsBefore = JSON.stringify(api.readTable_('submissions'));
+  const attsBefore = JSON.stringify(api.readTable_('attachments'));
+  const digestBefore = api.findBy_('submissions', 'record_id', 'rec_att_review').payload_digest;
+  const changed = basePayload(seed, { record_id: 'rec_att_review', attachments: { [firstKey]: att('R0lGODlhaGVsbG8y') } });
+  changed.status_json = fullStatus(api);
+  assert.throws(
+    () => api.submitInspection_(changed),
+    (err) => {
+      const msg = String((err && err.message) || err);
+      assert.match(msg, /\[SUBMISSION_REVIEW_REQUIRED\]/);
+      assert.match(msg, /충돌/);
+      assert.match(msg, /관리자/);
+      assert.doesNotMatch(msg, /새로고침/);
+      assert.doesNotMatch(msg, /다시 제출하세요/);
+      return true;
+    },
+  );
+  const rows = api.readTable_('submissions').filter((r) => String(r.record_id) === 'rec_att_review');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].payload_digest, digestBefore);
+  assert.equal(JSON.stringify(api.readTable_('submissions')), subsBefore);
+  assert.equal(JSON.stringify(api.readTable_('attachments')), attsBefore);
+});
+
+test('알 수 없는/빈 legacy digest도 안전하게 거부되고 성공으로 보고하지 않는다', () => {
+  for (const legacy of ['', 'unknown-legacy-digest']) {
+    const { api, seed } = fresh();
+    const p = basePayload(seed, { record_id: 'rec_legacy_blank' });
+    p.status_json = fullStatus(api);
+    const first = api.submitInspection_(p);
+    assert.equal(first.save_state, 'COMMITTED');
+    const saved = api.findBy_('submissions', 'record_id', 'rec_legacy_blank');
+    saved.payload_digest = legacy;
+    api.upsertObject_('submissions', saved, 'record_id');
+    const before = JSON.stringify(api.findBy_('submissions', 'record_id', 'rec_legacy_blank'));
+    const retry = basePayload(seed, { record_id: 'rec_legacy_blank' });
+    retry.status_json = fullStatus(api);
+    assert.throws(
+      () => api.submitInspection_(retry),
+      (err) => {
+        const msg = String((err && err.message) || err);
+        assert.match(msg, /\[SUBMISSION_REVIEW_REQUIRED\]/);
+        assert.match(msg, /충돌/);
+        assert.match(msg, /관리자/);
+        assert.doesNotMatch(msg, /새로고침/);
+        return true;
+      },
+    );
+    const rows = api.readTable_('submissions').filter((r) => String(r.record_id) === 'rec_legacy_blank');
+    assert.equal(rows.length, 1);
+    assert.equal(JSON.stringify(api.findBy_('submissions', 'record_id', 'rec_legacy_blank')), before);
+  }
+});
+
+test('현재 digest 동일 재전송은 여전히 멱등 성공한다', () => {
+  const { api, seed } = fresh();
+  const p = basePayload(seed, { record_id: 'rec_idem_ok' });
+  p.status_json = fullStatus(api);
+  const first = api.submitInspection_(p);
+  assert.equal(first.save_state, 'COMMITTED');
+  const res2 = api.submitInspection_({ ...p, status_json: fullStatus(api) });
+  assert.equal(res2.duplicate, true);
+  assert.ok(!String(res2.save_state || '').includes('PARTIAL'));
+});

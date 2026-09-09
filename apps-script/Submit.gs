@@ -41,7 +41,7 @@ function submitInspection_(payload) {
           save_state: saveState_(existing)
         };
       }
-      throw new Error('이미 접수된 요청번호와 다른 내용입니다. 새로고침 후 다시 제출하세요. (충돌 방지)');
+      throw new Error('[SUBMISSION_REVIEW_REQUIRED] 이미 접수된 요청번호와 내용이 다릅니다(충돌 가능, 구버전 요청일 수 있음). 기존 기록을 그대로 보존했습니다. 다시 제출하지 말고 관리자에게 확인을 요청하세요.');
     }
     prepared.fileKeys.forEach(function(itemKey) {
       const uploaded = createAttachmentFile_(prepared.recordId, itemKey, prepared.files[itemKey]);
