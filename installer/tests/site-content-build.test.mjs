@@ -23,6 +23,12 @@ const UNPUBLISHED_TEXT = '미게시 — 게시된 릴리스 정보가 없습니�
 
 const trackedTempDirs = [];
 
+test('maker polish stylesheet is linked and included in static build', () => {
+  const html = fs.readFileSync(path.join(INSTALLER_DIR, 'maker/index.html'), 'utf8');
+  assert.ok(html.includes('href="maker-polish.css"'));
+  assert.ok(parseAllowlist(fs.readFileSync(BUILDER_PATH, 'utf8')).includes('maker/maker-polish.css'));
+});
+
 function norm(s) {
   return String(s ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -269,7 +275,7 @@ describe('tools/build-site.mjs static guards', () => {
     assert.ok(!src.includes('execSync') && !src.includes('spawnSync') && !src.includes('execFile'), 'builder must not spawn');
     assert.ok(!src.includes('rmSync') && !src.includes('rmdirSync') && !src.includes('unlinkSync'), 'builder must not delete');
     const allow = parseAllowlist(src);
-    assert.equal(allow.length, 23, 'allowlist must have exactly 23 entries');
+    assert.equal(allow.length, 24, 'allowlist must have exactly 24 entries');
     for (const need of ['index.html', 'release-data.js', 'guide/index.html', 'help/index.html', 'update/index.html', 'update/update-page.js', 'assets/site.js', 'assets/tokens.css', 'assets/site-overrides.css']) {
       assert.ok(allow.includes(need), 'allowlist missing ' + need);
     }
@@ -295,14 +301,14 @@ describe('tools/build-site.mjs static guards', () => {
 });
 
 describe('tools/build-site.mjs spawn builds (mkdtemp exact paths)', () => {
-  test('unpublished build succeeds with exactly 20 allowlisted files + placeholder', () => {
+  test('unpublished build succeeds with exactly 24 allowlisted files including placeholder', () => {
     const base = makeBase('site-content-');
     const out = path.join(base, 'out-unpublished');
     const r = runBuilder(['--out', out]);
     assert.equal(r.status, 0, 'unpublished build failed: ' + (r.stderr || r.stdout));
     const summary = JSON.parse(String(r.stdout).trim().split('\n').pop());
     assert.equal(summary.status, 'unpublished');
-    assert.equal(summary.file_count, 23);
+    assert.equal(summary.file_count, 24);
     assert.equal(summary.runtime_file_count, 0);
     const allow = parseAllowlist(readText(BUILDER_PATH));
     assert.deepEqual(listRelFiles(out), [...allow].sort());

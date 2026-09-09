@@ -51,6 +51,17 @@
 
 ## 실행 주체와 범위
 
+### 설치센터 후속 작업 (2026-09-10)
+
+- 사용자 승인으로 Cloud 프로젝트 `QR-check Installer` (`qr-check-installer`)를 실제 생성했다. Drive / Sheets API 사용 설정 완료를 콘솔에서 확인했다. 기존 학교 런타임과 다른 Cloud 프로젝트 설정은 변경하지 않았다.
+- Apps Script API는 이용약관 확인을 위해 사용자에게 화면을 넘겼다. 아직 활성화하지 않았다.
+- OAuth 앱 이름·외부 테스트 대상·소유자 연락처를 입력했다. 사용자 데이터 정책 동의 및 최종 생성은 사용자 대기다. OAuth client ID는 여전히 공란이며 신규 학교 설치는 아직 검증되지 않았다.
+- Muse가 공개 maker HTML·디자인 토큰만 받아 `maker-polish.css`를 생성하고 HTML 링크를 추가했다. 실제 운영 JS·Google 인증·상태 머신·배포 URL·기존 디자인 CSS는 변경하지 않았다.
+- 모델: OpenCode `opencode/muse-spark-1.3-contributor-free`, 명시적 CLI `--variant xhigh`. 설치된 runner와의 차이를 검토한 로컬 임시 사본을 사용했으며 전역 설정은 변경하지 않았다. 공급자 내부 추론 수준은 독립적으로 확인하지 못한다. 세션 `ses_f77908eb6fferIUZXwB5suX0oU`.
+- Codex가 CSS 및 HTML diff를 검토하고 빌드 allowlist·정확한 파일 수 회귀 테스트를 병합했다. 새 링크 테스트 실패를 먼저 확인한 후 관련 4개 테스트 파일을 실행해 통과했다. 빌드 결과는 24파일, unpublished였다.
+- 로컬 Playwright에서 1440×960 / 390×960 화면, 4개 안내 구역, 가로 넘침 없음, JS/console 오류 없음, 모바일 메뉴 열기/닫기, 미연결 입력·설치 버튼 차단을 확인했다. 초기 QA 스크립트의 입력 시도는 정상적인 disabled 폼 때문에 실패했으며, 실제 미연결 상태에 맞게 검사를 수정했다. 폼 잠금을 풀거나 Google 성공을 모의 처리하지 않았다. Google 스크립트 네트워크는 이 화면 검사에서 제외했다.
+- 변경 화면은 로컬 빌드 검증까지만 수행했다. 이 CSS 변경의 운영 홈페이지 재배포는 아직 하지 않았다. 기존 v12 학교 웹앱은 변경하지 않았다.
+
 - 코드·테스트 작성: OpenCode CLI, `opencode/muse-spark-1.3-contributor-free`. 공개 코드와 합성 테스트만 전달. 계정·QR 토큰·학교 데이터·clasp 인증은 전달하지 않음.
 - 주요 Muse 세션: `ses_f79509d37ffeMzlk817iwSA6Em`(서버/화면), `ses_f794e3433ffeYSfdTIfkOXlbvD`(화면 테스트). xhigh 실제 적용은 이 실행에서 확인하지 못했으므로 주장하지 않는다.
 - 첫 작업의 잘못된 절대경로 접근은 거부되어 변경 없이 끝났고, 상대경로 사용을 명시한 재실행으로 해결했다. 첫 구현은 단계 제한으로 화면 테스트가 미완료라 별도 Muse 작업으로 보강했다.

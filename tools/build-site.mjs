@@ -20,6 +20,7 @@ const ALLOWLIST = [
   'assets/site.js',
   'maker/index.html',
   'maker/maker.js',
+  'maker/maker-polish.css',
   'demo/index.html',
   'demo/demo.js',
   'demo/sample-store.mjs',
