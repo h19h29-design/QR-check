@@ -53,6 +53,14 @@
 
 ### 설치센터 후속 작업 (2026-09-10)
 
+#### OAuth 클라이언트 생성 후 추가 확인
+
+- 이전의 약관 확인 대기 기록은 과거 이력이다. Apps Script API 사용 설정됨, OAuth 브랜딩 생성됨을 확인했다. 사용자 승인 후 웹 OAuth 클라이언트를 생성했다.
+- 허용 JavaScript 원본은 `https://qr-safe.h19h19.com` 하나, 리디렉션 URI는 없다. 공개 client ID만 로컬 소스 설정에 반영했으며 client secret은 소스·배포물·Muse에 전달하지 않았다.
+- 인증/권한 안전성/릴리스 차단 관련 3개 테스트 파일이 통과했고, 정적 빌드는 24파일 unpublished로 통과했다. 실제 로그인·학교 생성·운영 재배포는 이번 확인에 포함하지 않는다.
+- 콘솔은 테스트 사용자 0명, OAuth 구성 미완료를 표시했다. 브랜딩의 홈페이지·개인정보처리방침·승인된 도메인이 비어 있어 후속 구성이 필요하다. scope 등록과 테스트 사용자 추가도 아직 남았다.
+- 간단한 운영 안내 문서는 Muse `opencode/muse-spark-1.3-contributor-free`에 공개 문서와 비밀 없는 상태만 전달해 정리했다. 세션 `ses_f7784dacbffeeqs1GyCbEZThIO`, CLI xhigh 옵션. Codex가 결과를 검토하고 새 로컬 client ID 반영 상태를 보정했다. 공급자 내부 추론 수준을 독립적으로 확인하지는 못한다.
+
 - 사용자 승인으로 Cloud 프로젝트 `QR-check Installer` (`qr-check-installer`)를 실제 생성했다. Drive / Sheets API 사용 설정 완료를 콘솔에서 확인했다. 기존 학교 런타임과 다른 Cloud 프로젝트 설정은 변경하지 않았다.
 - Apps Script API는 이용약관 확인을 위해 사용자에게 화면을 넘겼다. 아직 활성화하지 않았다.
 - OAuth 앱 이름·외부 테스트 대상·소유자 연락처를 입력했다. 사용자 데이터 정책 동의 및 최종 생성은 사용자 대기다. OAuth client ID는 여전히 공란이며 신규 학교 설치는 아직 검증되지 않았다.

@@ -1,28 +1,25 @@
 # INSTALLER_OAUTH_SETUP — 제작자 1회 준비 작업 (학교에 떠넘기지 않음)
 
-상태: 2026-09-10 실제 콘솔 작업 진행 중. 확인한 항목만 체크한다.
-완료되지 않은 항목은 출시 조건으로 남긴다.
+상태: 프로젝트·API·브랜딩·웹 클라이언트(JS 원본만)까지 완료. Client ID는 로컬 소스에 반영했고, 운영 재배포와 라이브 설치 테스트는 미완료.
+확인한 항목만 체크한다. 완료되지 않은 항목은 출시 조건으로 남긴다.
 
 ## 1. Google Cloud 프로젝트 (제작자용, 설치센터 전용)
 
 - [x] 설치센터 전용 `QR-check Installer` (`qr-check-installer`) 생성. 학교 런타임은 이 프로젝트에 연결하지 않는다.
-- [ ] Apps Script API 활성화 (설치센터가 학교 스크립트를 만들기 위해)
-  - 상세 화면의 Google APIs / Apps Script Execution API 이용약관을 사용자가 확인한 뒤 사용 설정해야 한다. 아직 활성화하지 않았다.
-- [x] Drive API, Sheets API 활성화. 실제 설치에서 drive.file 충족 여부는 별도 검증한다.
+- [x] Drive API, Sheets API, Apps Script API 활성화 완료. scope 충족 여부는 라이브 설치 테스트로 별도 검증한다.
 
 ## 2. OAuth 동의화면
 
-- [ ] 사용자 유형·앱 이름·지원 이메일 입력
-- 앱 이름 `QR 보안점검표 설치센터`, 외부 테스트용, 소유자 지원/연락처 이메일을 입력했다. 사용자 데이터 정책 동의 및 최종 생성은 사용자 확인 대기이며, 아직 생성 완료로 기록하지 않는다.
-- [ ] 요청 scope 등록 (`docs/review/OAUTH_SCOPE_MATRIX.md` A표와 일치)
-- [ ] 개인정보처리방침 URL·도메인 연결 (검증 요구 시)
-- [ ] 테스트 사용자에 테스트 학교 계정 추가 (검증 전)
+- [x] OAuth 브랜딩 생성 (사용자 유형·앱 이름·지원 이메일).
+- [ ] 요청 scope 등록 (`docs/review/OAUTH_SCOPE_MATRIX.md` A표와 일치, 미완료)
+- [ ] 개인정보처리방침 URL·도메인 연결 (미완료)
+- [ ] 테스트 사용자에 테스트 학교 계정 추가 (미완료)
 
 ## 3. OAuth 클라이언트 (웹)
 
-- [ ] 승인된 자바스크립트 원본: `https://qr-safe.h19h19.com`
-- [ ] 브라우저 token model에는 client secret을 사용하지 않는다. Google 콘솔에서 생성되더라도 소스·브라우저·배포물·로그에 넣지 않는다.
-- [ ] 실제 client ID를 `installer/src/auth/config.js`에 공개 설정값으로 기록 (현재 공란 유지)
+- [x] 웹 OAuth 클라이언트 생성. 승인된 자바스크립트 원본은 `https://qr-safe.h19h19.com`만 등록, 리디렉션 URI 없음.
+- [x] 실제 client ID를 `installer/src/auth/config.js`에 공개 설정값으로 기록. 운영 홈페이지 재배포는 별도다.
+- 브라우저 token model은 client secret을 사용하지 않는다. secret이 발급되더라도 프론트엔드·저장소·배포물·로그에 절대 포함하지 않는다.
 
 ## 4. 검증 상태 구분
 

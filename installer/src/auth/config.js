@@ -1,7 +1,7 @@
 // installer/src/auth/config.js — 공개 설정값만. 비밀값 금지.
 // 제작자 1회 준비(docs/operator/INSTALLER_OAUTH_SETUP.md) 완료 후 CLIENT_ID를 채운다.
-// client_secret은 브라우저 구조에서 만들지도 넣지도 않는다.
-export const GOOGLE_OAUTH_CLIENT_ID = ''; // 예: '1234567890-abc.apps.googleusercontent.com'
+// client_secret은 브라우저 token model에서 사용하지 않으며 소스에 넣지 않는다.
+export const GOOGLE_OAUTH_CLIENT_ID = '468514717762-urr1g6nindgni3tghtp089hfmoum6f12.apps.googleusercontent.com';
 
 export const INSTALL_SCOPES = [
   'openid',
