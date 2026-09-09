@@ -27,6 +27,15 @@
 
 ## 홈페이지·설치센터
 
+### 2026-09-10 후속 확인
+
+- 홈페이지 HTTPS 요청이 인증서 검증을 통과하여 HTTP 200을 반환했다.
+- GitHub Pages `Enforce HTTPS`를 활성화했다. HTTP 요청은 `301` 및 `Location: https://qr-safe.h19h19.com/`을 반환했다.
+- 따라서 아래 인증서 미발급 기록은 이전 점검 이력이며 현재 HTTPS 차단 사유는 해소됐다.
+- Google Cloud에서 `QR-check Installer` 프로젝트 생성 화면을 준비했다. 생성 가능 할당량 2개가 표시되어 신규 생성/기존 프로젝트 사용 선택을 사용자에게 요청했다. 프로젝트 생성·OAuth 클라이언트 생성·추가 접근 권한 부여는 아직 수행하지 않았다.
+
+### 이전 점검 이력
+
 - `qr-safe.h19h19.com`: GitHub Pages DNS check successful 확인. HTTPS는 인증서 미발급 상태이고 인증서 검증 오류가 계속되어 미완료다.
 - 설치센터 OAuth client ID는 공란, 소스 release는 `unpublished`다. 설치 성공을 임의로 표시하지 않는다.
 - 기존 clasp 인증·테스트 Google 배포는 확인했다. 현재 Google Cloud 프로젝트 목록에서 QR 설치센터 전용 프로젝트를 식별하지 못했다. 다른 용도의 OAuth 클라이언트를 재사용하지 않았다.
