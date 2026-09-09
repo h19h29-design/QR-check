@@ -26,6 +26,7 @@ const ALLOWLIST = [
   'demo/sample-store.mjs',
   'guide/index.html',
   'help/index.html',
+  'privacy/index.html',
   'update/index.html',
   'update/update-page.js',
   'src/auth/config.js',
