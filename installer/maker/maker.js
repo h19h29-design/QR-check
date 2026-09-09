@@ -6,17 +6,119 @@ import { GOOGLE_OAUTH_CLIENT_ID } from '../src/auth/config.js';
 import { createMemoryTokenStore, createGoogleAuth, assertVerifiedAccount } from '../src/auth/google-auth.mjs';
 import { createRestClient } from '../src/google/rest.mjs';
 import { createResourceClients } from '../src/google/resources.mjs';
-import { createInstall, advance, resumeInfo, canComplete, STATES } from '../src/install/state-machine.mjs';
-import { runToStorage, runToDeployed, checkSchoolVerified, ownerSteps } from '../src/install/orchestrator.mjs';
+import { createInstall, resumeInfo, canComplete, STATES } from '../src/install/state-machine.mjs';
+import { runToStorage, runToDeployed, checkSchoolVerified, completeSchoolInstall, ownerSteps } from '../src/install/orchestrator.mjs';
+import { createResumeEnvelope, restoreInstallFromSnapshot } from '../src/install/resume.mjs';
 
 export const BLOCKED_NO_CLIENT_ID = '설치센터 Google 연결 정보가 준비되지 않았습니다';
 export const BLOCKED_NO_RUNTIME = '게시된 실행 파일이 없어 설치를 시작할 수 없습니다';
 export const BLOCKED_GIS_UNAVAILABLE = 'Google 연결 모듈을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도하세요.';
 
-const COMPLETE_STATE = 'COMPLETE';
+void STATES;
 
 function isNonEmptyString(v) {
   return typeof v === 'string' && v.trim().length > 0;
+}
+
+const REQUIRED_RUNTIME_NAMES = [
+  'Code.gs',
+  'SchoolConfig.gs',
+  'SchemaMigrations.gs',
+  'Sheets.gs',
+  'Submit.gs',
+  'QrTokens.gs',
+  'DriveFiles.gs',
+  'Templates.gs',
+  'Client.js.html',
+  'SubmitView.html',
+  'Styles.html',
+  'appsscript.json',
+  'Auth.gs',
+  'Admin.gs',
+  'Api.gs',
+  'DesktopSync.gs',
+  'AdminView.html',
+  'WebApp.html',
+];
+
+const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const SOURCE_COMMIT_RE = /^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+function isValidSemver(v) {
+  return typeof v === 'string' && SEMVER_RE.test(v);
+}
+
+function isValidSourceCommit(v) {
+  return typeof v === 'string' && SOURCE_COMMIT_RE.test(v);
+}
+
+function isValidBuiltAt(v) {
+  if (typeof v !== 'string') return false;
+  const s = v.trim();
+  if (!ISO_DATETIME_RE.test(s)) return false;
+  if (Number.isNaN(Date.parse(s))) return false;
+  try {
+    return new Date(s).toISOString() === s;
+  } catch {
+    return false;
+  }
+}
+
+// appsscript.json은 유효한 객체이며 소문자 webapp이 USER_DEPLOYING + ANYONE_ANONYMOUS여야 한다.
+function isValidAppsScriptSource(source) {
+  let manifest = null;
+  try {
+    manifest = JSON.parse(source);
+  } catch {
+    return false;
+  }
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return false;
+  const webapp = manifest.webapp;
+  if (!webapp || typeof webapp !== 'object' || Array.isArray(webapp)) return false;
+  return webapp.executeAs === 'USER_DEPLOYING' && webapp.access === 'ANYONE_ANONYMOUS';
+}
+
+// 게시 릴리스 게이트: __QR_CHECK_RELEASE__ + __MAKER_RELEASE__ + 런타임 파일 존재 검증.
+// Metadata/file presence validation is not cryptographic authenticity or live success.
+function validateReleaseGate(qrRelease, makerRelease, runtimeFiles) {
+  if (!qrRelease || typeof qrRelease !== 'object' || Array.isArray(qrRelease)) return { ok: false, version: '' };
+  if (qrRelease.status !== 'published') return { ok: false, version: '' };
+  if (!isValidSemver(qrRelease.app_version)) return { ok: false, version: '' };
+  if (!isValidSourceCommit(qrRelease.source_commit)) return { ok: false, version: '' };
+  if (!isValidBuiltAt(qrRelease.built_at)) return { ok: false, version: '' };
+  if (!Number.isInteger(qrRelease.runtime_file_count) || qrRelease.runtime_file_count <= 0) return { ok: false, version: '' };
+  const version = String(qrRelease.app_version);
+  const makerTrim = typeof makerRelease === 'string' ? makerRelease.trim() : '';
+  if (!makerTrim || makerTrim !== version) return { ok: false, version: '' };
+  if (!Array.isArray(runtimeFiles) || runtimeFiles.length === 0) return { ok: false, version: '' };
+  if (runtimeFiles.length !== qrRelease.runtime_file_count) return { ok: false, version: '' };
+  const allowed = new Set(REQUIRED_RUNTIME_NAMES);
+  const seen = new Set();
+  for (const f of runtimeFiles) {
+    if (!f || typeof f !== 'object') return { ok: false, version: '' };
+    if (typeof f.name !== 'string' || !f.name.trim()) return { ok: false, version: '' };
+    if (typeof f.source !== 'string' || !f.source.trim()) return { ok: false, version: '' };
+    const nm = f.name;
+    if (nm !== nm.trim()) return { ok: false, version: '' };
+    if (!allowed.has(nm)) return { ok: false, version: '' };
+    if (/[\/\\]/.test(nm) || nm.includes('..')) return { ok: false, version: '' };
+    if (seen.has(nm)) return { ok: false, version: '' };
+    seen.add(nm);
+  }
+  for (const required of REQUIRED_RUNTIME_NAMES) {
+    if (!seen.has(required)) return { ok: false, version: '' };
+  }
+  const manifestFile = runtimeFiles.find((f) => f.name === 'appsscript.json');
+  if (!manifestFile || !isValidAppsScriptSource(manifestFile.source)) return { ok: false, version: '' };
+  return { ok: true, version };
+}
+
+function currentReleaseGate(win) {
+  const qr = win ? win.__QR_CHECK_RELEASE__ : null;
+  const maker = win && typeof win.__MAKER_RELEASE__ === 'string' ? win.__MAKER_RELEASE__.trim() : '';
+  const files = win ? win.__MAKER_RUNTIME_FILES__ : null;
+  return validateReleaseGate(qr, maker, files);
 }
 
 // clientId + GIS 가용성만으로 상단 차단 여부와 컨트롤 활성화 기준을 판단한다.
@@ -65,9 +167,9 @@ export function completionAvailability(install) {
     enabled = false;
   }
   if (enabled) {
-    return { enabled: true, status: '연결 검사가 끝났습니다. 완료 버튼을 누르세요.' };
+    return { enabled: true, status: '초기 설정 확인이 가능합니다. 초기 설정 확인 완료 버튼을 눌러 마무리하세요.' };
   }
-  return { enabled: false, status: '연결 검사가 끝나야 완료할 수 있습니다.' };
+  return { enabled: false, status: '초기 설정 확인이 끝나야 완료할 수 있습니다.' };
 }
 
 // resumeInfo 표시/복사 안내용 스냅샷. 자동 저장하지 않으며 DOM 없이 테스트 가능하다.
@@ -245,11 +347,11 @@ function makeInstallId() {
 }
 
 function readRelease(doc, win) {
-  const fromDom = doc ? readInput(doc, 'maker-release') : '';
-  if (isNonEmptyString(fromDom)) return fromDom;
+  void doc;
+  // Release source is only __MAKER_RELEASE__ (validated against __QR_CHECK_RELEASE__).
+  // User-editable maker-release input is never a release source. No maker-1 fallback.
   const fromWin = win && typeof win.__MAKER_RELEASE__ === 'string' ? win.__MAKER_RELEASE__.trim() : '';
-  if (isNonEmptyString(fromWin)) return fromWin;
-  return 'maker-1';
+  return fromWin || '';
 }
 
 function readRuntimeFiles(win) {
@@ -289,38 +391,162 @@ function boot() {
     onDenied: () => {},
   });
   let install = null;
-  const availability = () => makerAvailability(clientId, isGisAvailable(win));
+  let busy = false;
+  function hasPendingMarker() {
+    try {
+      const v = install && install.resources && install.resources.operation_pending;
+      return typeof v === 'string' && v.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+  function normEmailLocal(v) {
+    return String(v || '').trim().toLowerCase();
+  }
+  function isResumeImportAllowed() {
+    if (!install) return true;
+    try {
+      if (install.state !== 'DRAFT') return false;
+      const r = install.resources;
+      if (!r || typeof r !== 'object') return true;
+      return Object.keys(r).length === 0;
+    } catch {
+      return false;
+    }
+  }
+  function updateControlsOnly() {
+    const avail = availability();
+    const completion = completionAvailability(install);
+    const hardBlocked = avail.blocked || installReleaseMismatch();
+    const pending = hasPendingMarker();
+    const resumeBlocked = hardBlocked || pending || !isResumeImportAllowed();
+    if (busy) {
+      setDisabled(doc, 'connect-btn', true);
+      setDisabled(doc, 'create-btn', true);
+      setDisabled(doc, 'verify-btn', true);
+      setDisabled(doc, 'complete-btn', true);
+      setDisabled(doc, 'retry-btn', true);
+      setDisabled(doc, 'school-name', true);
+      setDisabled(doc, 'school-admin-email', true);
+      setDisabled(doc, 'admin-email', true);
+      setDisabled(doc, 'account-email', true);
+      setDisabled(doc, 'maker-release', true);
+      setDisabled(doc, 'resume-input', true);
+      setDisabled(doc, 'resume-btn', true);
+    } else if (pending) {
+      setDisabled(doc, 'connect-btn', hardBlocked || !avail.canConnect);
+      setDisabled(doc, 'create-btn', true);
+      setDisabled(doc, 'verify-btn', true);
+      setDisabled(doc, 'complete-btn', true);
+      setDisabled(doc, 'retry-btn', true);
+      setDisabled(doc, 'school-name', false);
+      setDisabled(doc, 'school-admin-email', false);
+      setDisabled(doc, 'admin-email', false);
+      setDisabled(doc, 'account-email', false);
+      setDisabled(doc, 'maker-release', false);
+      setDisabled(doc, 'resume-input', true);
+      setDisabled(doc, 'resume-btn', true);
+    } else {
+      setDisabled(doc, 'connect-btn', hardBlocked || !avail.canConnect);
+      setDisabled(doc, 'create-btn', hardBlocked || !avail.canCreate);
+      setDisabled(doc, 'verify-btn', hardBlocked || !avail.canVerify);
+      setDisabled(doc, 'complete-btn', hardBlocked || !completion.enabled);
+      setDisabled(doc, 'retry-btn', hardBlocked);
+      setDisabled(doc, 'school-name', hardBlocked);
+      setDisabled(doc, 'school-admin-email', hardBlocked);
+      setDisabled(doc, 'admin-email', hardBlocked);
+      setDisabled(doc, 'account-email', hardBlocked);
+      setDisabled(doc, 'maker-release', hardBlocked);
+      setDisabled(doc, 'resume-input', resumeBlocked);
+      setDisabled(doc, 'resume-btn', resumeBlocked);
+    }
+  }
+  function renderBusyOn() {
+    setDisabled(doc, 'connect-btn', true);
+    setDisabled(doc, 'create-btn', true);
+    setDisabled(doc, 'verify-btn', true);
+    setDisabled(doc, 'complete-btn', true);
+    setDisabled(doc, 'retry-btn', true);
+    setDisabled(doc, 'school-name', true);
+    setDisabled(doc, 'school-admin-email', true);
+    setDisabled(doc, 'admin-email', true);
+    setDisabled(doc, 'account-email', true);
+    setDisabled(doc, 'maker-release', true);
+    setDisabled(doc, 'resume-input', true);
+    setDisabled(doc, 'resume-btn', true);
+  }
+  function refreshControlsPreserveStatus() {
+    updateControlsOnly();
+    try {
+      renderDisplayStage(doc, win, install);
+    } catch {
+      // indicator-only
+    }
+  }
+  const availability = () => {
+    const base = makerAvailability(clientId, isGisAvailable(win));
+    if (base.blocked) return base;
+    const gate = currentReleaseGate(win);
+    if (!gate.ok) {
+      return {
+        blocked: true,
+        reason: 'NO_RUNTIME',
+        status: BLOCKED_NO_RUNTIME,
+        canConnect: false,
+        canCreate: false,
+        canVerify: false,
+        canComplete: false,
+      };
+    }
+    if (install && install.release !== gate.version) {
+      return {
+        blocked: true,
+        reason: 'NO_RUNTIME',
+        status: BLOCKED_NO_RUNTIME,
+        canConnect: false,
+        canCreate: false,
+        canVerify: false,
+        canComplete: false,
+      };
+    }
+    return base;
+  };
+
+  function installReleaseMismatch() {
+    if (!install) return false;
+    const gate = currentReleaseGate(win);
+    return !gate.ok || install.release !== gate.version;
+  }
 
   function renderReleaseNote() {
-    const raw = win && typeof win.__MAKER_RELEASE__ === 'string' ? win.__MAKER_RELEASE__ : '';
-    setText(doc, 'maker-release-note', releaseNoteText(raw));
+    const gate = currentReleaseGate(win);
+    if (gate.ok) setText(doc, 'maker-release-note', releaseNoteText(gate.version));
+    else setText(doc, 'maker-release-note', releaseNoteText(''));
   }
 
   function render(statusText) {
     const avail = availability();
     renderReleaseNote();
-    const completion = completionAvailability(install);
     if (statusText !== undefined) {
       setText(doc, 'maker-status', statusText);
     } else if (avail.blocked) {
       setText(doc, 'maker-status', avail.status);
     }
-    const hardBlocked = avail.blocked;
-    setDisabled(doc, 'connect-btn', hardBlocked || !avail.canConnect);
-    setDisabled(doc, 'create-btn', hardBlocked || !avail.canCreate);
-    setDisabled(doc, 'verify-btn', hardBlocked || !avail.canVerify);
-    setDisabled(doc, 'complete-btn', hardBlocked || !completion.enabled);
+    updateControlsOnly();
     renderDisplayStage(doc, win, install);
   }
 
   function renderResumeGuidance() {
-    const snap = safeResumeSnapshot(install);
-    if (snap.ok) {
-      setText(doc, 'resume-info', '이어하기 정보(저장되지 않음, 필요하면 복사해 보관):\n' + JSON.stringify(snap.snapshot, null, 2));
-    } else if (install) {
-      setText(doc, 'resume-info', snap.message);
-    } else {
+    if (!install) {
       setText(doc, 'resume-info', '');
+      return;
+    }
+    try {
+      const commit = win && win.__QR_CHECK_RELEASE__ ? win.__QR_CHECK_RELEASE__.source_commit : '';
+      const envelope = createResumeEnvelope(install, commit);
+      setText(doc, 'resume-info', JSON.stringify(envelope, null, 2));
+    } catch {
+      setText(doc, 'resume-info', '이어하기 정보를 표시할 수 없습니다. 복사한 JSON과 원래 계정·릴리스를 확인하세요.');
     }
   }
 
@@ -363,6 +589,10 @@ function boot() {
       render(avail.status);
       return;
     }
+    if (installReleaseMismatch()) {
+      render(BLOCKED_NO_RUNTIME);
+      return;
+    }
     const typedEmail = readInput(doc, 'account-email');
     try {
       await auth.requestAccess(typedEmail ? { accountEmail: typedEmail } : {});
@@ -391,6 +621,15 @@ function boot() {
       render(avail.status);
       return;
     }
+    if (installReleaseMismatch()) {
+      render(BLOCKED_NO_RUNTIME);
+      return;
+    }
+    if (hasPendingMarker()) {
+      render('요청 결과를 확인할 수 없습니다. 중단하고 기존 리소스를 확인하세요.');
+      renderResumeGuidance();
+      return;
+    }
     const schoolName = readInput(doc, 'school-name');
     const adminEmail = readInput(doc, 'school-admin-email') || readInput(doc, 'admin-email');
     const typedEmail = readInput(doc, 'account-email');
@@ -406,25 +645,51 @@ function boot() {
     }
     try {
       const verified = await ensureVerifiedEmail(typedEmail);
+      const normVerified = normEmailLocal(verified);
+      const normAdmin = normEmailLocal(adminEmail);
+      if (!normAdmin || normAdmin !== normVerified) {
+        throw new Error('설치를 시작한 Google 계정과 다릅니다. 처음 계정으로 다시 로그인하세요.');
+      }
       ensureInstall(schoolName, adminEmail, verified);
+      if (normEmailLocal(install.account_email) !== normVerified) {
+        throw new Error('설치를 시작한 Google 계정과 다릅니다. 처음 계정으로 다시 로그인하세요.');
+      }
+      if (installReleaseMismatch()) {
+        throw new Error(BLOCKED_NO_RUNTIME);
+      }
+      const freshPrefix = buildPrefix(schoolName, install.install_id);
+      const storedPrefix = install.resources && typeof install.resources.install_prefix === 'string' ? install.resources.install_prefix : '';
+      let prefixToUse = freshPrefix;
+      if (storedPrefix) {
+        if (storedPrefix !== freshPrefix) {
+          throw new Error('학교명이 변경되었습니다. 처음 입력한 학교명으로 다시 시도하세요.');
+        }
+        prefixToUse = storedPrefix;
+      } else {
+        install.resources.install_prefix = freshPrefix;
+      }
+      if (hasPendingMarker()) {
+        throw Object.assign(new Error('요청 결과를 확인할 수 없습니다. 중단하고 기존 리소스를 확인하세요.'), { kind: 'OUTCOME_UNKNOWN', retryable: false });
+      }
       const res = buildClients();
-      const prefix = buildPrefix(schoolName, install.install_id);
       render('학교 저장소를 만들고 있습니다…');
-      await runToStorage({ install, accountEmail: verified, res, prefix });
+      await runToStorage({ install, accountEmail: verified, res, prefix: prefixToUse, onSnapshot: renderResumeGuidance });
       render('앱을 게시하고 있습니다…');
       await runToDeployed({
         install,
         accountEmail: verified,
         res,
-        prefix,
+        prefix: prefixToUse,
         runtimeFiles,
         versionDescription: 'maker ' + String(install.release || ''),
+        onSnapshot: renderResumeGuidance,
       });
       const webAppUrl = install.resources ? install.resources.web_app_url : '';
       renderResumeGuidance();
       if (install.state === 'AWAITING_SCHOOL_AUTH' && isNonEmptyString(webAppUrl)) {
         const adminUrl = adminUrlFromWebAppUrl(webAppUrl);
         setLink(doc, 'admin-url', adminUrl, adminUrl);
+        setText(doc, 'owner-steps', ownerSteps(webAppUrl));
         render('리소스가 만들어졌습니다 (AWAITING_SCHOOL_AUTH). 관리자 주소에서 초기 설정을 한 뒤 연결 검사를 누르세요.');
       } else {
         render('현재 단계: ' + install.state + '. 이어하기 정보를 확인하세요.');
@@ -433,8 +698,12 @@ function boot() {
       render(humanError(e));
     }
     renderResumeGuidance();
-    const completion = completionAvailability(install);
-    setDisabled(doc, 'complete-btn', availability().blocked || !completion.enabled);
+    if (!busy && !hasPendingMarker()) {
+      const completion = completionAvailability(install);
+      setDisabled(doc, 'complete-btn', availability().blocked || !completion.enabled);
+    } else {
+      setDisabled(doc, 'complete-btn', true);
+    }
   }
 
   async function handleVerify() {
@@ -443,15 +712,27 @@ function boot() {
       render(avail.status);
       return;
     }
+    if (installReleaseMismatch()) {
+      render(BLOCKED_NO_RUNTIME);
+      return;
+    }
     if (!install) {
       render('먼저 학교 정보를 입력하고 리소스 만들기를 하세요.');
+      return;
+    }
+    if (hasPendingMarker()) {
+      render('요청 결과를 확인할 수 없습니다. 중단하고 기존 리소스를 확인하세요.');
+      renderResumeGuidance();
       return;
     }
     try {
       const typedEmail = readInput(doc, 'account-email');
       const verified = await ensureVerifiedEmail(typedEmail);
-      if (install.account_email !== verified) {
+      if (normEmailLocal(install.account_email) !== normEmailLocal(verified)) {
         throw new Error('설치를 시작한 Google 계정과 다릅니다. 처음 계정으로 다시 로그인하세요.');
+      }
+      if (installReleaseMismatch()) {
+        throw new Error(BLOCKED_NO_RUNTIME);
       }
       const res = buildClients();
       const result = await checkSchoolVerified({ install, res, accountEmail: verified });
@@ -464,21 +745,34 @@ function boot() {
         setText(doc, 'owner-steps', ownerSteps(webAppUrl));
         setLink(doc, 'admin-url', adminUrlFromWebAppUrl(webAppUrl), adminUrlFromWebAppUrl(webAppUrl));
         renderResumeGuidance();
-        render('연결 검사가 끝났습니다. 안내에 따라 초기 설정을 마친 뒤 완료를 누르세요.');
+        render('연결 검사가 끝났습니다. 초기 설정 확인 완료 버튼을 눌러 마무리하세요. 실제 QR 제출·첨부 확인은 별도로 필요합니다.');
       } else {
         render('아직 학교 연결 검사가 끝나지 않았습니다. 관리자 주소에서 초기 설정을 마친 뒤 다시 누르세요.');
       }
     } catch (e) {
       render(humanError(e));
     }
-    const completion = completionAvailability(install);
-    setDisabled(doc, 'complete-btn', availability().blocked || !completion.enabled);
+    if (!busy && !hasPendingMarker()) {
+      const completion = completionAvailability(install);
+      setDisabled(doc, 'complete-btn', availability().blocked || !completion.enabled);
+    } else {
+      setDisabled(doc, 'complete-btn', true);
+    }
   }
 
-  function handleComplete() {
+  async function handleComplete() {
     const avail = availability();
     if (avail.blocked) {
       render(avail.status);
+      return;
+    }
+    if (installReleaseMismatch()) {
+      render(BLOCKED_NO_RUNTIME);
+      return;
+    }
+    if (hasPendingMarker()) {
+      render('요청 결과를 확인할 수 없습니다. 중단하고 기존 리소스를 확인하세요.');
+      renderResumeGuidance();
       return;
     }
     if (!install) {
@@ -491,18 +785,174 @@ function boot() {
       return;
     }
     try {
-      advance(install, COMPLETE_STATE, {});
-      void STATES;
+      const typedEmail = readInput(doc, 'account-email');
+      const verified = await ensureVerifiedEmail(typedEmail);
+      if (normEmailLocal(install.account_email) !== normEmailLocal(verified)) {
+        throw new Error('설치를 시작한 Google 계정과 다릅니다. 처음 계정으로 다시 로그인하세요.');
+      }
+      if (installReleaseMismatch()) {
+        throw new Error(BLOCKED_NO_RUNTIME);
+      }
+      const res = buildClients();
+      await completeSchoolInstall({ install, res, accountEmail: verified });
       renderResumeGuidance();
-      render('설치가 완료되었습니다.');
+      render('초기 설정 확인이 완료되었습니다. 실제 QR 제출·시트 기록·관리자 화면·첨부·모바일 동작 확인은 별도로 필요합니다.');
     } catch (e) {
       render(humanError(e));
     }
-    const next = completionAvailability(install);
-    setDisabled(doc, 'complete-btn', availability().blocked || !next.enabled);
+    if (!busy && !hasPendingMarker()) {
+      const next = completionAvailability(install);
+      setDisabled(doc, 'complete-btn', availability().blocked || !next.enabled);
+    } else {
+      setDisabled(doc, 'complete-btn', true);
+    }
+  }
+
+  async function handleResume() {
+    const avail = availability();
+    if (avail.blocked) {
+      render(avail.status);
+      return;
+    }
+    if (installReleaseMismatch()) {
+      render(BLOCKED_NO_RUNTIME);
+      return;
+    }
+    if (hasPendingMarker()) {
+      render('이어하기를 할 수 없습니다. 요청 결과를 확인할 수 없습니다. 중단하고 기존 리소스를 확인하세요.');
+      renderResumeGuidance();
+      return;
+    }
+    if (install) {
+      let allowed = false;
+      try {
+        const keys = install.resources && typeof install.resources === 'object' ? Object.keys(install.resources) : [];
+        allowed = install.state === 'DRAFT' && keys.length === 0;
+      } catch {
+        allowed = false;
+      }
+      if (!allowed) {
+        render('이어하기를 할 수 없습니다. 진행 중인 설치가 있습니다. 기존 설치를 그대로 사용하세요.');
+        renderResumeGuidance();
+        return;
+      }
+    }
+    let token = null;
+    try {
+      token = auth.getToken();
+    } catch {
+      token = null;
+    }
+    if (!token) {
+      render('먼저 Google 연결을 한 뒤 이어하기를 하세요. 연결 후 검증된 계정으로 이어하기 정보를 가져오세요.');
+      return;
+    }
+    const inputEl = doc.getElementById('resume-input');
+    const text = inputEl && typeof inputEl.value === 'string' ? inputEl.value : '';
+    if (!text || !text.trim()) {
+      render('이어하기 정보를 가져오지 못했습니다. 복사한 JSON이 올바른지 확인하세요.');
+      try {
+        renderResumeGuidance();
+      } catch {
+        // preserve previous snapshot on failure
+      }
+      return;
+    }
+    try {
+      const typedEmail = readInput(doc, 'account-email');
+      const verified = await ensureVerifiedEmail(typedEmail);
+      const release = readRelease(doc, win);
+      const commit = win && win.__QR_CHECK_RELEASE__ ? win.__QR_CHECK_RELEASE__.source_commit : '';
+      const runtimeFiles = readRuntimeFiles(win);
+      if (!release || !commit || !runtimeFiles) {
+        throw new Error('resume gate');
+      }
+      const gateNow = availability();
+      if (gateNow.blocked) {
+        throw new Error('resume gate');
+      }
+      if (installReleaseMismatch()) {
+        throw new Error('resume gate');
+      }
+      if (hasPendingMarker()) {
+        throw new Error('resume gate');
+      }
+      if (install) {
+        const keys = install.resources && typeof install.resources === 'object' ? Object.keys(install.resources) : [];
+        if (!(install.state === 'DRAFT' && keys.length === 0)) {
+          render('이어하기를 할 수 없습니다. 진행 중인 설치가 있습니다. 기존 설치를 그대로 사용하세요.');
+          renderResumeGuidance();
+          return;
+        }
+      }
+      const res = buildClients();
+      const restored = await restoreInstallFromSnapshot({
+        text,
+        accountEmail: verified,
+        release,
+        sourceCommit: commit,
+        res,
+        runtimeFiles,
+      });
+      if (install) {
+        const keys2 = install.resources && typeof install.resources === 'object' ? Object.keys(install.resources) : [];
+        if (!(install.state === 'DRAFT' && keys2.length === 0)) {
+          render('이어하기를 할 수 없습니다. 진행 중인 설치가 있습니다. 기존 설치를 그대로 사용하세요.');
+          renderResumeGuidance();
+          return;
+        }
+      }
+      if (hasPendingMarker()) {
+        throw new Error('resume gate');
+      }
+      install = restored;
+      try {
+        const emailVal = install.account_email || verified;
+        const accEl = doc.getElementById('account-email');
+        if (accEl && 'value' in accEl) accEl.value = emailVal;
+        const ownerEl = doc.getElementById('school-admin-email');
+        if (ownerEl && 'value' in ownerEl) ownerEl.value = emailVal;
+        const ownerEl2 = doc.getElementById('admin-email');
+        if (ownerEl2 && 'value' in ownerEl2) ownerEl2.value = emailVal;
+      } catch {
+        // input populate best-effort; school-name preserved
+      }
+      try {
+        const webAppUrl = install.resources ? install.resources.web_app_url : '';
+        if (install.state === 'AWAITING_SCHOOL_AUTH' && isNonEmptyString(webAppUrl)) {
+          const adminUrl = adminUrlFromWebAppUrl(webAppUrl);
+          setLink(doc, 'admin-url', adminUrl, adminUrl);
+          setText(doc, 'owner-steps', ownerSteps(webAppUrl));
+        }
+      } catch {
+        // admin link best-effort
+      }
+      renderResumeGuidance();
+      if (install.state === 'AWAITING_SCHOOL_AUTH') {
+        render('이어하기 정보를 가져왔습니다. 원래 학교명을 그대로 사용하세요. 관리자 주소에서 초기 설정을 한 뒤 연결 검사를 누르세요. 완료는 새로운 연결 검사 후에 가능합니다.');
+      } else {
+        render('이어하기 정보를 가져왔습니다. 원래 학교명과 계정을 그대로 사용하세요. 다음 단계를 진행하세요.');
+      }
+    } catch {
+      render('이어하기 정보를 가져오지 못했습니다. 복사한 JSON·원래 계정·릴리스를 확인하세요.');
+      try {
+        renderResumeGuidance();
+      } catch {
+        // preserve previous snapshot on failure
+      }
+    }
   }
 
   function handleRetry() {
+    const avail = availability();
+    if (avail.blocked) {
+      render(avail.status);
+      return;
+    }
+    if (installReleaseMismatch()) {
+      render(BLOCKED_NO_RUNTIME);
+      return;
+    }
     const target = retryTargetForState(install ? install.state : '');
     if (target === 'verify') return handleVerify();
     if (target === 'create') return handleCreate();
@@ -515,7 +965,52 @@ function boot() {
     if (el && typeof el.addEventListener === 'function') {
       el.addEventListener('click', (ev) => {
         if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
-        fn();
+        if (busy) return;
+        busy = true;
+        try {
+          renderBusyOn();
+        } catch {
+          // busy UI best-effort; gesture preserved (sync only)
+        }
+        let result;
+        try {
+          result = fn();
+        } catch {
+          busy = false;
+          try {
+            refreshControlsPreserveStatus();
+          } catch {
+            // ignore
+          }
+          return;
+        }
+        if (result && typeof result.then === 'function') {
+          result.then(
+            () => {
+              busy = false;
+              try {
+                refreshControlsPreserveStatus();
+              } catch {
+                // ignore
+              }
+            },
+            () => {
+              busy = false;
+              try {
+                refreshControlsPreserveStatus();
+              } catch {
+                // ignore
+              }
+            },
+          );
+        } else {
+          busy = false;
+          try {
+            refreshControlsPreserveStatus();
+          } catch {
+            // ignore
+          }
+        }
       });
     }
   }
@@ -525,6 +1020,7 @@ function boot() {
   bind('verify-btn', handleVerify);
   bind('complete-btn', handleComplete);
   bind('retry-btn', handleRetry);
+  bind('resume-btn', handleResume);
 
   // 초기 화면: clientId 누락·GIS 미가용을 있는 그대로 알리고 전 컨트롤 차단. 타이머 전이 없음.
   const init = availability();

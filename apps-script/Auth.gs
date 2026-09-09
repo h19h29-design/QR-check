@@ -106,7 +106,13 @@ function verifyInitialSetupKey_(payload) {
   if (!setupKey || !constantTimeEquals_(hashToken_(setupKey, 'setup'), expected)) {
     throw new Error('초기 설정 키가 올바르지 않습니다.');
   }
-  return { actor: 'setup_key', method: 'initial_setup_key' };
+  const active = String(activeEmail_() || '').trim().toLowerCase();
+  const effective = String(effectiveEmail_() || '').trim().toLowerCase();
+  const submitted = String((payload && (payload.admin_email || payload.adminEmail)) || '').trim().toLowerCase();
+  if (!active || active !== effective || !submitted || submitted !== active) {
+    throw new Error('Google 계정을 확인할 수 없습니다. 스크립트 소유자 Google 계정으로 로그인한 뒤 관리자 주소가 소유자와 일치하는지 확인하세요.');
+  }
+  return { actor: active, method: 'initial_setup_key' };
 }
 
 function clearInitialSetupKey_() {

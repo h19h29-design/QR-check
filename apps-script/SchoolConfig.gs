@@ -28,7 +28,12 @@ function setSchoolProp_(key, value) {
  * (settings를 읽으려면 시트가 먼저 필요하므로 위치 특정에 쓸 수 없다.)
  */
 function getSpreadsheet_() {
-  var boundId = schoolProp_('spreadsheet_id', '');
+  var boundId;
+  try {
+    boundId = PropertiesService.getScriptProperties().getProperty('spreadsheet_id');
+  } catch (err) {
+    throw new Error('학교 데이터 시트 설정을 읽을 수 없습니다. 관리자에게 문의하세요.');
+  }
   if (boundId) {
     try {
       return SpreadsheetApp.openById(boundId);

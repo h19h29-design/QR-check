@@ -33,6 +33,7 @@ const ALLOWLIST = [
   'src/google/resources.mjs',
   'src/install/state-machine.mjs',
   'src/install/orchestrator.mjs',
+  'src/install/resume.mjs',
   'src/update/update.mjs',
 ];
 
@@ -40,12 +41,16 @@ const GIS_URL = 'https://accounts.google.com/gsi/client';
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3';
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4';
 const SCRIPT_BASE = 'https://script.googleapis.com/v1';
+const MACROS_BASE = 'https://script.google.com/macros/s/';
 const ALLOWED_URL_BASES = [
   GIS_URL,
   DRIVE_BASE,
   SHEETS_BASE,
   SCRIPT_BASE,
+  MACROS_BASE,
   'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/script.projects',
   'https://www.googleapis.com/auth/script.deployments',
 ];
@@ -246,6 +251,33 @@ function scanOutput(resolvedOut) {
   }
 }
 
+const REQUIRED_ADMIN_NAMES = [
+  'Code.gs',
+  'SchoolConfig.gs',
+  'SchemaMigrations.gs',
+  'Sheets.gs',
+  'Submit.gs',
+  'QrTokens.gs',
+  'DriveFiles.gs',
+  'Templates.gs',
+  'Client.js.html',
+  'SubmitView.html',
+  'Styles.html',
+  'appsscript.json',
+  'Auth.gs',
+  'Admin.gs',
+  'Api.gs',
+  'DesktopSync.gs',
+  'AdminView.html',
+  'WebApp.html',
+];
+
+const STRICT_SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const FULL_COMMIT_RE = /^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
+const CANONICAL_BUILT_AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const ADMIN_SHA_RE = /^[0-9a-fA-F]{64}$/;
+const ANCHORED_APP_VERSION_RE = /^[ \t]*const[ \t]+APP_VERSION[ \t]*=[ \t]*(['"])([^'"]*)\1[ \t]*;?[ \t]*(?:\/\/.*)?$/gm;
+
 function loadAndVerifyRuntime(runtimeRaw) {
   const resolvedRuntime = path.resolve(runtimeRaw);
   let rst = null;
@@ -271,20 +303,33 @@ function loadAndVerifyRuntime(runtimeRaw) {
   } catch (err) {
     throw new Error('invalid runtime manifest JSON: ' + String(err && err.message ? err.message : err));
   }
-  if (!manifest || typeof manifest !== 'object') throw new Error('invalid runtime manifest shape');
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    throw new Error('invalid runtime manifest shape');
+  }
   const { app_version, source_commit, built_at, source_dirty, bundles } = manifest;
-  if (typeof app_version !== 'string' || !/^[0-9]+\.[0-9]+\.[0-9]+([.+-][0-9A-Za-z.+-]+)*$/.test(app_version)) {
+  if (typeof app_version !== 'string' || !STRICT_SEMVER_RE.test(app_version)) {
     throw new Error('invalid manifest app_version');
   }
-  if (typeof source_commit !== 'string' || source_commit === 'unknown' || !/^[0-9a-fA-F]{7,64}$/.test(source_commit)) {
+  if (typeof source_commit !== 'string' || !FULL_COMMIT_RE.test(source_commit)) {
     throw new Error('invalid manifest source_commit');
   }
-  if (typeof built_at !== 'string' || Number.isNaN(Date.parse(built_at))) {
+  if (typeof built_at !== 'string' || !CANONICAL_BUILT_AT_RE.test(built_at) || Number.isNaN(Date.parse(built_at))) {
+    throw new Error('invalid manifest built_at');
+  }
+  try {
+    if (new Date(built_at).toISOString() !== built_at) {
+      throw new Error('invalid manifest built_at');
+    }
+  } catch (err) {
+    if (err && err.message === 'invalid manifest built_at') throw err;
     throw new Error('invalid manifest built_at');
   }
   if (source_dirty !== false) throw new Error('refusing dirty runtime source (source_dirty must be false)');
-  if (!bundles || typeof bundles !== 'object' || !Array.isArray(bundles.admin) || bundles.admin.length === 0) {
+  if (!bundles || typeof bundles !== 'object' || Array.isArray(bundles) || !Array.isArray(bundles.admin)) {
     throw new Error('invalid manifest bundles.admin (must be nonempty)');
+  }
+  if (bundles.admin.length !== REQUIRED_ADMIN_NAMES.length) {
+    throw new Error('invalid manifest bundles.admin (must list exactly 18 required runtime files)');
   }
   const adminDir = path.resolve(resolvedRuntime, 'admin');
   let adst = null;
@@ -295,15 +340,79 @@ function loadAndVerifyRuntime(runtimeRaw) {
   }
   if (adst.isSymbolicLink()) throw new Error('refusing symlinked runtime admin dir');
   if (!adst.isDirectory()) throw new Error('runtime admin is not a directory');
-  const verified = [];
+  const requiredSet = new Set(REQUIRED_ADMIN_NAMES);
+  const seenManifest = new Set();
   for (const entry of bundles.admin) {
-    if (!entry || typeof entry !== 'object') throw new Error('invalid manifest admin entry shape');
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error('invalid manifest admin entry shape');
+    }
     const { name, bytes, sha256 } = entry;
-    if (!isSimpleBasename(name)) throw new Error('invalid admin entry name (must be simple basename): ' + String(name));
+    if (typeof name !== 'string' || !isSimpleBasename(name)) {
+      throw new Error('invalid admin entry name (must be simple basename): ' + String(name));
+    }
+    if (name !== name.trim() || name.includes('..')) {
+      throw new Error('invalid admin entry name (must be simple basename): ' + String(name));
+    }
+    if (seenManifest.has(name)) {
+      throw new Error('duplicate manifest admin entry: ' + name);
+    }
+    seenManifest.add(name);
     if (!Number.isInteger(bytes) || bytes < 0) throw new Error('invalid admin entry bytes: ' + name);
-    if (typeof sha256 !== 'string' || !/^[0-9a-fA-F]{64}$/.test(sha256)) {
+    if (typeof sha256 !== 'string' || !ADMIN_SHA_RE.test(sha256)) {
       throw new Error('invalid admin entry sha256: ' + name);
     }
+    const full = path.resolve(adminDir, name);
+    if (full !== adminDir && !isInside(adminDir, full)) {
+      throw new Error('refusing admin path outside runtime/admin: ' + name);
+    }
+  }
+  for (const required of REQUIRED_ADMIN_NAMES) {
+    if (!seenManifest.has(required)) {
+      throw new Error('missing manifest admin entry: ' + required);
+    }
+  }
+  for (const name of seenManifest) {
+    if (!requiredSet.has(name)) {
+      throw new Error('extra manifest admin entry: ' + name);
+    }
+  }
+  const physNames = fs.readdirSync(adminDir);
+  if (physNames.length !== REQUIRED_ADMIN_NAMES.length) {
+    throw new Error('runtime admin dir must contain exactly 18 files (found ' + physNames.length + ')');
+  }
+  const seenPhysical = new Set();
+  for (const phys of physNames) {
+    if (typeof phys !== 'string' || !isSimpleBasename(phys)) {
+      throw new Error('invalid file in runtime admin dir: ' + String(phys));
+    }
+    if (phys !== phys.trim() || phys.includes('..')) {
+      throw new Error('invalid file in runtime admin dir: ' + String(phys));
+    }
+    if (seenPhysical.has(phys)) {
+      throw new Error('duplicate file in runtime admin dir: ' + phys);
+    }
+    seenPhysical.add(phys);
+    if (!requiredSet.has(phys)) {
+      throw new Error('extra file in runtime admin dir: ' + phys);
+    }
+    const physFull = path.join(adminDir, phys);
+    const resolvedPhys = path.resolve(adminDir, phys);
+    if (resolvedPhys !== physFull && !isInside(adminDir, resolvedPhys)) {
+      throw new Error('refusing admin path outside runtime/admin: ' + phys);
+    }
+    const pst = fs.lstatSync(physFull);
+    if (pst.isSymbolicLink()) throw new Error('refusing symlinked runtime file: ' + phys);
+    if (pst.isDirectory()) throw new Error('unexpected directory in runtime admin dir: ' + phys);
+    if (!pst.isFile()) throw new Error('runtime admin entry is not a regular file: ' + phys);
+  }
+  for (const required of REQUIRED_ADMIN_NAMES) {
+    if (!seenPhysical.has(required)) {
+      throw new Error('runtime admin file missing: ' + required);
+    }
+  }
+  const verified = [];
+  for (const entry of bundles.admin) {
+    const { name, bytes, sha256 } = entry;
     const full = path.resolve(adminDir, name);
     if (full !== adminDir && !isInside(adminDir, full)) {
       throw new Error('refusing admin path outside runtime/admin: ' + name);
@@ -324,7 +433,46 @@ function loadAndVerifyRuntime(runtimeRaw) {
     if (actual.toLowerCase() !== sha256.toLowerCase()) {
       throw new Error('sha256 mismatch for runtime file ' + name);
     }
-    verified.push({ name, source: buf.toString('utf8') });
+    const source = buf.toString('utf8');
+    if (!source.trim()) {
+      throw new Error('blank runtime source: ' + name);
+    }
+    verified.push({ name, source });
+  }
+  const byName = new Map();
+  for (const v of verified) byName.set(v.name, v.source);
+  const codeSource = byName.get('Code.gs');
+  if (typeof codeSource !== 'string' || !codeSource.trim()) {
+    throw new Error('runtime admin file missing: Code.gs');
+  }
+  ANCHORED_APP_VERSION_RE.lastIndex = 0;
+  const codeMatches = [...codeSource.matchAll(ANCHORED_APP_VERSION_RE)];
+  ANCHORED_APP_VERSION_RE.lastIndex = 0;
+  if (codeMatches.length !== 1) {
+    throw new Error('Code.gs must contain exactly one const APP_VERSION assignment');
+  }
+  if (codeMatches[0][2] !== app_version) {
+    throw new Error('Code.gs APP_VERSION mismatch: expected ' + app_version);
+  }
+  const appsSource = byName.get('appsscript.json');
+  if (typeof appsSource !== 'string' || !appsSource.trim()) {
+    throw new Error('runtime admin file missing: appsscript.json');
+  }
+  let appsObj = null;
+  try {
+    appsObj = JSON.parse(appsSource);
+  } catch {
+    throw new Error('invalid appsscript.json JSON');
+  }
+  if (!appsObj || typeof appsObj !== 'object' || Array.isArray(appsObj)) {
+    throw new Error('invalid appsscript.json shape');
+  }
+  const webapp = appsObj.webapp;
+  if (!webapp || typeof webapp !== 'object' || Array.isArray(webapp)) {
+    throw new Error('invalid appsscript.json webapp');
+  }
+  if (webapp.executeAs !== 'USER_DEPLOYING' || webapp.access !== 'ANYONE_ANONYMOUS') {
+    throw new Error('invalid appsscript.json webapp (must be USER_DEPLOYING/ANYONE_ANONYMOUS)');
   }
   return { manifest, verified };
 }
@@ -403,5 +551,3 @@ if (invokedAsMain) {
     process.exit(1);
   }
 }
-
-

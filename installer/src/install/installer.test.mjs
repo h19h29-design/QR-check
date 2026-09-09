@@ -10,10 +10,10 @@ function fakeGis({ token = 'ya29.test', denied = false } = {}) {
   return {
     accounts: {
       oauth2: {
-        initTokenClient: ({ callback }) => ({
+        initTokenClient: ({ callback, scope }) => ({
           requestAccessToken: () => {
             if (denied) callback({});
-            else callback({ access_token: token, expires_in: 3600, scope: 'openid' });
+            else callback({ access_token: token, expires_in: 3600, scope });
           },
         }),
         revoke: () => {},
@@ -112,7 +112,7 @@ test('중단 후 재개: 기존 자원 재사용, 단계 건너뛰기 없음', a
   });
   assert.equal(install.state, 'AWAITING_SCHOOL_AUTH');
   assert.ok(install.resources.web_app_url.includes('/exec'));
-  const v = await checkSchoolVerified({ install, res });
+  const v = await checkSchoolVerified({ install, res, accountEmail: 'o@t.e' });
   assert.equal(v.verified, true);
   assert.equal(install.state, 'VERIFIED');
 });
@@ -126,7 +126,7 @@ test('다른 계정으로 재개하면 중단된다', async () => {
   );
 });
 
-test('upload 실패 후 재개: 같은 스크립트 재사용', async () => {
+test('upload known 403(FORBIDDEN) 실패 후 재개: 같은 스크립트 재사용', async () => {
   let uploads = 0;
   let scriptCalls = 0;
   let deploymentCalls = 0;
@@ -135,7 +135,7 @@ test('upload 실패 후 재개: 같은 스크립트 재사용', async () => {
     async createSpreadsheet() { return { spreadsheetId: 's1' }; },
     async moveIntoFolder() {},
     async createScriptProject() { scriptCalls++; return { scriptId: 'sc1' }; },
-    async uploadRuntime() { uploads++; if (uploads === 1) throw new Error('upload 실패'); },
+    async uploadRuntime() { uploads++; if (uploads === 1) throw Object.assign(new Error('known 403 upload forbidden'), { kind: 'FORBIDDEN', status: 403 }); },
     async createVersion() { return { versionNumber: 1 }; },
     async createDeployment() {
       deploymentCalls++;
@@ -148,7 +148,7 @@ test('upload 실패 후 재개: 같은 스크립트 재사용', async () => {
     install, accountEmail: 'o@t.e', res, prefix: 'P_',
     runtimeFiles: [{ name: 'Code.gs', source: 'x' }], versionDescription: 'v0.1.0',
   };
-  await assert.rejects(() => runToDeployed(args), /upload/);
+  await assert.rejects(() => runToDeployed(args), /known 403|FORBIDDEN|403|forbidden/);
   const scriptIdBefore = install.resources.script_id;
   await runToDeployed(args);
   assert.equal(install.state, 'AWAITING_SCHOOL_AUTH');

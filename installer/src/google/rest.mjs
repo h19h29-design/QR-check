@@ -1,6 +1,7 @@
 // installer/src/google/rest.mjs — Google REST 호출 공용 계층.
 // - Authorization: Bearer <메모리 토큰> (URL·로그에 토큰 기록 금지)
-// - 429/5xx만 제한 재시도(최대 3회, 지수 백오프). 4xx는 즉시 분류 반환.
+// - GET만 429/5xx·네트워크 제한 재시도(최대 3회, 지수 백오프). 변이(POST/PUT/PATCH)는 단일 시도이며 실패 시 OUTCOME_UNKNOWN.
+// - 4xx는 즉시 분류 반환(원문 detail 미보관).
 // - Apps Script API 미허용 오류를 식별해 안내 단계로 연결한다.
 export const SCRIPT_API_NOT_ENABLED_PATTERNS = [
   /apps scrip.*api.*has not been used/i,
@@ -36,12 +37,24 @@ export function sanitizeForLog(obj) {
 export function createRestClient({ fetchImpl, getToken, sleep } = {}) {
   const doFetch = fetchImpl || fetch;
   const wait = sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const UNKNOWN_MESSAGE = '요청 결과를 확인할 수 없습니다. 중단하고 기존 리소스를 확인하세요.';
+  function unknownError() {
+    return Object.assign(new Error(UNKNOWN_MESSAGE), { kind: 'OUTCOME_UNKNOWN', retryable: false });
+  }
+  function networkError() {
+    return Object.assign(new Error('네트워크 오류로 요청을 완료하지 못했습니다. 다시 시도하세요.'), { kind: 'NETWORK', retryable: true });
+  }
+  function readFailedError() {
+    return Object.assign(new Error('응답을 읽을 수 없습니다. 다시 확인하세요.'), { kind: 'READ_FAILED', retryable: false });
+  }
 
   async function call(method, url, { body, token } = {}) {
     const t = token || (getToken ? getToken() : null);
-    if (!t) throw Object.assign(new Error('Google 연결이 끊겼습니다. 다시 연결하세요.'), { kind: 'NO_TOKEN' });
-    let lastErr = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    if (!t) throw Object.assign(new Error('Google 연결이 끊겼습니다. 다시 연결하세요.'), { kind: 'NO_TOKEN', retryable: false });
+    const isMutation = method !== 'GET';
+    const maxAttempts = isMutation ? 1 : 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const isLast = attempt === maxAttempts - 1;
       let res;
       try {
         res = await doFetch(url, {
@@ -50,30 +63,65 @@ export function createRestClient({ fetchImpl, getToken, sleep } = {}) {
           body: body === undefined ? undefined : JSON.stringify(body),
         });
       } catch (e) {
-        lastErr = Object.assign(new Error('네트워크 오류. 연결 후 다시 시도하세요.'), { kind: 'NETWORK', retryable: true });
-        await wait(1000 * 2 ** attempt);
-        continue;
+        if (!isLast && !isMutation) {
+          await wait(1000 * 2 ** attempt);
+          continue;
+        }
+        if (isMutation) throw unknownError();
+        throw networkError();
       }
       if (res.ok) {
-        const text = await res.text();
-        return text ? JSON.parse(text) : {};
+        let text;
+        try {
+          text = await res.text();
+        } catch (e) {
+          if (isMutation) throw unknownError();
+          throw readFailedError();
+        }
+        if (!text) return {};
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          if (isMutation) throw unknownError();
+          throw readFailedError();
+        }
       }
-      const errText = await res.text().catch(() => '');
-      const classified = classifyError(res.status, errText);
-      lastErr = Object.assign(new Error(classified.message), {
+      const status = res.status;
+      if (status === 429 || status >= 500) {
+        if (!isLast && !isMutation) {
+          await wait(1000 * 2 ** attempt);
+          continue;
+        }
+        if (isMutation) throw unknownError();
+        const classified = classifyError(status, '');
+        throw Object.assign(new Error(classified.message), {
+          kind: classified.kind,
+          retryable: true,
+          status,
+        });
+      }
+      let errText = '';
+      try {
+        errText = await res.text();
+      } catch (e) {
+        errText = '';
+      }
+      if (typeof errText !== 'string') errText = String(errText || '');
+      const classified = classifyError(status, errText);
+      throw Object.assign(new Error(classified.message), {
         kind: classified.kind,
-        status: res.status,
-        detail: errText.slice(0, 500),
+        retryable: false,
+        status,
       });
-      if (!classified.retryable) throw lastErr;
-      await wait(1000 * 2 ** attempt);
     }
-    throw lastErr;
+    if (isMutation) throw unknownError();
+    throw networkError();
   }
 
   return {
     get: (url, opts) => call('GET', url, opts),
     post: (url, body, opts) => call('POST', url, { ...(opts || {}), body }),
     put: (url, body, opts) => call('PUT', url, { ...(opts || {}), body }),
+    patch: (url, body, opts) => call('PATCH', url, { ...(opts || {}), body }),
   };
 }

@@ -1,5 +1,13 @@
 # AUTH_DEPLOYMENT_ADR — 인증·배포 구조 결정 (2026-09-07)
 
+## 현재 코드 대조 정정 (2026-09-08)
+
+아래 결정은 목표와 과거 상태를 포함한다. 현재 Admin.gs/Api.gs의 실제 호출 함수는 `verifyAdmin_()`이며, 현 구현은 google_only와 token_compat 모두 빈 신원·미등록 이메일을 거부한다. 따라서 아래의 “현행 이메일 실패 시 토큰으로 통과” 및 “requireAdmin_만 호출” 표현은 현재 구현 설명으로 사용하지 않는다. `requireAdmin_()`도 존재하지만 함수 존재만으로 모든 호출 경로 검증을 주장하지 않는다.
+
+초기 설정은 현재 `verifyInitialSetupKey_()`에 의존하며, payload 관리자 이메일과 서버 소유자 신원 일치·초기 Sheet 바인딩 순서의 보완이 남아 있다. 아래 “첫 관리자는 검증된 설치 계정”은 아직 완전히 구현·실측된 상태가 아닌 필수 조건이다.
+
+사용자 승인으로 첫 신규 시험의 지원 범위를 **설치 소유자 Google 계정 1명**으로 제한했다. 다른 Gmail·다른 도메인·Workspace 다중 관리자는 미검증이다. `USER_DEPLOYING` 공개 웹앱에서 방문자 이메일이 항상 반환된다고 가정하지 않으며, 빈 active email을 effective email로 대체하지 않는다. [Google Session 공식 문서](https://developers.google.com/apps-script/reference/base/session)를 2026-09-08 확인했다. 이 범위 승인 자체는 Google 외부 변경 승인이나 새 학교 실연동 성공 증거가 아니다.
+
 ## 결정 1: 공용 관리자 토큰 fallback 제거 (신규 웹 경로)
 
 - 현행 `verifyAdmin_` (Auth.gs:16-26)은 이메일 실패 시 공용 토큰으로 통과.

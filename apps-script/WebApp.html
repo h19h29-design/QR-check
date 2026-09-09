@@ -2,22 +2,26 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR보안점검표 초기 설정</title>
   <?!= include_('Styles'); ?>
 </head>
 <body>
   <main class="container">
     <h1>QR보안점검표 초기 설정</h1>
-    <p class="notice">처음 설정할 때는 학교명, 관리자 Google 이메일, 초기 설정 키가 필요합니다. Apps Script 편집기에서 createInitialSetupKey 함수를 먼저 실행해 키를 발급받으세요.</p>
+    <p class="notice">처음 설정할 때는 같은 학교 소유자 Google 계정으로 열고, 학교명, 관리자 Google 이메일, 초기 설정 키가 필요합니다. Apps Script 편집기에서 showSetupKeyForOwner 함수를 실행한 뒤 비공개 실행 로그에서 키를 복사하세요. 키는 절대 공유하지 마세요.</p>
     <section class="panel">
-      <label>초기 설정 키 <input id="setupKey" type="password" placeholder="createInitialSetupKey 실행 결과"></label>
-      <label>학교명 <input id="schoolName" placeholder="예: 서울○○학교"></label>
-      <label>관리자 Google 이메일 <input id="adminEmail" placeholder="admin@example.com"></label>
+      <label>초기 설정 키 <input id="setupKey" type="password" placeholder="showSetupKeyForOwner 실행 로그에서 복사"></label>
+      <label>학교명 <input id="schoolName" type="text" placeholder="예: 서울○○학교"></label>
+      <label>관리자 Google 이메일 <input id="adminEmail" type="email" placeholder="admin@example.com"></label>
+      <label>학교 점검기록 Sheet ID <input id="spreadsheetId" type="text" placeholder="설치 이어하기 정보의 spreadsheet_id만 붙여넣기"></label>
+      <p class="notice">설치 프로그램의 이어하기 정보에 있는 spreadsheet_id만 붙여넣으세요(OAuth/API 키 아님). 새 단독 설치에서는 필수이며, 기존/컨테이너 바인딩에서는 비워 둘 수 있습니다. 기존 바인딩은 변경할 수 없습니다.</p>
       <label>처음 점검할 장소 (한 줄에 하나, 최대 20곳)
         <textarea id="initialRooms" rows="4" placeholder="행정실&#10;교무실&#10;도서실"></textarea>
       </label>
       <label>현재 관리자 토큰 <input id="adminToken" type="password" placeholder="재실행 또는 토큰 재발급 시 입력"></label>
       <label><input id="rotateTokens" type="checkbox" class="inline-check"> 관리자 토큰과 Desktop Sync Key 재발급</label>
-      <button onclick="runSetup()">Google 저장소 만들기</button>
+      <button onclick="runSetup()">초기 설정 저장</button>
       <pre id="result"></pre>
     </section>
   </main>
@@ -28,6 +32,7 @@
         setupKey: rawKey,
         school_name: document.getElementById('schoolName').value,
         admin_email: document.getElementById('adminEmail').value,
+        spreadsheet_id: document.getElementById('spreadsheetId').value.trim(),
         rooms: document.getElementById('initialRooms').value.split('\n'),
         adminToken: document.getElementById('adminToken').value,
         rotateTokens: document.getElementById('rotateTokens').checked

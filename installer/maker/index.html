@@ -270,12 +270,12 @@
 </div>
 <div data-wizard-panel="4">
 <h2>초기 설정과 연결을 확인합니다.</h2>
-<p class="surface-lead">실제 설치가 끝나면 관리자 화면에서 초기 설정을 하고, 테스트 제출과 연결 검사를 진행합니다.</p>
+<p class="surface-lead">초기 설정 확인 완료는 초기 설정 입력 확인이며, 실제 QR 제출·시트 기록·첨부 동작 확인은 별도로 필요합니다. 관리자 화면에서 초기 설정을 한 뒤 연결 검사를 진행하세요.</p>
 <ol class="setup-list">
 <li>
 <strong>초기 설정 키 만들기</strong>학교 계정의 Apps Script 편집기에서 아래 함수를 1회 실행합니다.<div class="code-line">
-<code class="mono">createInitialSetupKey</code>
-<button class="copy-button" data-copy="createInitialSetupKey" type="button" aria-label="함수 이름 복사">
+<code class="mono">showSetupKeyForOwner</code>
+<button class="copy-button" data-copy="showSetupKeyForOwner" type="button" aria-label="함수 이름 복사">
 <svg class="icon " viewBox="0 0 24 24" aria-hidden="true">
 <rect x="8" y="8" width="12" height="13" rx="2"/>
 <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>
@@ -288,16 +288,22 @@
 <a id="admin-url" hidden>관리자 주소</a>
 </li>
 <li>
-<strong>연결 검사 및 주소 보관</strong>테스트 제출이 학교 저장소에 남는지 확인하고 관리자 주소를 보관합니다. 연결 검사가 끝나면 관리자 주소를 별도로 보관한 뒤 완료 버튼을 누르세요.</li>
+<strong>연결 검사 및 주소 보관</strong>테스트 제출이 학교 저장소에 남는지 확인하고 관리자 주소를 보관합니다. 연결 검사가 끝나면 관리자 주소를 별도로 보관한 뒤 초기 설정 확인 완료 버튼을 누르세요. 이 버튼은 초기 설정 확인이며 QR 제출·첨부 동작 성공을 증명하지 않습니다.</li>
 </ol>
 <div class="wizard-completion-actions">
 <button class="btn secondary" id="verify-btn" type="button" disabled>연결 검사</button>
-<button class="btn" id="complete-btn" type="button" disabled>설치 완료</button>
+<button class="btn" id="complete-btn" type="button" disabled>초기 설정 확인 완료</button>
 </div>
 <p id="owner-steps" class="small muted" aria-live="polite">
 </p>
 <p id="resume-info" class="small muted mono" aria-live="polite">
 </p>
+<div class="field">
+<label for="resume-input">이어하기 JSON 입력</label>
+<textarea id="resume-input" class="mono" rows="6" maxlength="16384" spellcheck="false" autocomplete="off" disabled></textarea>
+<small class="small muted">표시된 JSON은 떠나기 전에 직접 복사하세요. 자동 저장되지 않습니다. 원래 학교명과 Google 계정으로 진행하세요. 토큰·비밀번호 등 비밀 정보는 입력하지 마세요. 이전 형식·다른 릴리스·보류 중인 작업은 거부됩니다. 진행 중인 설치를 덮어쓰지 않습니다.</small>
+</div>
+<button class="btn secondary" id="resume-btn" type="button" disabled>검증 후 이어하기</button>
 <div class="form-actions">
 <a class="text-link" href="../guide/index.html#admin">관리자 사용안내 보기<svg class="icon " viewBox="0 0 24 24" aria-hidden="true">
 <path d="M4 12h15M13 5l7 7-7 7"/>

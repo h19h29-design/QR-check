@@ -339,7 +339,7 @@ describe('maker.js static contract', () => {
       'createResourceClients',
       '../src/install/state-machine.mjs',
       'createInstall',
-      'advance',
+      'completeSchoolInstall',
       'resumeInfo',
       'canComplete',
       '../src/install/orchestrator.mjs',

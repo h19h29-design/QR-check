@@ -140,7 +140,9 @@ describe('guide/help static content (ko shell, relative routes, truth, no secret
       assert.ok(!/begin [a-z ]*private key/i.test(html), 'private key in ' + p);
       assert.ok(!low.includes('admintoken') && !low.includes('synctoken'), 'token fallback in ' + p);
       assert.ok(!/sourceMappingURL/i.test(html), 'source map ref in ' + p);
-      assert.ok(!/https?:\/\/[^\s"'`<>)\]]+/i.test(html), 'external URL in ' + p);
+      // Allow only the exact public Apps Script web-app prefix; reject all other absolute URLs.
+      const withoutAllowedMacros = html.replace(/https:\/\/script\.google\.com\/macros\/s\/[^\s"'`<>)\]]*/g, '');
+      assert.ok(!/https?:\/\/[^\s"'`<>)\]]+/i.test(withoutAllowedMacros), 'external URL in ' + p);
     }
   });
 });
@@ -267,10 +269,11 @@ describe('tools/build-site.mjs static guards', () => {
     assert.ok(!src.includes('execSync') && !src.includes('spawnSync') && !src.includes('execFile'), 'builder must not spawn');
     assert.ok(!src.includes('rmSync') && !src.includes('rmdirSync') && !src.includes('unlinkSync'), 'builder must not delete');
     const allow = parseAllowlist(src);
-    assert.equal(allow.length, 22, 'allowlist must have exactly 22 entries');
+    assert.equal(allow.length, 23, 'allowlist must have exactly 23 entries');
     for (const need of ['index.html', 'release-data.js', 'guide/index.html', 'help/index.html', 'update/index.html', 'update/update-page.js', 'assets/site.js', 'assets/tokens.css', 'assets/site-overrides.css']) {
       assert.ok(allow.includes(need), 'allowlist missing ' + need);
     }
+    assert.ok(allow.includes('src/install/resume.mjs'), 'allowlist missing src/install/resume.mjs');
     for (const u of [
       'https://accounts.google.com/gsi/client',
       'https://www.googleapis.com/drive/v3',
@@ -285,6 +288,7 @@ describe('tools/build-site.mjs static guards', () => {
     const { scanText } = await import('../../tools/build-site.mjs');
     assert.doesNotThrow(() => scanText('ok', 'load https://accounts.google.com/gsi/client now'));
     assert.doesNotThrow(() => scanText('ok', 'use https://www.googleapis.com/drive/v3/files now'));
+    assert.doesNotThrow(() => scanText('ok', 'open https://script.google.com/macros/s/ now'));
     assert.throws(() => scanText('bad', 'see https://example.com/evil for details'));
     assert.throws(() => scanText('bad', 'visit http://127.0.0.1:1/x now'));
   });
@@ -298,7 +302,7 @@ describe('tools/build-site.mjs spawn builds (mkdtemp exact paths)', () => {
     assert.equal(r.status, 0, 'unpublished build failed: ' + (r.stderr || r.stdout));
     const summary = JSON.parse(String(r.stdout).trim().split('\n').pop());
     assert.equal(summary.status, 'unpublished');
-    assert.equal(summary.file_count, 22);
+    assert.equal(summary.file_count, 23);
     assert.equal(summary.runtime_file_count, 0);
     const allow = parseAllowlist(readText(BUILDER_PATH));
     assert.deepEqual(listRelFiles(out), [...allow].sort());
@@ -319,68 +323,317 @@ describe('tools/build-site.mjs spawn builds (mkdtemp exact paths)', () => {
     assert.ok(/non-empty|nonempty/i.test(String(r.stderr) + String(r.stdout)), 'must report non-empty output');
   });
 
-  test('synthetic runtime (one UTF-8 admin file) publishes exact source; mutated SHA rejects', () => {
-    const base = makeBase('site-content-');
+  // Synthetic exact18 runtime helpers — public synthetic only, names from installer/maker/maker.js.
+  const EXACT18_RUNTIME_NAMES = [
+    'Code.gs',
+    'SchoolConfig.gs',
+    'SchemaMigrations.gs',
+    'Sheets.gs',
+    'Submit.gs',
+    'QrTokens.gs',
+    'DriveFiles.gs',
+    'Templates.gs',
+    'Client.js.html',
+    'SubmitView.html',
+    'Styles.html',
+    'appsscript.json',
+    'Auth.gs',
+    'Admin.gs',
+    'Api.gs',
+    'DesktopSync.gs',
+    'AdminView.html',
+    'WebApp.html',
+  ];
+  const EXACT18_VERSION = '1.0.0';
+  const EXACT18_COMMIT40 = '0123456789abcdef0123456789abcdef01234567';
+  const EXACT18_BUILT_AT = '2025-01-02T03:04:05.000Z';
+  function exact18Sources(overrides = {}) {
+    const m = {};
+    for (const n of EXACT18_RUNTIME_NAMES) {
+      if (n === 'Code.gs') {
+        m[n] = "// synthetic Code.gs — public synthetic only\nconst APP_VERSION = '1.0.0';\nfunction syntheticCode(){ return APP_VERSION; }\n";
+      } else if (n === 'appsscript.json') {
+        m[n] = JSON.stringify({ timeZone: 'Asia/Seoul', dependencies: {}, exceptionLogging: 'STACKDRIVER', runtimeVersion: 'V8', webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' } });
+      } else {
+        m[n] = '// synthetic ' + n + ' — public synthetic only\n// 한글 합성 픽스처 ' + n + '\nconst SYNTHETIC = ' + JSON.stringify(n) + ';\n';
+      }
+    }
+    for (const k of Object.keys(overrides)) {
+      m[k] = overrides[k];
+    }
+    return m;
+  }
+  function manifestEntriesFor(sourcesMap) {
+    const out = [];
+    for (const n of Object.keys(sourcesMap)) {
+      const buf = Buffer.from(sourcesMap[n], 'utf8');
+      out.push({ name: n, bytes: buf.length, sha256: crypto.createHash('sha256').update(buf).digest('hex') });
+    }
+    return out;
+  }
+  function validManifestFor(sourcesMap, fieldOverrides = {}) {
+    return {
+      app_version: EXACT18_VERSION,
+      source_commit: EXACT18_COMMIT40,
+      built_at: EXACT18_BUILT_AT,
+      source_dirty: false,
+      bundles: { admin: manifestEntriesFor(sourcesMap) },
+      ...fieldOverrides,
+    };
+  }
+  function writeRuntime(base, sourcesMap, manifestObjOrRaw) {
     const runtime = path.join(base, 'runtime');
     const adminDir = path.join(runtime, 'admin');
     fs.mkdirSync(adminDir, { recursive: true });
-    const adminName = 'admin-test.js';
-    const adminSource = '관리자 런타임 파일 — 한글 테스트\nconsole.log("hi");\n';
-    fs.writeFileSync(path.join(adminDir, adminName), adminSource, 'utf8');
-    const buf = fs.readFileSync(path.join(adminDir, adminName));
-    assert.equal(buf.toString('utf8'), adminSource, 'admin file must round-trip UTF-8');
-    const bytes = buf.length;
-    const sha = crypto.createHash('sha256').update(buf).digest('hex');
-    const manifest = {
-      app_version: '1.2.3',
-      source_commit: 'abcdef1234567890',
-      built_at: '2025-01-02T03:04:05.000Z',
-      source_dirty: false,
-      bundles: { admin: [{ name: adminName, bytes, sha256: sha }] },
-    };
-    fs.writeFileSync(path.join(runtime, 'manifest.json'), JSON.stringify(manifest), 'utf8');
+    for (const [n, s] of Object.entries(sourcesMap)) {
+      fs.writeFileSync(path.join(adminDir, n), s, 'utf8');
+    }
+    const body = typeof manifestObjOrRaw === 'string' ? manifestObjOrRaw : JSON.stringify(manifestObjOrRaw);
+    fs.writeFileSync(path.join(runtime, 'manifest.json'), body, 'utf8');
+    return { runtime, adminDir };
+  }
 
-    const out = path.join(base, 'out-published');
+  test('synthetic exact18 runtime publishes with exact bytes/manifest/maker gate agreement', () => {
+    const base = makeBase('site-content-exact18-');
+    assert.ok(isUnderTmpdir(base), 'fixture must be under tmpdir');
+    const sources = exact18Sources();
+    for (const n of EXACT18_RUNTIME_NAMES) {
+      assert.ok(typeof sources[n] === 'string' && sources[n].trim().length > 0, 'synthetic source must be nonempty: ' + n);
+    }
+    assert.ok(/const\s+APP_VERSION\s*=\s*['"]1\.0\.0['"]/.test(sources['Code.gs']), 'Code.gs must contain const APP_VERSION 1.0.0');
+    const appsObj = JSON.parse(sources['appsscript.json']);
+    assert.equal(appsObj.webapp.executeAs, 'USER_DEPLOYING', 'appsscript executeAs must be USER_DEPLOYING');
+    assert.equal(appsObj.webapp.access, 'ANYONE_ANONYMOUS', 'appsscript access must be ANYONE_ANONYMOUS');
+    const manifest = validManifestFor(sources);
+    assert.ok(/^[0-9a-fA-F]{40}$/.test(manifest.source_commit), 'positive commit must be full40hex');
+    assert.equal(manifest.built_at, EXACT18_BUILT_AT, 'positive built_at must be canonical millis UTC');
+    assert.equal(new Date(manifest.built_at).toISOString(), manifest.built_at, 'built_at must be canonical');
+    assert.equal(manifest.source_dirty, false, 'source_dirty must be false');
+    const makerText = readText(path.join(INSTALLER_DIR, 'maker', 'maker.js'));
+    assert.ok(makerText.includes('REQUIRED_RUNTIME_NAMES'), 'maker gate must define required names');
+    for (const n of EXACT18_RUNTIME_NAMES) {
+      assert.ok(makerText.includes(n), 'maker.js must list ' + n);
+    }
+    const { runtime } = writeRuntime(base, sources, manifest);
+    for (const n of EXACT18_RUNTIME_NAMES) {
+      const buf = fs.readFileSync(path.join(runtime, 'admin', n));
+      assert.equal(buf.toString('utf8'), sources[n], 'admin file must round-trip UTF-8: ' + n);
+      const entry = manifest.bundles.admin.find((e) => e.name === n);
+      assert.ok(entry, 'manifest must list ' + n);
+      assert.equal(buf.length, entry.bytes, 'manifest bytes must match actual: ' + n);
+      assert.equal(crypto.createHash('sha256').update(buf).digest('hex'), entry.sha256, 'manifest hash must match actual: ' + n);
+    }
+    const out = path.join(base, 'out-published-exact18');
     const r = runBuilder(['--out', out, '--runtime', runtime]);
-    assert.equal(r.status, 0, 'valid runtime build failed: ' + (r.stderr || r.stdout));
+    assert.equal(r.status, 0, 'valid exact18 build failed: ' + (r.stderr || r.stdout));
     const summary = JSON.parse(String(r.stdout).trim().split('\n').pop());
     assert.equal(summary.status, 'published');
-    assert.equal(summary.app_version, '1.2.3');
-    assert.equal(summary.runtime_file_count, 1);
-
+    assert.equal(summary.app_version, EXACT18_VERSION);
+    assert.equal(summary.source_commit, EXACT18_COMMIT40);
+    assert.equal(summary.built_at, EXACT18_BUILT_AT);
+    assert.equal(summary.runtime_file_count, 18);
+    const allow = parseAllowlist(readText(BUILDER_PATH));
+    assert.deepEqual(listRelFiles(out), [...allow].sort(), 'published output must still be exactly allowlist');
     const gen = readText(path.join(out, 'release-data.js'));
     const qrMatch = gen.match(/__QR_CHECK_RELEASE__\s*=\s*(\{.*?\});/s);
     assert.ok(qrMatch, 'generated release-data missing QR object');
     const qr = JSON.parse(qrMatch[1]);
     assert.equal(qr.status, 'published');
-    assert.equal(qr.app_version, '1.2.3');
-    assert.equal(qr.source_commit, 'abcdef1234567890');
-    assert.equal(qr.built_at, '2025-01-02T03:04:05.000Z');
-    assert.equal(qr.runtime_file_count, 1);
-    assert.ok(new RegExp('__MAKER_RELEASE__\\s*=\\s*"1\\.2\\.3"').test(gen), 'maker release must be bare version string');
+    assert.equal(qr.app_version, EXACT18_VERSION);
+    assert.equal(qr.source_commit, EXACT18_COMMIT40);
+    assert.equal(qr.built_at, EXACT18_BUILT_AT);
+    assert.equal(qr.runtime_file_count, 18);
+    assert.ok(/__MAKER_RELEASE__\s*=\s*"1\.0\.0"/.test(gen), 'maker release must be bare version string');
     const filesMatch = gen.match(/__MAKER_RUNTIME_FILES__\s*=\s*(\[.*?\]);/s);
     assert.ok(filesMatch, 'generated release-data missing runtime files array');
     const files = JSON.parse(filesMatch[1]);
-    assert.equal(files.length, 1);
-    assert.equal(files[0].name, adminName);
-    assert.equal(files[0].source, adminSource, 'runtime source must be exact UTF-8 bytes');
+    assert.equal(files.length, 18);
+    assert.deepEqual(files.map((f) => f.name).sort(), [...EXACT18_RUNTIME_NAMES].sort(), 'runtime names must be exact18');
+    for (const f of files) {
+      assert.equal(f.source, sources[f.name], 'runtime source must be exact UTF-8 bytes: ' + f.name);
+    }
+  });
 
-    // Mutated SHA must reject without touching the good output.
-    const runtimeBad = path.join(base, 'runtime-bad');
-    const adminBad = path.join(runtimeBad, 'admin');
-    fs.mkdirSync(adminBad, { recursive: true });
-    fs.writeFileSync(path.join(adminBad, adminName), adminSource, 'utf8');
-    const badSha = sha.slice(0, 63) + (sha[63] === '0' ? '1' : '0');
+  test('synthetic exact18 SHA mismatch rejects', () => {
+    const base = makeBase('site-content-exact18-sha-');
+    assert.ok(isUnderTmpdir(base), 'fixture must be under tmpdir');
+    const sources = exact18Sources();
+    const entries = manifestEntriesFor(sources);
+    const badSha = entries[0].sha256.slice(0, 63) + (entries[0].sha256[63] === '0' ? '1' : '0');
+    const badEntries = entries.map((e, i) => (i === 0 ? { ...e, sha256: badSha } : e));
     const manifestBad = {
-      ...manifest,
-      bundles: { admin: [{ name: adminName, bytes, sha256: badSha }] },
+      app_version: EXACT18_VERSION,
+      source_commit: EXACT18_COMMIT40,
+      built_at: EXACT18_BUILT_AT,
+      source_dirty: false,
+      bundles: { admin: badEntries },
     };
-    fs.writeFileSync(path.join(runtimeBad, 'manifest.json'), JSON.stringify(manifestBad), 'utf8');
-    const outBad = path.join(base, 'out-bad');
-    const rb = runBuilder(['--out', outBad, '--runtime', runtimeBad]);
+    const { runtime } = writeRuntime(base, sources, manifestBad);
+    const outBad = path.join(base, 'out-bad-sha');
+    const rb = runBuilder(['--out', outBad, '--runtime', runtime]);
     assert.notEqual(rb.status, 0, 'mutated SHA must fail');
     assert.ok(/sha256/i.test(String(rb.stderr) + String(rb.stdout)), 'must report sha256 mismatch');
   });
+
+  test('runtime negatives reject missing/extra/duplicate/extra-physical/blank (bounded table)', () => {
+    const cases = [
+      {
+        id: 'missing-entry',
+        build(base) {
+          const sources = exact18Sources();
+          delete sources['WebApp.html'];
+          const manifest = validManifestFor(sources);
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-missing') };
+        },
+      },
+      {
+        id: 'extra-entry',
+        build(base) {
+          const sources = exact18Sources({ 'Extra.gs': '// synthetic Extra.gs — public synthetic only\nconst EXTRA = 1;\n' });
+          const manifest = validManifestFor(sources);
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-extra') };
+        },
+      },
+      {
+        id: 'duplicate-entry',
+        build(base) {
+          const sources = exact18Sources();
+          const manifest = validManifestFor(sources);
+          manifest.bundles.admin.push({ ...manifest.bundles.admin[0] });
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-duplicate') };
+        },
+      },
+      {
+        id: 'extra-physical',
+        build(base) {
+          const sources = exact18Sources();
+          const manifest = validManifestFor(sources);
+          const { runtime } = writeRuntime(base, sources, manifest);
+          fs.writeFileSync(path.join(runtime, 'admin', 'Extra.gs'), '// synthetic extra physical — public synthetic only\nconst EXTRA_PHYSICAL = 1;\n', 'utf8');
+          return { runtime, out: path.join(base, 'out-neg-extraphys') };
+        },
+      },
+      {
+        id: 'blank-source',
+        build(base) {
+          const sources = exact18Sources({ 'Sheets.gs': '' });
+          const manifest = validManifestFor(sources);
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-blank') };
+        },
+      },
+    ];
+    for (const c of cases) {
+      const base = makeBase('site-content-neg-' + c.id + '-');
+      assert.ok(isUnderTmpdir(base), 'fixture must be under tmpdir: ' + c.id);
+      const { runtime, out } = c.build(base);
+      assert.ok(isUnderTmpdir(runtime) && isUnderTmpdir(out), 'test writes only synthetic temp: ' + c.id);
+      const r = runBuilder(['--out', out, '--runtime', runtime]);
+      assert.notEqual(r.status, 0, 'must reject ' + c.id + ': ' + String(r.stderr || r.stdout).slice(0, 400));
+    }
+  });
+
+  test('runtime negatives reject abbreviated commit/invalid semver/invalid-noncanonical date (bounded table)', () => {
+    const code01 = "// synthetic Code.gs — public synthetic only\nconst APP_VERSION = '01.0.0';\nfunction syntheticCode(){ return APP_VERSION; }\n";
+    const cases = [
+      {
+        id: 'abbreviated-commit',
+        build(base) {
+          const sources = exact18Sources();
+          const manifest = validManifestFor(sources, { source_commit: 'abcdef1234567890' });
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-abbrcommit') };
+        },
+      },
+      {
+        id: 'invalid-semver',
+        build(base) {
+          const sources = exact18Sources({ 'Code.gs': code01 });
+          const manifest = validManifestFor(sources, { app_version: '01.0.0' });
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-semver') };
+        },
+      },
+      {
+        id: 'invalid-date',
+        build(base) {
+          const sources = exact18Sources();
+          const manifest = validManifestFor(sources, { built_at: 'not-a-date' });
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-baddate') };
+        },
+      },
+      {
+        id: 'noncanonical-date',
+        build(base) {
+          const sources = exact18Sources();
+          const manifest = validManifestFor(sources, { built_at: '2025-01-02T03:04:05Z' });
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-noncanon') };
+        },
+      },
+    ];
+    for (const c of cases) {
+      const base = makeBase('site-content-neg-' + c.id + '-');
+      assert.ok(isUnderTmpdir(base), 'fixture must be under tmpdir: ' + c.id);
+      const { runtime, out } = c.build(base);
+      assert.ok(isUnderTmpdir(runtime) && isUnderTmpdir(out), 'test writes only synthetic temp: ' + c.id);
+      const r = runBuilder(['--out', out, '--runtime', runtime]);
+      assert.notEqual(r.status, 0, 'must reject ' + c.id + ': ' + String(r.stderr || r.stdout).slice(0, 400));
+    }
+  });
+
+  test('runtime negatives reject Code version mismatch/wrong appsscript/invalid manifest JSON (bounded table)', () => {
+    const code99 = "// synthetic Code.gs — public synthetic only\nconst APP_VERSION = '9.9.9';\nfunction syntheticCode(){ return APP_VERSION; }\n";
+    const badExecuteAs = JSON.stringify({ timeZone: 'Asia/Seoul', dependencies: {}, exceptionLogging: 'STACKDRIVER', runtimeVersion: 'V8', webapp: { executeAs: 'USER_ACCESSING', access: 'ANYONE_ANONYMOUS' } });
+    const badAccess = JSON.stringify({ timeZone: 'Asia/Seoul', dependencies: {}, exceptionLogging: 'STACKDRIVER', runtimeVersion: 'V8', webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE' } });
+    const cases = [
+      {
+        id: 'code-version-mismatch',
+        build(base) {
+          const sources = exact18Sources({ 'Code.gs': code99 });
+          const manifest = validManifestFor(sources, { app_version: EXACT18_VERSION });
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-codever') };
+        },
+      },
+      {
+        id: 'wrong-executeAs',
+        build(base) {
+          const sources = exact18Sources({ 'appsscript.json': badExecuteAs });
+          const manifest = validManifestFor(sources);
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-execas') };
+        },
+      },
+      {
+        id: 'wrong-access',
+        build(base) {
+          const sources = exact18Sources({ 'appsscript.json': badAccess });
+          const manifest = validManifestFor(sources);
+          const { runtime } = writeRuntime(base, sources, manifest);
+          return { runtime, out: path.join(base, 'out-neg-access') };
+        },
+      },
+      {
+        id: 'invalid-manifest-json',
+        build(base) {
+          const sources = exact18Sources();
+          const { runtime } = writeRuntime(base, sources, '{ not json');
+          return { runtime, out: path.join(base, 'out-neg-badjson') };
+        },
+      },
+    ];
+    for (const c of cases) {
+      const base = makeBase('site-content-neg-' + c.id + '-');
+      assert.ok(isUnderTmpdir(base), 'fixture must be under tmpdir: ' + c.id);
+      const { runtime, out } = c.build(base);
+      assert.ok(isUnderTmpdir(runtime) && isUnderTmpdir(out), 'test writes only synthetic temp: ' + c.id);
+      const r = runBuilder(['--out', out, '--runtime', runtime]);
+      assert.notEqual(r.status, 0, 'must reject ' + c.id + ': ' + String(r.stderr || r.stdout).slice(0, 400));
+    }
+  });
 });
-
-

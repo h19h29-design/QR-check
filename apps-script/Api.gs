@@ -2,26 +2,103 @@ function initializeSchoolStorage_(payload) {
   payload = payload || {};
   // API 설치 경로: 바인딩이 없고 설치센터가 학교 Sheet ID를 함께 보낸 경우, 시트 접근 전에 바인딩한다.
   const wantBind = String(payload.spreadsheet_id || payload.spreadsheetId || '');
-  if (wantBind) {
-    verifyInitialSetupKey_(payload);
-    setSchoolProp_('spreadsheet_id', wantBind);
-  }
   const lock = LockService.getScriptLock();
   let locked = false;
   lock.waitLock(30000);
   locked = true;
+  let markedPendingInThisCall = false;
   try {
+    let pendingAtEntry = '';
+    try {
+      pendingAtEntry = PropertiesService.getScriptProperties().getProperty('initial_setup_pending');
+    } catch (pendingReadErr) {
+      throw new Error('초기 설정 결과가 불확실합니다(uncertain). 중단하고 기존 시트(Sheet)와 드라이브(Drive)를 직접 확인하기 전에는 다시 시도하지 마세요. 키 재발급으로 우회할 수 없습니다.');
+    }
+    if (pendingAtEntry && String(pendingAtEntry).length > 0) {
+      throw new Error('초기 설정 결과가 불확실합니다(uncertain). 중단하고 기존 시트(Sheet)와 드라이브(Drive)를 직접 확인하기 전에는 다시 시도하지 마세요. 키 재발급으로 우회할 수 없습니다.');
+    }
+    const existing = PropertiesService.getScriptProperties().getProperty('spreadsheet_id');
+    if (wantBind && existing && wantBind !== existing) {
+      throw new Error('이미 다른 시트에 바인딩되어 있습니다. 기존 바인딩은 여기에서 변경할 수 없습니다.');
+    }
+    if (wantBind && !existing) {
+      verifyInitialSetupKey_(payload);
+      validateSetupPayload_(payload, true);
+      let target = null;
+      try {
+        target = SpreadsheetApp.openById(wantBind);
+        if (!target || String(target.getId()) !== String(wantBind)) {
+          throw new Error('시트 연결에 실패했습니다. 시트 소유권을 확인하세요.');
+        }
+        let ownerEmail = '';
+        try {
+          const owner = DriveApp.getFileById(wantBind).getOwner();
+          ownerEmail = String(owner && owner.getEmail ? owner.getEmail() : '').trim().toLowerCase();
+        } catch (ownerErr) {
+          ownerEmail = '';
+        }
+        const selfEmail = String(effectiveEmail_()).trim().toLowerCase();
+        if (!ownerEmail || !selfEmail || ownerEmail !== selfEmail) {
+          throw new Error('시트 연결에 실패했습니다. 시트 소유권을 확인하세요.');
+        }
+      } catch (err) {
+        throw new Error('시트 연결에 실패했습니다. 시트 소유권을 확인하세요.');
+      }
+      if (setupCompletedPeek_(target)) {
+        throw new Error('이미 초기화된 학교 시트입니다. 기존 시트는 여기에서 가져올 수 없습니다.');
+      }
+      PropertiesService.getScriptProperties().setProperty('initial_setup_pending', 'started');
+      markedPendingInThisCall = true;
+      setSchoolProp_('spreadsheet_id', wantBind);
+    }
     const alreadySetup = setupCompletedPeek_();
+    let hasInitialKey = false;
+    try {
+      const k1 = payload.setupKey;
+      const k2 = payload.setup_key;
+      if (String(k1 == null ? '' : k1).trim() !== '' || String(k2 == null ? '' : k2).trim() !== '') {
+        hasInitialKey = true;
+      }
+    } catch (keyPeekErr) {
+      hasInitialKey = false;
+    }
+    if (alreadySetup && hasInitialKey) {
+      throw new Error('초기 설정이 이미 완료되었습니다. 이전 초기 설정 요청을 다시 보내지 마세요.');
+    }
     const auth = alreadySetup
       ? verifyAdmin_(payload)
       : verifyInitialSetupKey_(payload);
+    validateSetupPayload_(payload, !alreadySetup);
+    if (!PropertiesService.getScriptProperties().getProperty('spreadsheet_id')) {
+      let containerId = '';
+      try {
+        containerId = ss_().getId();
+      } catch (persistErr) {
+        throw new Error('시트 연결 정보 저장 실패. 시트 연결을 확인하세요.');
+      }
+      if (!containerId) {
+        throw new Error('시트 연결 정보 저장 실패. 시트 연결을 확인하세요.');
+      }
+      if (!alreadySetup && !markedPendingInThisCall) {
+        PropertiesService.getScriptProperties().setProperty('initial_setup_pending', 'started');
+        markedPendingInThisCall = true;
+      }
+      try {
+        setSchoolProp_('spreadsheet_id', containerId);
+      } catch (persistErr) {
+        throw new Error('시트 연결 정보 저장 실패. 시트 연결을 확인하세요.');
+      }
+    } else if (!alreadySetup && !markedPendingInThisCall) {
+      PropertiesService.getScriptProperties().setProperty('initial_setup_pending', 'started');
+      markedPendingInThisCall = true;
+    }
     ensureSheets_();
     seedDefaults_();
     try {
-      setSchoolProp_('spreadsheet_id', ss_().getId());
       setSetting_('spreadsheet_id', schoolProp_('spreadsheet_id', ''));
-    } catch (bindErr) {}
-    validateSetupPayload_(payload, !alreadySetup);
+    } catch (persistErr) {
+      throw new Error('시트 연결 정보 저장 실패. 시트 연결을 확인하세요.');
+    }
 
     const now = nowIso_();
     const schoolName = cleanText_(payload.school_name || payload.schoolName || '', 120);
@@ -47,6 +124,11 @@ function initializeSchoolStorage_(payload) {
     setSetting_('updated_at', now);
     if (!alreadySetup) clearInitialSetupKey_();
     logAudit_(auth ? auth.actor : adminEmail, 'setup_initialize', 'school', schoolName || setting_('school_name', ''), { rotateTokens: rotate });
+    try {
+      PropertiesService.getScriptProperties().deleteProperty('initial_setup_pending');
+    } catch (clearErr) {
+      throw new Error('초기 설정 결과가 불확실합니다(uncertain). 중단하고 기존 시트(Sheet)와 드라이브(Drive)를 직접 확인하기 전에는 다시 시도하지 마세요. 키 재발급으로 우회할 수 없습니다.');
+    }
     return { folders: folders, adminToken: adminToken, syncKey: syncKey, rooms: createdRooms, version: APP_VERSION, setup_completed: true };
   } finally {
     if (locked) lock.releaseLock();
@@ -54,18 +136,32 @@ function initializeSchoolStorage_(payload) {
 }
 
 /** 시트 생성 없이 설치 완료 여부를 확인한다. 인증 전에 변이를 만들지 않기 위한 읽기 전용 조회다. */
-function setupCompletedPeek_() {
-  try {
-    const sheet = ss_().getSheetByName('settings_school');
-    if (!sheet) return false;
-    const values = sheet.getDataRange().getValues();
-    for (let i = 0; i < values.length; i++) {
-      if (String(values[i][0]) === 'setup_completed' && String(values[i][1]) === 'true') return true;
+function setupCompletedPeek_(target) {
+  let book = target || null;
+  if (!book) {
+    try {
+      book = ss_();
+    } catch (err) {
+      throw new Error('시트 읽기에 실패했습니다. 시트 연결을 확인하세요.');
     }
-    return false;
-  } catch (err) {
-    return false;
   }
+  let sheet = null;
+  try {
+    sheet = book.getSheetByName('settings_school');
+  } catch (err) {
+    throw new Error('시트 읽기에 실패했습니다. 시트 연결을 확인하세요.');
+  }
+  if (!sheet) return false;
+  let values = null;
+  try {
+    values = sheet.getDataRange().getValues();
+  } catch (err) {
+    throw new Error('시트 읽기에 실패했습니다. 시트 연결을 확인하세요.');
+  }
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0]) === 'setup_completed' && String(values[i][1]) === 'true') return true;
+  }
+  return false;
 }
 
 /** google.script.run은 Date 객체를 왕복할 수 없으므로 UI 경계에서 재귀적으로 문자열화한다. */
@@ -181,6 +277,17 @@ function validateSetupPayload_(payload, requireInitialFields) {
   if (adminEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) {
     throw new Error('관리자 Google 이메일 형식을 확인하세요.');
   }
+  cleanText_(payload.admin_name || payload.adminName || '관리자', 80);
+  const roomsInput = payload.rooms || payload.initialRooms || [];
+  var roomNames = [];
+  if (Array.isArray(roomsInput)) roomNames = roomsInput;
+  else if (typeof roomsInput === 'string') roomNames = String(roomsInput).split('\n');
+  roomNames = roomNames.map(function(n) { return String(n == null ? '' : n).trim(); })
+    .filter(function(n) { return n !== ''; })
+    .slice(0, 20);
+  roomNames.forEach(function(roomName) {
+    if (roomName.length > 80) throw new Error('장소 이름은 80자 이하로 입력하세요: ' + roomName);
+  });
 }
 
 function cleanText_(value, maxLength) {
