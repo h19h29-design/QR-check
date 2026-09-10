@@ -1,0 +1,104 @@
+/* Maker polish: restrained card separation, preserves base layout and logic. */
+body[data-page="maker"] [data-wizard-panel] {
+  background: var(--paper, #fff);
+  border: 1px solid var(--line, #e4e9f2);
+  border-radius: 12px;
+  padding: 22px 20px;
+  margin-top: 18px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+body[data-page="maker"] [data-wizard-panel] h2 {
+  color: var(--ink, #17243c);
+  font-size: 1.22rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+body[data-page="maker"] .surface-lead {
+  color: var(--muted, #5d6a80);
+  line-height: 1.65;
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+}
+body[data-page="maker"] .wizard-step-button {
+  cursor: default;
+}
+body[data-page="maker"] .wizard-step-button[aria-current="step"] {
+  border: 1px solid var(--line, #e4e9f2);
+  border-left: 4px solid var(--mint, #b5f3d3);
+  border-radius: 10px;
+  background: var(--paper, #fff);
+}
+body[data-page="maker"] .resource-card,
+body[data-page="maker"] .permission-row,
+body[data-page="maker"] .code-line,
+body[data-page="maker"] .url-placeholder {
+  border: 1px solid var(--line, #e4e9f2);
+  border-radius: 10px;
+  background: var(--paper, #fff);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+body[data-page="maker"] .field {
+  margin-top: 16px;
+  min-width: 0;
+}
+body[data-page="maker"] .setup-list li {
+  margin-bottom: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+body[data-page="maker"] input,
+body[data-page="maker"] textarea {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+body[data-page="maker"] code,
+body[data-page="maker"] .mono,
+body[data-page="maker"] .small,
+body[data-page="maker"] .url-placeholder {
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  white-space: normal;
+  min-width: 0;
+  max-width: 100%;
+}
+body[data-page="maker"] .btn-group,
+body[data-page="maker"] .wizard-completion-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+body[data-page="maker"] .btn {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+body[data-page="maker"] a:focus-visible,
+body[data-page="maker"] button:focus-visible,
+body[data-page="maker"] input:focus-visible,
+body[data-page="maker"] textarea:focus-visible {
+  outline: 3px solid var(--blue, #245af2);
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  body[data-page="maker"] input,
+  body[data-page="maker"] textarea {
+    font-size: 16px;
+  }
+  body[data-page="maker"] [data-wizard-panel] {
+    padding: 18px 16px;
+  }
+}
+@media (max-width: 390px) {
+  body[data-page="maker"] .btn {
+    width: 100%;
+  }
+  body[data-page="maker"] .code-line,
+  body[data-page="maker"] .url-placeholder {
+    flex-wrap: wrap;
+  }
+}
