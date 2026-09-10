@@ -4,6 +4,16 @@
 
 ## 최신 설치센터 구성 확인 (이전 미설정 기록보다 우선)
 
+### 공개 배포 및 현재 중단 지점
+
+- 소스 main: `a00a5aa3cf20f559439f92b53e6647f3272311fc`까지 fast-forward 후 push. 이전 main 이력·보관 브랜치를 삭제/강제 변경하지 않았다.
+- clean runtime: 버전 `0.1.0`, 위 source commit, dirty=false, 공개12/관리자18파일. 정적 산출물25파일에 검증한 런타임18파일을 포함했다.
+- 홈페이지 gh-pages: `25035dbe0656874a2c7a286d7e5beeb18e240ffa`. GitHub Actions run `34419584793`은 completed/success. CNAME 유지, DNS·기존 v12 학교 배포·학교 기록 변경 없음.
+- `https://qr-safe.h19h19.com/privacy/` HTTP200과 제목, 공개 `release-data.js`의 실제 source commit을 확인했다. 운영 HTTPS에서 1440/390px 7개 경로 및 동일 화면 상호작용 검사를 다시 통과했다.
+- 기존 Chrome은 일시적으로 이전 미연결 화면을 보였으나 후속 정상 새로고침으로 `Google 연결 준비가 되었습니다`와 실제 릴리스0.1.0을 표시했다. 공개 설정 파일 직접 탐색은 ERR_BLOCKED_BY_CLIENT, 브라우저 설정 페이지 접근은 도구 정책으로 거부됐다. 설정 차단을 우회하거나 보호 설정을 끄지 않았다. 이를 앱 자체 JS 결함으로 확정하지 않는다.
+- 합성 학교명으로 기존 소유자 테스트 계정의 실제 Google 연결을 시작했고 Google의 `Google에서 확인하지 않은 앱` 테스트 사용자 안내를 확인했다. 아직 해당 안내·최종 계정 접근 동의를 넘기지 않았다. 토큰 획득·신규 학교 자원 생성·새 설치 완료는 NOT_VERIFIED이며 사용자의 화면 확인을 기다린다.
+- 앱 내 브라우저에서도 게시 화면 로딩은 확인했으나 Google 연결 팝업을 해당 도구의 탭 목록에서 제어할 수 없어, 기존 Chrome 경로로 이어갔다. 실제 계정 개인정보/자격 증명은 Muse에 전달하지 않았다.
+
 - 전용 Cloud 프로젝트의 Drive·Sheets·Apps Script API 활성화와 공개 웹 client ID 반영을 확인했다.
 - 사용자 승인 후 홈페이지·개인정보 URL·승인 도메인을 저장했다. 개인정보 페이지는 `installer/privacy/index.html`로 추가했다.
 - 외부 OAuth 앱은 TESTING이며 소유자 테스트 계정 1개가 등록되어 있다. 계정 이메일은 이 공개 문서에 기록하지 않는다.
