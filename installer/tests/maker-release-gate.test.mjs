@@ -88,6 +88,8 @@ const KNOWN_IDS = [
   'permission-status',
   'create-btn',
   'retry-btn',
+  'script-editor-url',
+  'setup-url',
   'admin-url',
   'verify-btn',
   'owner-steps',
@@ -108,7 +110,7 @@ function makeDom() {
       value: '',
       textContent: '',
       disabled: true,
-      hidden: id === 'admin-url',
+      hidden: id === 'admin-url' || id === 'setup-url' || id === 'script-editor-url',
       href: '',
       _clickHandlers: [],
       addEventListener(type, fn) {

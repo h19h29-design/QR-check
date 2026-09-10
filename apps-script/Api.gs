@@ -235,6 +235,14 @@ function adminSaveRoomForUi(payload) {
   return clientSafeValue_(saveRoomFromAdmin_(payload || {}));
 }
 
+function adminPeopleForUi(payload) {
+  return clientSafeValue_(adminListPeople_(payload || {}));
+}
+
+function adminSavePersonForUi(payload) {
+  return clientSafeValue_(savePersonFromAdmin_(payload || {}));
+}
+
 function adminBootstrapForUi(payload) {
   return clientSafeValue_(adminBootstrap_(payload || {}));
 }

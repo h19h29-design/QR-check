@@ -90,7 +90,7 @@
 <path d="M12 11v6M12 7v.1"/>
 </svg>
 <div>
-<b>설치 안내</b> · 학교에서 승인한 Google 계정으로 순서대로 진행하세요. 연결 설정이 준비되지 않은 상태에서는 진행이 차단됩니다.</div>
+<b>설치 안내</b> · 학교에서 승인한 Google 계정으로 순서대로 진행하세요. 테스트 사용자로 등록된 계정의 Google 동의와 학교 정보 입력이 필요하며, 일반 학교용 제공은 OAuth 검증 및 끝단 설치 확인 후 시작됩니다.</div>
 </div>
 <div class="wizard-layout">
 <aside class="wizard-rail">
@@ -263,7 +263,7 @@
 <span class="pill neutral">생성 대기</span>
 </div>
 </div>
-<p class="small muted">게시된 실행 파일이 없는 상태에서는 실제 생성을 시작하지 않습니다.</p>
+<p class="small muted">게시된 실행 파일을 사용한 생성은 테스트 사용자 대상으로 진행되며, Google 동의와 학교 설정이 필요합니다. 일반 제공은 OAuth 검증 및 끝단 설치 확인 후 시작됩니다.</p>
 <div class="btn-group" style="margin-top:20px">
 <button class="btn" id="create-btn" type="button" disabled>학교용 공간 만들기</button>
 <button class="btn secondary" id="retry-btn" type="button" disabled>다시 시도</button>
@@ -285,8 +285,12 @@
 </div>
 </li>
 <li>
-<strong>학교 정보와 관리자 설정</strong>실제로 생성된 주소의 <code class="mono">?page=setup</code> 화면에서 학교명, 관리자와 설정 키를 입력합니다.<div class="url-placeholder">관리자 주소는 실제 리소스 생성 후 표시됩니다.</div>
-<a id="admin-url" hidden>관리자 주소</a>
+<strong>학교 정보와 관리자 설정</strong>Apps Script 편집기에서 키를 만든 뒤 <code class="mono">?page=setup</code> 화면에서 학교명, 관리자와 설정 키를 입력합니다.<div class="url-placeholder">관련 주소는 실제 리소스 생성 후 표시됩니다.</div>
+<div class="btn-group">
+<a class="btn secondary" id="script-editor-url" target="_blank" rel="noopener" hidden>Apps Script 편집기 열기</a>
+<a class="btn secondary" id="setup-url" target="_blank" rel="noopener" hidden>초기 설정 화면 열기</a>
+<a class="btn secondary" id="admin-url" target="_blank" rel="noopener" hidden>관리자 화면 열기</a>
+</div>
 </li>
 <li>
 <strong>연결 검사 및 주소 보관</strong>테스트 제출이 학교 저장소에 남는지 확인하고 관리자 주소를 보관합니다. 연결 검사가 끝나면 관리자 주소를 별도로 보관한 뒤 초기 설정 확인 완료 버튼을 누르세요. 이 버튼은 초기 설정 확인이며 QR 제출·첨부 동작 성공을 증명하지 않습니다.</li>
@@ -314,7 +318,7 @@
 </div>
 <input type="hidden" id="maker-release" value="">
 </section>
-<p class="wizard-bottom-note" id="maker-release-note">릴리스 정보는 게시된 실행 정보가 있을 때에만 표시됩니다. 현재 표시할 버전 정보가 없습니다.</p>
+<p class="wizard-bottom-note" id="maker-release-note">릴리스 정보는 게시된 실행 정보를 기준으로 표시됩니다. 테스트용 제공이며, 일반 제공은 OAuth 검증 및 끝단 설치 확인 후 시작됩니다.</p>
 </div>
 </div>
 </div>
@@ -348,7 +352,7 @@
 </div>
  <div class="footer-bottom">
 <p>© <span data-year style="display:inline">2026</span> QR CHECK. Designed for a safer school day.</p>
-<span><strong>실제 Google 연결 및 배포 기능 미연결</strong> · 연결 설정이 준비된 뒤 설치할 수 있습니다.
+<span><strong>Google 연결 테스트 중 · 일반 제공 전</strong> · 테스트 사용자 연결 가능, Google 동의·학교 설정 필요, 일반 제공은 OAuth 검증 및 끝단 설치 확인 후 시작됩니다.
 </span>
 </div>
 </div>

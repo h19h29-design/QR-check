@@ -1,5 +1,5 @@
-const APP_VERSION = '0.1.0';
-const BUILD_ID = 'qrcheck-20260908-admin-ui';
+const APP_VERSION = '0.1.1';
+const BUILD_ID = 'qrcheck-20260910-admin-people';
 const TIMEZONE = 'Asia/Seoul';
 
 function doGet(e) {

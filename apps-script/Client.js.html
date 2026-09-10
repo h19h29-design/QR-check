@@ -385,6 +385,7 @@ async function loadAdmin() {
 async function initAdminPage() {
   await loadAdmin();
   await loadRooms();
+  await loadPeople();
 }
 function submitBaseUrl_() {
   // 서버가 알려준 공개 /exec 주소를 우선 사용한다.
@@ -447,6 +448,93 @@ function renderRooms(rooms) {
     tr.appendChild(actionCell);
     tbody.appendChild(tr);
   });
+}
+async function loadPeople() {
+  try {
+    const data = await gas('adminPeopleForUi', { adminToken: qs('adminToken').value });
+    renderAdminPeople(data.people || [], data.rooms || []);
+  } catch (err) {
+    alert(err.message || err);
+  }
+}
+function renderAdminPeople(people, rooms) {
+  const roomNames = {};
+  const roomSelect = qs('personRoom');
+  const currentRoom = roomSelect.value;
+  while (roomSelect.options.length > 1) roomSelect.remove(1);
+  rooms.forEach(function(room) {
+    roomNames[String(room.room_id)] = room.room_name;
+    roomSelect.add(new Option(room.room_name, room.room_id));
+  });
+  if (currentRoom && roomNames[currentRoom]) roomSelect.value = currentRoom;
+
+  const tbody = qs('peopleTable').querySelector('tbody');
+  clearNode(tbody);
+  people.forEach(function(person) {
+    const tr = document.createElement('tr');
+    tr.appendChild(textEl('td', person.person_name));
+    tr.appendChild(textEl('td', person.role_type === 'duty' ? '당직자' : '담당자'));
+    tr.appendChild(textEl('td', roomNames[String(person.room_id || '')] || '모든 장소'));
+    tr.appendChild(textEl('td', activeRowClient_(person) ? '사용' : '중지'));
+    const actionCell = document.createElement('td');
+    const renameButton = document.createElement('button');
+    renameButton.type = 'button';
+    renameButton.textContent = '이름 변경';
+    renameButton.addEventListener('click', function() { renamePerson(person); });
+    const toggleButton = document.createElement('button');
+    toggleButton.type = 'button';
+    toggleButton.textContent = activeRowClient_(person) ? '사용 중지' : '다시 사용';
+    toggleButton.addEventListener('click', function() { togglePerson(person); });
+    actionCell.appendChild(renameButton);
+    actionCell.appendChild(toggleButton);
+    tr.appendChild(actionCell);
+    tbody.appendChild(tr);
+  });
+}
+function activeRowClient_(row) {
+  return row.active === true || row.active === 'TRUE' || row.active === 'true' || row.active === 1 || row.active === '1';
+}
+async function savePerson(event) {
+  event.preventDefault();
+  const name = qs('personName').value.trim();
+  if (!name) {
+    alert('담당자 또는 당직자 이름을 입력하세요.');
+    return;
+  }
+  await gas('adminSavePersonForUi', {
+    person_name: name,
+    role_type: qs('personRole').value,
+    room_id: qs('personRoom').value,
+    adminToken: qs('adminToken').value
+  });
+  qs('personName').value = '';
+  await loadPeople();
+}
+async function renamePerson(person) {
+  const name = window.prompt('변경할 이름:', person.person_name);
+  if (!name || !name.trim() || name.trim() === person.person_name) return;
+  await gas('adminSavePersonForUi', {
+    person_id: person.person_id,
+    person_name: name.trim(),
+    role_type: person.role_type,
+    room_id: person.room_id || '',
+    active: activeRowClient_(person),
+    sort_order: person.sort_order,
+    adminToken: qs('adminToken').value
+  });
+  await loadPeople();
+}
+async function togglePerson(person) {
+  await gas('adminSavePersonForUi', {
+    person_id: person.person_id,
+    person_name: person.person_name,
+    role_type: person.role_type,
+    room_id: person.room_id || '',
+    active: !activeRowClient_(person),
+    sort_order: person.sort_order,
+    adminToken: qs('adminToken').value
+  });
+  await loadPeople();
 }
 async function createRoom() {
   const name = window.prompt('새 장소 이름:');

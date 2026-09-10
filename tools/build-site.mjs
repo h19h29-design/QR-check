@@ -44,12 +44,14 @@ const DRIVE_BASE = 'https://www.googleapis.com/drive/v3';
 const SHEETS_BASE = 'https://sheets.googleapis.com/v4';
 const SCRIPT_BASE = 'https://script.googleapis.com/v1';
 const MACROS_BASE = 'https://script.google.com/macros/s/';
+const SCRIPT_EDITOR_BASE = 'https://script.google.com/home/projects/';
 const ALLOWED_URL_BASES = [
   GIS_URL,
   DRIVE_BASE,
   SHEETS_BASE,
   SCRIPT_BASE,
   MACROS_BASE,
+  SCRIPT_EDITOR_BASE,
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',

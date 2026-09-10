@@ -115,6 +115,57 @@ function adminListRooms_(payload) {
   return { server_date: today_(), rooms: rooms };
 }
 
+/** 담당자·당직자 목록. 관리자 화면에서만 사용한다. */
+function adminListPeople_(payload) {
+  verifyAdmin_(payload || {});
+  const people = readTable_('settings_people')
+    .sort(function(a, b) {
+      const order = Number(a.sort_order || 100) - Number(b.sort_order || 100);
+      if (order !== 0) return order;
+      return String(a.person_name || '').localeCompare(String(b.person_name || ''));
+    });
+  const rooms = readTable_('settings_rooms')
+    .filter(activeRow_)
+    .sort(function(a, b) { return Number(a.room_order || 100) - Number(b.room_order || 100); });
+  return { server_date: today_(), people: people, rooms: rooms };
+}
+
+/** 관리자 웹에서 담당자·당직자를 추가하거나 수정한다. */
+function savePersonFromAdmin_(payload) {
+  payload = payload || {};
+  const auth = verifyAdmin_(payload);
+  const personName = cleanText_(payload.person_name || payload.personName || '', 80);
+  if (!personName) throw new Error('담당자 또는 당직자 이름을 입력하세요.');
+  const roleType = String(payload.role_type || payload.roleType || '').trim();
+  if (roleType !== 'responsible' && roleType !== 'duty') {
+    throw new Error('역할은 담당자 또는 당직자만 선택할 수 있습니다.');
+  }
+  const roomId = String(payload.room_id || payload.roomId || '').trim();
+  if (roomId && !findBy_('settings_rooms', 'room_id', roomId)) {
+    throw new Error('연결할 장소를 찾을 수 없습니다.');
+  }
+  const personId = String(payload.person_id || payload.personId || '').trim() || uuid_('person');
+  const existing = findBy_('settings_people', 'person_id', personId);
+  const now = nowIso_();
+  const row = {
+    person_id: personId,
+    person_name: personName,
+    role_type: roleType,
+    room_id: roomId,
+    active: payload.active !== false,
+    sort_order: Number(payload.sort_order || payload.sortOrder || (existing && existing.sort_order) || 100),
+    created_at: (existing && existing.created_at) || payload.created_at || now,
+    updated_at: now
+  };
+  upsertObject_('settings_people', row, 'person_id');
+  logAudit_(auth.actor, 'admin_save_person', 'person', personId, {
+    role_type: roleType,
+    room_id: roomId,
+    active: row.active
+  });
+  return { person: row };
+}
+
 /** 저장 미완료(PARTIAL/DISCARDED 제외·COMMITTED 제외) 기록 목록. */
 function adminListPartials_(payload) {
   verifyAdmin_(payload || {});
