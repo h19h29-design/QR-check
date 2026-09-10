@@ -5,6 +5,7 @@ import { createRestClient } from './rest.mjs';
 const DRIVE = 'https://www.googleapis.com/drive/v3';
 const SHEETS = 'https://sheets.googleapis.com/v4';
 const SCRIPT = 'https://script.googleapis.com/v1';
+export const GOOGLE_SCRIPT_EDITOR_BASE = 'https://script.google.com/home/projects/';
 
 export function names(prefix) {
   return {

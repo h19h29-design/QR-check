@@ -9,6 +9,15 @@
 <link rel="stylesheet" href="../assets/tokens.css">
 <link rel="stylesheet" href="../assets/site.css">
 <link rel="stylesheet" href="../assets/site-overrides.css">
+<style data-update-metadata-wrap>
+/* Scoped fix: published 40-char source_commit + ISO built_at must wrap inside card at 390px. No truncation/hiding; desktop unchanged. */
+.release-empty,#release-details{min-width:0;max-width:100%;}
+.page-grid>div{min-width:0;max-width:100%;}
+#release-details dd,#release-commit,#release-built,#release-version{min-width:0;max-width:100%;white-space:normal;overflow-wrap:break-word;overflow-wrap:anywhere;word-break:break-all;}
+@media(max-width:760px){
+#release-details{grid-template-columns:minmax(0,auto) minmax(0,1fr);}
+}
+</style>
 <script type="module" src="../assets/site.js"></script>
 <script defer src="../release-data.js"></script>
 <script type="module" src="update-page.js"></script>

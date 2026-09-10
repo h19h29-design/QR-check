@@ -5,7 +5,7 @@
 import { GOOGLE_OAUTH_CLIENT_ID } from '../src/auth/config.js';
 import { createMemoryTokenStore, createGoogleAuth, assertVerifiedAccount } from '../src/auth/google-auth.mjs';
 import { createRestClient } from '../src/google/rest.mjs';
-import { createResourceClients } from '../src/google/resources.mjs';
+import { createResourceClients, GOOGLE_SCRIPT_EDITOR_BASE } from '../src/google/resources.mjs';
 import { createInstall, resumeInfo, canComplete, STATES } from '../src/install/state-machine.mjs';
 import { runToStorage, runToDeployed, checkSchoolVerified, completeSchoolInstall, ownerSteps } from '../src/install/orchestrator.mjs';
 import { createResumeEnvelope, restoreInstallFromSnapshot } from '../src/install/resume.mjs';
@@ -376,6 +376,26 @@ function adminUrlFromWebAppUrl(webAppUrl) {
   return base + '?page=admin';
 }
 
+export function setupUrlFromWebAppUrl(webAppUrl) {
+  const base = String(webAppUrl || '').split('?')[0];
+  if (!base) return '';
+  return base + '?page=setup';
+}
+
+export function scriptEditorUrlFromId(scriptId) {
+  const id = String(scriptId || '').trim();
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) return '';
+  return GOOGLE_SCRIPT_EDITOR_BASE + id + '/edit';
+}
+
+function setOwnerLinks(doc, install) {
+  const resources = install && install.resources ? install.resources : {};
+  const webAppUrl = resources.web_app_url || '';
+  setLink(doc, 'script-editor-url', scriptEditorUrlFromId(resources.script_id), 'Apps Script 편집기 열기');
+  setLink(doc, 'setup-url', setupUrlFromWebAppUrl(webAppUrl), '초기 설정 화면 열기');
+  setLink(doc, 'admin-url', adminUrlFromWebAppUrl(webAppUrl), '관리자 화면 열기');
+}
+
 function boot() {
   const win = typeof window !== 'undefined' ? window : null;
   const doc = typeof document !== 'undefined' ? document : null;
@@ -687,10 +707,9 @@ function boot() {
       const webAppUrl = install.resources ? install.resources.web_app_url : '';
       renderResumeGuidance();
       if (install.state === 'AWAITING_SCHOOL_AUTH' && isNonEmptyString(webAppUrl)) {
-        const adminUrl = adminUrlFromWebAppUrl(webAppUrl);
-        setLink(doc, 'admin-url', adminUrl, adminUrl);
+        setOwnerLinks(doc, install);
         setText(doc, 'owner-steps', ownerSteps(webAppUrl));
-        render('리소스가 만들어졌습니다 (AWAITING_SCHOOL_AUTH). 관리자 주소에서 초기 설정을 한 뒤 연결 검사를 누르세요.');
+        render('리소스가 만들어졌습니다 (AWAITING_SCHOOL_AUTH). Apps Script에서 키를 만든 뒤 초기 설정 화면을 열고 연결 검사를 누르세요.');
       } else {
         render('현재 단계: ' + install.state + '. 이어하기 정보를 확인하세요.');
       }
@@ -743,7 +762,7 @@ function boot() {
           return;
         }
         setText(doc, 'owner-steps', ownerSteps(webAppUrl));
-        setLink(doc, 'admin-url', adminUrlFromWebAppUrl(webAppUrl), adminUrlFromWebAppUrl(webAppUrl));
+        setOwnerLinks(doc, install);
         renderResumeGuidance();
         render('연결 검사가 끝났습니다. 초기 설정 확인 완료 버튼을 눌러 마무리하세요. 실제 QR 제출·첨부 확인은 별도로 필요합니다.');
       } else {
@@ -920,8 +939,7 @@ function boot() {
       try {
         const webAppUrl = install.resources ? install.resources.web_app_url : '';
         if (install.state === 'AWAITING_SCHOOL_AUTH' && isNonEmptyString(webAppUrl)) {
-          const adminUrl = adminUrlFromWebAppUrl(webAppUrl);
-          setLink(doc, 'admin-url', adminUrl, adminUrl);
+          setOwnerLinks(doc, install);
           setText(doc, 'owner-steps', ownerSteps(webAppUrl));
         }
       } catch {
@@ -929,7 +947,7 @@ function boot() {
       }
       renderResumeGuidance();
       if (install.state === 'AWAITING_SCHOOL_AUTH') {
-        render('이어하기 정보를 가져왔습니다. 원래 학교명을 그대로 사용하세요. 관리자 주소에서 초기 설정을 한 뒤 연결 검사를 누르세요. 완료는 새로운 연결 검사 후에 가능합니다.');
+        render('이어하기 정보를 가져왔습니다. 원래 학교명을 그대로 사용하세요. Apps Script에서 키를 만든 뒤 초기 설정 화면을 열고 연결 검사를 누르세요. 완료는 새로운 연결 검사 후에 가능합니다.');
       } else {
         render('이어하기 정보를 가져왔습니다. 원래 학교명과 계정을 그대로 사용하세요. 다음 단계를 진행하세요.');
       }
