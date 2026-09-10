@@ -1,6 +1,6 @@
 # INSTALLER_OAUTH_SETUP — 제작자 1회 준비 작업 (학교에 떠넘기지 않음)
 
-상태: 프로젝트·API·브랜딩·웹 클라이언트(JS 원본만)까지 완료. Client ID는 로컬 소스에 반영했고, 운영 재배포와 라이브 설치 테스트는 미완료.
+상태(2026-09-10): 프로젝트·API·브랜딩·웹 클라이언트·요청 scope·테스트 사용자 등록까지 완료. Client ID는 소스에 반영했다. 운영 재배포와 라이브 신규 설치 성공은 별도 검증 항목이다.
 확인한 항목만 체크한다. 완료되지 않은 항목은 출시 조건으로 남긴다.
 
 ## 1. Google Cloud 프로젝트 (제작자용, 설치센터 전용)
@@ -11,9 +11,10 @@
 ## 2. OAuth 동의화면
 
 - [x] OAuth 브랜딩 생성 (사용자 유형·앱 이름·지원 이메일).
-- [ ] 요청 scope 등록 (`docs/review/OAUTH_SCOPE_MATRIX.md` A표와 일치, 미완료)
-- [ ] 개인정보처리방침 URL·도메인 연결 (미완료)
-- [ ] 테스트 사용자에 테스트 학교 계정 추가 (미완료)
+- [x] 요청 scope 등록: openid, userinfo.email, userinfo.profile, drive.file, script.projects, script.deployments. 코드 요청 범위 확장 없음.
+- [x] 홈페이지 `https://qr-safe.h19h19.com`, 개인정보처리방침 `https://qr-safe.h19h19.com/privacy/`, 승인 도메인 `h19h19.com`을 콘솔에 저장. 개인정보 페이지의 실제 공개 응답은 배포 후 별도 확인한다.
+- [x] 소유자 테스트 계정 1개 추가. 실제 학교 계정/일반 사용자 검증 완료를 뜻하지 않는다.
+- 외부 앱은 TESTING 상태를 유지한다. 계정 접근 동의와 학교 Apps Script 승인은 별도이며, scope 목록 저장만으로 접근이 부여되는 것은 아니다.
 
 ## 3. OAuth 클라이언트 (웹)
 

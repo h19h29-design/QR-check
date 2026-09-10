@@ -137,6 +137,243 @@ export function scanText(rel, content) {
   }
 }
 
+// Runtime-specific URL allowlist: installer static bases plus the full Apps Script
+// scopes legitimately present in verified runtime appsscript.json. Static scanText
+// stays strict and unchanged; only decoded verified runtime sources use this list.
+export const RUNTIME_ALLOWED_URL_BASES = [
+  ...ALLOWED_URL_BASES,
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/spreadsheets',
+];
+
+// Exact public-validation regex literals observed in verified runtime. Each contains
+// literal `\/` sequences that runtimeNormalizeForScan would otherwise convert into
+// `https://` false positives. Only these two exact strings are removed before
+// normalizing; arbitrary regex with escaped URLs must still reject.
+export const RUNTIME_ALLOWED_REGEX_LITERALS = [
+  '/^https:\\/\\/script\\.google\\.com\\/macros\\/s\\/[A-Za-z0-9_-]+\\/exec$/',
+  '/^https:\\/\\/(drive|docs)\\.google\\.com\\//',
+];
+
+function runtimeNormalizeForScan(s) {
+  return String(s)
+    .replace(/\\u003c/gi, '<')
+    .replace(/\\u003e/gi, '>')
+    .replace(/\\u0026/gi, '&')
+    .replace(/\\\//g, '/')
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'")
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t');
+}
+
+// Narrow allowlist of harmless adminToken/syncKey shapes observed in verified runtime.
+// Each entry requires a statement terminator afterwards so `...value || "evil"`
+// or `...payload.adminToken || "evil"` is NOT stripped (LHS remains and rejects).
+const RUNTIME_SAFE_STRIP_RES = [
+  /const\s+token\s*=\s*payload\s*&&\s*payload\.newAdminToken\s*\?\s*payload\.newAdminToken\s*:\s*Utilities\.getUuid\(\)\s*\+\s*Utilities\.getUuid\(\)(?=\s*;)/g,
+  /const\s+key\s*=\s*payload\s*&&\s*payload\.newSyncKey\s*\?\s*payload\.newSyncKey\s*:\s*Utilities\.getUuid\(\)\s*\+\s*Utilities\.getUuid\(\)(?=\s*;)/g,
+  /adminToken\s*:\s*qs\(\s*['"]adminToken['"]\s*\)\.value(?=\s*[,;}\]\)]|\s*$)/g,
+  /adminToken\s*:\s*document\.getElementById\(\s*['"]adminToken['"]\s*\)\.value(?=\s*[,;}\]\)]|\s*$)/g,
+  /(?:const|let|var)\s+adminToken\s*=\s*payload\s*&&\s*payload\.adminToken(?=\s*[,;}\]\)]|\s*$)/g,
+  /(?:const|let|var)\s+syncKey\s*=\s*payload\s*&&\s*\(\s*payload\.syncKey\s*\|\|\s*payload\.sync_key\s*\)(?=\s*[,;}\]\)]|\s*$)/g,
+  /(?:const|let|var)\s+adminToken\s*=\s*payload\.adminToken(?=\s*[,;}\]\)]|\s*$)/g,
+  /(?:const|let|var)\s+syncKey\s*=\s*payload\.syncKey(?=\s*[,;}\]\)]|\s*$)/g,
+  /(?:const|let|var)\s+adminToken\s*=\s*\(\s*!setting_\(\s*['"]admin_token_hash['"]\s*,\s*['"]['"]\s*\)\s*\|\|\s*rotate\s*\)\s*\?\s*generateAdminTokenForSetup_\(\s*payload\s*\)\s*:\s*['"]\(기존 관리자 토큰 유지\)['"](?=\s*[,;}\]\)]|\s*$)/g,
+  /(?:const|let|var)\s+syncKey\s*=\s*\(\s*!setting_\(\s*['"]sync_key_hash['"]\s*,\s*['"]['"]\s*\)\s*\|\|\s*rotate\s*\)\s*\?\s*generateSyncKeyForSetup_\(\s*payload\s*\)\s*:\s*['"]\(기존 Desktop Sync Key 유지\)['"](?=\s*[,;}\]\)]|\s*$)/g,
+  /adminToken\s*:\s*adminToken(?=\s*[,;}\]\)]|\s*$)/g,
+  /syncKey\s*:\s*syncKey(?=\s*[,;}\]\)]|\s*$)/g,
+];
+
+// Strict-but-context-aware scanner for decoded verified runtime sources (raw source
+// with context). Rejects real key/token/secret literals, private keys, API/access
+// tokens, OAuth client secrets, source maps, and unapproved absolute URLs, while
+// accepting the narrow harmless adminToken/syncKey reads above and the explicit
+// runtime Google scope URLs. Never evals or executes runtime code.
+export function scanRuntimeSource(rel, content) {
+  if (typeof content !== 'string') throw new Error('invalid runtime source type in ' + String(rel));
+  const label = String(rel || 'runtime source');
+  let pre = String(content);
+  for (const lit of RUNTIME_ALLOWED_REGEX_LITERALS) {
+    if (pre.includes(lit)) pre = pre.split(lit).join(' ');
+  }
+  const normalized = runtimeNormalizeForScan(pre);
+  if (/sourceMappingURL/i.test(content) || /sourceMappingURL/i.test(normalized)) {
+    throw new Error('secret/sensitive pattern detected (source map) in ' + label);
+  }
+  if (/AIza[0-9A-Za-z_-]{10,}/.test(normalized)) {
+    throw new Error('secret/sensitive pattern detected (api key) in ' + label);
+  }
+  if (/ya29\.[0-9A-Za-z_-]{10,}/.test(normalized)) {
+    throw new Error('secret/sensitive pattern detected (access token) in ' + label);
+  }
+  if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(normalized)) {
+    throw new Error('secret/sensitive pattern detected (private key) in ' + label);
+  }
+  let sans = normalized;
+  for (const re of RUNTIME_SAFE_STRIP_RES) {
+    re.lastIndex = 0;
+    sans = sans.replace(re, ' ');
+    re.lastIndex = 0;
+  }
+  const checks = [
+    [/client_secret\s*["']?\s*[:=]/i, 'client_secret assignment'],
+    [/admin[_\-]?(token|secret|key)["']?\s*[:=]/i, 'admin token/secret'],
+    [/sync[_\-]?(token|secret|key)["']?\s*[:=]/i, 'sync token/secret'],
+    [/admin(Token|Secret|Key)["']?\s*[:=]/, 'adminToken assignment'],
+    [/sync(Token|Secret|Key)["']?\s*[:=]/, 'syncToken assignment'],
+  ];
+  for (const [re, checkLabel] of checks) {
+    if (re.test(sans)) {
+      throw new Error('secret/sensitive pattern detected (' + checkLabel + ') in ' + label);
+    }
+  }
+  // Exact URL token allowlist: compare each complete URL token to the exact
+  // allowed runtime entries. Substring removal would accept scope-prefix
+  // lookalikes (e.g. `.../auth/drive.evil` contains `.../auth/drive`), so each
+  // discovered token must equal an allowlist entry exactly.
+  const allowedSet = new Set(RUNTIME_ALLOWED_URL_BASES);
+  const urlReGlobal = /https?:\/\/[^\s"'`<>)\]]+/gi;
+  urlReGlobal.lastIndex = 0;
+  let urlMatch = null;
+  while ((urlMatch = urlReGlobal.exec(sans)) !== null) {
+    let token = urlMatch[0].replace(/[.,;:!?}]+$/g, '');
+    if (!allowedSet.has(token)) {
+      throw new Error('private/absolute URL detected in ' + label + ': ' + token.slice(0, 80));
+    }
+  }
+}
+
+export const RELEASE_DATA_HEADER = '// Generated by tools/build-site.mjs. Do not edit.\n';
+const RELEASE_DATA_PREFIXES = [
+  'window.__QR_CHECK_RELEASE__ = ',
+  'window.__MAKER_RELEASE__ = ',
+  'window.__MAKER_RUNTIME_FILES__ = ',
+];
+
+export function buildReleaseDataBody(manifest, verified) {
+  const runtimeFileCount = verified.length;
+  const qr = {
+    status: 'published',
+    app_version: manifest.app_version,
+    source_commit: manifest.source_commit,
+    built_at: manifest.built_at,
+    runtime_file_count: runtimeFileCount,
+  };
+  const makerRelease = manifest.app_version;
+  const runtimeFiles = verified.map((v) => ({ name: v.name, source: v.source }));
+  return (
+    RELEASE_DATA_HEADER +
+    RELEASE_DATA_PREFIXES[0] + safeJson(qr) + ';\n' +
+    RELEASE_DATA_PREFIXES[1] + safeJson(makerRelease) + ';\n' +
+    RELEASE_DATA_PREFIXES[2] + safeJson(runtimeFiles) + ';\n'
+  );
+}
+
+// Parses the generated wrapper exactly as generated, without executing it.
+// Rejects malformed wrappers and injected trailing code.
+export function parseReleaseDataBody(content) {
+  if (typeof content !== 'string' || !content.startsWith(RELEASE_DATA_HEADER)) {
+    throw new Error('malformed release-data.js (bad header)');
+  }
+  const rest = content.slice(RELEASE_DATA_HEADER.length);
+  let pos = 0;
+  const sections = [];
+  for (let i = 0; i < RELEASE_DATA_PREFIXES.length; i += 1) {
+    const pre = RELEASE_DATA_PREFIXES[i];
+    if (!rest.startsWith(pre, pos)) {
+      throw new Error('malformed release-data.js (bad wrapper prefix)');
+    }
+    pos += pre.length;
+    const end = rest.indexOf(';\n', pos);
+    if (end === -1) {
+      throw new Error('malformed release-data.js (missing terminator)');
+    }
+    const jsonText = rest.slice(pos, end);
+    if (!jsonText.trim()) {
+      throw new Error('malformed release-data.js (empty section)');
+    }
+    let parsed = null;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      throw new Error('malformed release-data.js (invalid JSON section)');
+    }
+    sections.push({ jsonText, parsed });
+    pos = end + 2;
+  }
+  if (pos !== rest.length) {
+    throw new Error('malformed release-data.js (trailing code)');
+  }
+  return { qr: sections[0].parsed, makerRelease: sections[1].parsed, runtimeFiles: sections[2].parsed };
+}
+
+// Validates generated wrapper bytes exactly (no bypass via filename alone):
+// byte-equality against expected output plus structural parse plus split scanning
+// (metadata strictly, decoded runtime sources via runtime scanner).
+export function validateGeneratedReleaseData(content, manifest, verified) {
+  const expected = buildReleaseDataBody(manifest, verified);
+  if (content !== expected) {
+    throw new Error('release-data.js mismatch (tampered or stale; expected bytes differ)');
+  }
+  const parsed = parseReleaseDataBody(content);
+  if (!parsed.qr || typeof parsed.qr !== 'object' || Array.isArray(parsed.qr)) {
+    throw new Error('malformed release-data.js (bad qr section)');
+  }
+  if (
+    parsed.qr.status !== 'published' ||
+    parsed.qr.app_version !== manifest.app_version ||
+    parsed.qr.source_commit !== manifest.source_commit ||
+    parsed.qr.built_at !== manifest.built_at ||
+    parsed.qr.runtime_file_count !== verified.length
+  ) {
+    throw new Error('release-data.js qr mismatch (tampered)');
+  }
+  if (parsed.makerRelease !== manifest.app_version) {
+    throw new Error('release-data.js maker release mismatch (tampered)');
+  }
+  if (!Array.isArray(parsed.runtimeFiles) || parsed.runtimeFiles.length !== verified.length) {
+    throw new Error('release-data.js runtime files mismatch (tampered)');
+  }
+  for (let i = 0; i < verified.length; i += 1) {
+    const exp = verified[i];
+    const got = parsed.runtimeFiles[i];
+    if (
+      !got || typeof got !== 'object' || Array.isArray(got) ||
+      got.name !== exp.name || typeof got.source !== 'string' || got.source !== exp.source
+    ) {
+      throw new Error('release-data.js runtime file mismatch (tampered): ' + String(exp && exp.name ? exp.name : i));
+    }
+    if (typeof got.name !== 'string' || !isSimpleBasename(got.name)) {
+      throw new Error('invalid runtime file name in wrapper: ' + String(got.name));
+    }
+  }
+  scanText('release-data.js#qr', JSON.stringify(parsed.qr));
+  scanText('release-data.js#maker', JSON.stringify(parsed.makerRelease));
+  for (const f of parsed.runtimeFiles) {
+    scanRuntimeSource('release-data.js#' + f.name, f.source);
+  }
+  return parsed;
+}
+
+function scanOutputWithRuntime(resolvedOut, manifest, verified) {
+  for (const rel of ALLOWLIST) {
+    if (rel === 'release-data.js') continue;
+    const full = path.resolve(resolvedOut, rel);
+    if (!isInside(resolvedOut, full) && full !== resolvedOut) {
+      throw new Error('refusing path outside output during scan: ' + rel);
+    }
+    const otherContent = fs.readFileSync(full, 'utf8');
+    if (otherContent.includes('sourceMappingURL')) throw new Error('source map detected in output ' + rel);
+    scanText(rel, otherContent);
+  }
+  const dest = path.resolve(resolvedOut, 'release-data.js');
+  if (!isInside(resolvedOut, dest)) throw new Error('refusing path outside output for release-data.js');
+  const wrapperContent = fs.readFileSync(dest, 'utf8');
+  validateGeneratedReleaseData(wrapperContent, manifest, verified);
+}
+
 function ensureRepoRoot() {
   let st = null;
   try {
@@ -480,26 +717,17 @@ function loadAndVerifyRuntime(runtimeRaw) {
 }
 
 function generateReleaseData(resolvedOut, manifest, verified) {
-  const runtimeFileCount = verified.length;
-  const qr = {
-    status: 'published',
-    app_version: manifest.app_version,
-    source_commit: manifest.source_commit,
-    built_at: manifest.built_at,
-    runtime_file_count: runtimeFileCount,
-  };
-  const makerRelease = manifest.app_version;
-  const runtimeFiles = verified.map((v) => ({ name: v.name, source: v.source }));
-  const body =
-    '// Generated by tools/build-site.mjs. Do not edit.\n' +
-    'window.__QR_CHECK_RELEASE__ = ' + safeJson(qr) + ';\n' +
-    'window.__MAKER_RELEASE__ = ' + safeJson(makerRelease) + ';\n' +
-    'window.__MAKER_RUNTIME_FILES__ = ' + safeJson(runtimeFiles) + ';\n';
-  scanText('release-data.js', body);
+  for (const v of verified) {
+    scanRuntimeSource('runtime/admin/' + v.name, v.source);
+  }
+  const body = buildReleaseDataBody(manifest, verified);
+  const parsed = validateGeneratedReleaseData(body, manifest, verified);
   const dest = path.resolve(resolvedOut, 'release-data.js');
   if (!isInside(resolvedOut, dest)) throw new Error('refusing path outside output for release-data.js');
   fs.writeFileSync(dest, body, 'utf8');
-  return { qr, makerRelease, runtimeFiles };
+  const written = fs.readFileSync(dest, 'utf8');
+  if (written !== body) throw new Error('release-data.js write mismatch');
+  return { qr: parsed.qr, makerRelease: parsed.makerRelease, runtimeFiles: parsed.runtimeFiles };
 }
 
 function main() {
@@ -525,8 +753,10 @@ function main() {
     builtAt = manifest.built_at;
     runtimeFileCount = verified.length;
     // Rescan complete output including generated file; enforce exact allowlist still.
+    // Generated wrapper is validated structurally (byte-equality + JSON parse without
+    // execution + split scanning), not with the strict installer scanText.
     verifyOutputExact(resolvedOut);
-    scanOutput(resolvedOut);
+    scanOutputWithRuntime(resolvedOut, manifest, verified);
   }
 
   const summary = {
