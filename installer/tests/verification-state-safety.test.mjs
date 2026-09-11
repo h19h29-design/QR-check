@@ -268,6 +268,20 @@ describe('verification-state-safety (checkSchoolVerified only)', () => {
       assert.equal(calls[0].spreadsheetId, install.resources.spreadsheet_id);
     });
 
+    it('accepts Google Sheets uppercase TRUE marker', async () => {
+      const install = atAwaiting('eligible-uppercase');
+      const { calls, res } = makeRes({
+        values: [
+          ['setup_completed', 'TRUE'],
+          ['school_name', 'Synthetic School'],
+        ],
+      });
+      const out = await checkSchoolVerified({ install, res, accountEmail: OWNER });
+      assert.equal(out.verified, true);
+      assert.equal(install.state, 'VERIFIED');
+      assert.equal(calls.length, 1);
+    });
+
     it('accepts case-variant of same account as valid', async () => {
       const install = atAwaiting('eligible-case');
       const { calls, res } = makeRes({ values: verifiedTrueRows() });
