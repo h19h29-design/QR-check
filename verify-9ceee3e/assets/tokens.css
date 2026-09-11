@@ -1,0 +1,14 @@
+/* QR-check · Clear Signal / 2026-09 design proposal.
+   No third-party font/image/network dependency. */
+:root {
+  --blue:#245af2; --blue-hover:#1646d7; --blue-soft:#edf3ff;
+  --navy:#152542; --navy-deep:#101f3c; --mint:#b5f3d3;
+  --ink:#17243c; --muted:#5d6a80; --subtle:#778399;
+  --paper:#fff; --canvas:#f5f7fb; --line:#e4e9f2;
+  --green:#187652; --green-soft:#eaf8f0;
+  --amber:#946018; --amber-soft:#fff5e4;
+  --radius:20px; --radius-sm:12px; --container:1184px;
+  --shadow:0 22px 70px rgba(32,62,120,.12);
+  --font:"Pretendard Variable",Pretendard,SUIT,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans CJK KR",sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
