@@ -18,7 +18,8 @@ function md(id, name, mime, parents) { return { id, name, mimeType: mime, ownedB
 function V(o = {}) {
   const st = { n: 0 };
   return {
-    async getFileMetadata(id) { st.n++; if (id === 'f1') return { ...md('f1', N.folder, MT.f), ...o.F }; if (id === 's1') return { ...md('s1', N.sheet, MT.s, ['f1']), ...o.S }; if (id === 'sc1') return { ...md('sc1', N.script, MT.c), ...o.P }; throw Object.assign(new Error('not found'), { status: 404 }); },
+    async getFileMetadata(id) { st.n++; if (id === 'f1') return { ...md('f1', N.folder, MT.f), ...o.F }; if (id === 's1') return { ...md('s1', N.sheet, MT.s, ['f1']), ...o.S }; throw Object.assign(new Error('not found'), { status: 404 }); },
+    async getProject(id) { st.n++; if (id !== 'sc1') throw Object.assign(new Error('not found'), { status: 404 }); return { scriptId: 'sc1', title: N.script, creator: { email: ACCOUNT }, ...o.project }; },
     async getContent(id, v) { st.n++; if (id !== 'sc1') throw Object.assign(new Error('not found'), { status: 404 }); const f = o.files || EXP; if (v === undefined) return { scriptId: 'sc1', files: structuredClone(f) }; if (Number.isSafeInteger(v) && v === 1) return { scriptId: 'sc1', files: structuredClone(o.vf || f) }; throw Object.assign(new Error('bad version'), { status: 400 }); },
     async getDeployment(s, d) { st.n++; if (s !== 'sc1' || d !== 'd1') throw Object.assign(new Error('not found'), { status: 404 }); return o.dep || { deploymentId: 'd1', deploymentConfig: { scriptId: 'sc1', versionNumber: 1, manifestFileName: 'appsscript' }, entryPoints: [{ entryPointType: 'WEB_APP', webApp: { url: URL } }] }; },
     _n: st,
@@ -27,7 +28,7 @@ function V(o = {}) {
 function A(state, res, ov = {}) { return { text: txt(state, res), accountEmail: ACCOUNT, release: RELEASE, sourceCommit: COMMIT, res: V(ov), runtimeFiles: structuredClone(RT) }; }
 test('valid DEPLOYED resets, cloned, stage empty, no mutation', async () => {
   const a = A('DEPLOYED', BASE);
-  assert.deepEqual(Object.keys(a.res).filter((k) => !k.startsWith('_')).sort(), ['getContent', 'getDeployment', 'getFileMetadata']);
+  assert.deepEqual(Object.keys(a.res).filter((k) => !k.startsWith('_')).sort(), ['getContent', 'getDeployment', 'getFileMetadata', 'getProject']);
   const out = await restoreInstallFromSnapshot(a);
   assert.equal(out.state, 'AWAITING_SCHOOL_AUTH');
   assert.deepEqual(out.stage_completed_at, {});
@@ -36,9 +37,18 @@ test('valid DEPLOYED resets, cloned, stage empty, no mutation', async () => {
   assert.ok(a.res._n.n >= 5);
   assert.deepEqual(a.runtimeFiles, RT);
 });
-test('owned/name/id/trashed/mime/parent mismatch rejects', async () => {
-  const bad = [[{ F: { ownedByMe: false } }], [{ F: { name: 'WRONG' } }], [{ F: { id: 'other' } }], [{ S: { trashed: true } }], [{ P: { mimeType: MT.f } }], [{ S: { parents: ['other'] } }], [{ F: { mimeType: MT.s } }]];
+test('folder/sheet owned/name/id/trashed/mime/parent mismatch rejects', async () => {
+  const bad = [[{ F: { ownedByMe: false } }], [{ F: { name: 'WRONG' } }], [{ F: { id: 'other' } }], [{ S: { trashed: true } }], [{ S: { parents: ['other'] } }], [{ F: { mimeType: MT.s } }]];
   for (const [ov] of bad) await assert.rejects(() => restoreInstallFromSnapshot(A('DEPLOYED', BASE, ov)));
+});
+test('Apps Script project id/title/creator mismatch rejects', async () => {
+  const bad = [
+    { project: { scriptId: 'other' } },
+    { project: { title: 'WRONG' } },
+    { project: { creator: null } },
+    { project: { creator: { email: 'foreign@example.com' } } },
+  ];
+  for (const ov of bad) await assert.rejects(() => restoreInstallFromSnapshot(A('DEPLOYED', BASE, ov)));
 });
 test('HEAD/version/content/deployment mismatch rejects', async () => {
   const extra = [...EXP, { name: 'X', type: 'SERVER_JS', source: 'x' }];

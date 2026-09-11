@@ -382,6 +382,15 @@ function makeVerifyFetch(tracker, { metas = {}, heads = {}, versions = {}, deplo
           return okResponse(meta);
         }
       }
+      const projectMatch = u.match(/\/script\.googleapis\.com\/v1\/projects\/([^/?]+)$/);
+      if (projectMatch) {
+        const sid = decodeURIComponent(projectMatch[1]);
+        tracker.fetchCalls += 1;
+        tracker.fetchUrls.push(`${method} ${u}`);
+        const meta = metas[sid];
+        if (meta) return okResponse({ scriptId: sid, title: meta.name, creator: { email: OWNER_EMAIL } });
+        return { ok: false, status: 404, text: async () => JSON.stringify({ error: { code: 404 } }) };
+      }
       if (u.includes('/script.googleapis.com/v1/projects/') && u.includes('/content')) {
         const m = u.match(/\/projects\/([^/?]+)\/content/);
         const sid = m ? decodeURIComponent(m[1]) : '';

@@ -182,7 +182,6 @@ export function parseResumeEnvelope(text, ctx) {
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const SHEET_MIME = 'application/vnd.google-apps.spreadsheet';
-const SCRIPT_MIME = 'application/vnd.google-apps.script';
 
 function restoreFail() {
   throw new Error('invalid snapshot');
@@ -316,14 +315,13 @@ async function restoreInner(input) {
   }
 
   if (hasOwn(resources, 'script_id')) {
-    if (typeof res.getFileMetadata !== 'function') restoreFail();
-    const m = await res.getFileMetadata(resources.script_id);
-    if (!isObj(m)) restoreFail();
-    if (m.id !== resources.script_id) restoreFail();
-    if (m.name !== expectedNames.script) restoreFail();
-    if (m.mimeType !== SCRIPT_MIME) restoreFail();
-    if (m.ownedByMe !== true) restoreFail();
-    if (m.trashed !== false) restoreFail();
+    if (typeof res.getProject !== 'function') restoreFail();
+    const project = await res.getProject(resources.script_id);
+    if (!isObj(project)) restoreFail();
+    if (project.scriptId !== resources.script_id) restoreFail();
+    if (project.title !== expectedNames.script) restoreFail();
+    if (!isObj(project.creator)) restoreFail();
+    if (normEmail(project.creator.email) !== normEmail(env.account_email)) restoreFail();
 
     if (typeof res.getContent !== 'function') restoreFail();
     const head = await res.getContent(resources.script_id);

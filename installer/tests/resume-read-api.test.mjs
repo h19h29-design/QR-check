@@ -16,6 +16,15 @@ test('getFileMetadata GET Drive shape, encoded, only GET', async () => {
   assert.ok(calls[0].url.includes('fields=id,name,mimeType,ownedByMe,trashed,parents'));
   assert.ok(!calls[0].url.includes('test'));
 });
+test('getProject reads Apps Script metadata without Drive API', async () => {
+  const calls = [];
+  const c = client(calls, { scriptId: 'sc 1', title: 'n', creator: { email: 'owner@example.com' } });
+  await c.getProject('sc 1');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, 'GET');
+  assert.ok(calls[0].url.endsWith('/projects/sc%201'));
+  assert.ok(!calls[0].url.includes('/drive/'));
+});
 test('getContent HEAD no query; versioned uses versionNumber query', async () => {
   const calls = [];
   const c = client(calls, { scriptId: 'sc1', files: [] });
