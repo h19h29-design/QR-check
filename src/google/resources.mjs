@@ -192,6 +192,10 @@ export function createResourceClients(deps) {
     return rest.get(`${DRIVE}/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,ownedByMe,trashed,parents`);
   }
 
+  async function getProject(scriptId) {
+    return rest.get(`${SCRIPT}/projects/${encodeURIComponent(scriptId)}`);
+  }
+
   async function getContent(scriptId, versionNumber) {
     if (versionNumber !== undefined) {
       if (typeof versionNumber !== 'number' || !Number.isSafeInteger(versionNumber) || versionNumber <= 0) {
@@ -228,6 +232,6 @@ export function createResourceClients(deps) {
     findDriveFolder, createDriveFolder, findSpreadsheet, createSpreadsheet,
     moveIntoFolder, createScriptProject, uploadRuntime, createVersion,
     createDeployment, updateDeployment, getContent, getDeployment, getSheetValues,
-    getVerifiedEmail, getFileMetadata,
+    getVerifiedEmail, getFileMetadata, getProject,
   };
 }
