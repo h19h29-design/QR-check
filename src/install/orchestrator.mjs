@@ -261,7 +261,7 @@ export async function checkSchoolVerified({ install, res, accountEmail }) {
   for (const row of values) {
     if (row && row[0]) map[String(row[0])] = row[1];
   }
-  const done = map.setup_completed === 'true' || map.setup_completed === true;
+  const done = String(map.setup_completed).trim().toLowerCase() === 'true';
   if (!done) {
     return { verified: false, school_name: map.school_name || '' };
   }
