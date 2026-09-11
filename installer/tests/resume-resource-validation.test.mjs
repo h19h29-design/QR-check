@@ -48,6 +48,21 @@ test('HEAD/version/content/deployment mismatch rejects', async () => {
   const cases = [{ files: [EXP[0]] }, { files: extra }, { files: [{ ...EXP[0], source: 'tampered' }, EXP[1]] }, { files: [EXP[0], EXP[0]] }, { vf: [{ ...EXP[0], source: 'other' }, EXP[1]] }, { dep: badDepVer }, { dep: badDepUrl }, { dep: badDepId }];
   for (const ov of cases) await assert.rejects(() => restoreInstallFromSnapshot(A('DEPLOYED', BASE, ov)));
 });
+test('Apps Script line-ending normalization does not reject matching code', async () => {
+  const resources = { install_prefix: PREFIX, folder_id: 'f1', spreadsheet_id: 's1', script_id: 'sc1' };
+  const a = A('CODE_UPLOADED', resources, {
+    files: [
+      { ...EXP[0], source: '// first\n// second' },
+      EXP[1],
+    ],
+  });
+  a.runtimeFiles = [
+    { name: 'Code.gs', source: '// first\r\n// second' },
+    RT[1],
+  ];
+  const out = await restoreInstallFromSnapshot(a);
+  assert.equal(out.state, 'CODE_UPLOADED');
+});
 test('pending/account/commit fail before reads', async () => {
   const t = JSON.stringify(createResumeEnvelope({ install_id: 'i1', account_email: ACCOUNT, release: RELEASE, state: 'API_ACCESS_READY', resources: { install_prefix: PREFIX, folder_id: 'f1', operation_pending: 'op1' }, stage_completed_at: {} }, COMMIT));
   const r0 = V();
