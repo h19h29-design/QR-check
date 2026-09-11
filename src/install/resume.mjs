@@ -242,7 +242,7 @@ function checkFilesMatch(actual, expected) {
     for (let i = 0; i < actual.length; i++) {
       if (used[i]) continue;
       const got = actual[i];
-      if (got.name === exp.name && got.type === exp.type && got.source === exp.source) {
+      if (got.name === exp.name && got.type === exp.type && got.source.replace(/\r\n?/g, '\n') === exp.source.replace(/\r\n?/g, '\n')) {
         found = i;
         break;
       }
