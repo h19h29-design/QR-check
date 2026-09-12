@@ -26,6 +26,16 @@
 - 학교별 Sheets/Drive/Apps Script 소유 구조, 비공개 첨부, 관리자 Google 신원 확인을 유지한다.
 - Muse/DeepSeek/외부 위임 없이 Codex가 직접 수행한다.
 
+## 배포 후 확인
+
+- 소스 `f9ebeb8`을 main에 fast-forward 및 push. 런타임 `0.1.1`, `dirty=false`, public 12/admin 18파일, 정적 사이트 25파일 빌드 성공.
+- 홈페이지 `gh-pages` 배포 커밋 `82dca3b`. GitHub Pages 실행 `34672892763` completed/success 확인.
+- 운영 `release-data.js` HTTP 200 및 source commit `f9ebeb831b1aa8e9ab174448a0357cd5fc8444d0` 확인.
+- 홈페이지·maker·demo·guide·help·update·privacy 7경로 HTTP 200 확인. HTTP 결과는 기능 E2E 증거가 아니다.
+- 운영 브라우저에서 FAQ 펼침, 수정 안내 표시, 홈페이지 → 학교 만들기 이동, Google 연결 준비 상태와 게시 버전 0.1.1 확인.
+- 임시 `verify-9ceee3e/` 사이트 복사본 25파일만 제거. Git 이력에서 복구 가능하며 학교 자원·기록은 삭제하지 않음.
+- 이번에는 실물 휴대전화 및 390px/1440px 재검사를 수행하지 않음. 이전 결과를 이번 실행 결과로 주장하지 않음.
+
 ## 남은 완료 조건
 
 1. 소유자의 학교 런타임 Google 권한 승인 및 이번 테스트 학교 초기 설정.
