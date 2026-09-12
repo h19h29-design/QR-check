@@ -165,7 +165,7 @@ describe('visible content', () => {
 
   it('states setup prerequisite truth', () => {
     assert.ok(text.includes('연결 설정'), 'expected 연결 설정 (connection-setup truth)');
-    assert.ok(text.includes('운영 설정이 준비된 뒤'), 'expected setup-readiness truth (no fake connected claims)');
+    assert.ok(text.includes('권한 심사와 학교별 정책 확인이 남아'), 'expected setup-readiness truth (no fake connected claims)');
   });
 });
 

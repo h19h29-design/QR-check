@@ -1,5 +1,7 @@
 # CURRENT_STATE — 2026-09-07 실측 기록 (Asia/Seoul)
 
+> 최신 상태: [2026-09-12 공개 배포·학교 사용 준비 상태](PUBLIC_READINESS_20260912.md). 아래는 이전 구조의 역사적 분석이며 현행 배포·보안 구현 상태가 아니다.
+
 기준: `main` = `d416bde` (Harden setup and release packaging). 검토 문서의 참고 커밋과 동일.
 작업 브랜치: `work/school-owned-web` (main에서 분기, main은 untouched).
 클론 시점 트리 clean, 미커밋 변경 없음 → 보존할 사용자 변경 없음 확인.

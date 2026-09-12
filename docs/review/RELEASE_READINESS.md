@@ -1,5 +1,7 @@
 # RELEASE_READINESS — 출시 판정표 (2026-09-08)
 
+> 최신 상태: [2026-09-12 공개 배포·학교 사용 준비 상태](PUBLIC_READINESS_20260912.md). 아래는 역사적 기록이며 현재 배포/OAuth 상태의 기준으로 사용하지 않는다.
+
 ## 2026-09-08 local-only addendum — current status (no live Google calls)
 
 - Date/scope: 2026-09-08, local-only. No live Google calls, push, merge, deployment, QR reissue, sharing, DNS, OAuth configuration, or rollback were performed.
