@@ -21,7 +21,7 @@
 <div class="subhero">
 <h1>개인정보처리방침</h1>
 <p>QR 보안점검표 설치센터에 대한 안내입니다.</p>
-<p>시행일: 2026-09-10</p>
+<p>시행일: 2026-09-14</p>
 </div>
 <div class="surface">
 <section class="section" aria-labelledby="about">
@@ -52,8 +52,23 @@
 </section>
 </div>
 <div class="surface">
+<section class="section" aria-labelledby="protect">
+<h2 id="protect">4. 민감한 정보의 보호 방법</h2>
+<p>설치 과정에서 다루는 민감한 정보와 접근 권한은 다음 방법으로 보호합니다.</p>
+<ul>
+<li>전송 구간 암호화: 설치센터와 Google API 사이의 모든 통신은 HTTPS(TLS)로 암호화합니다.</li>
+<li>접근 토큰 보호: OAuth 접근 토큰은 브라우저 메모리에만 보관하고 서버나 저장소에 남기지 않습니다. 탭을 닫거나 새로고침하면 즉시 사라집니다.</li>
+<li>서버 측 사본 없음: 설치센터는 정적 호스팅만 사용하며, 학교 기록·첨부파일·비밀키의 중앙 복사본을 만들거나 조회하지 않습니다.</li>
+<li>최소 권한 원칙: 설치에 필요한 drive.file과 script 범위만 요청하고, 그 밖의 Google 데이터에는 접근하지 않습니다.</li>
+<li>접근 통제: 학교 데이터는 해당 학교의 Google 계정이 소유하며, 접근은 그 계정의 OAuth 승인을 받은 경우로 제한됩니다.</li>
+<li>제3자 공유 없음: 학교 데이터를 광고·분석·AI 학습을 위해 제3자에게 판매하거나 제공하지 않습니다.</li>
+<li>철회와 삭제: Google 계정의 제3자 액세스에서 접근을 철회하면 설치센터의 접근은 즉시 중단되고, 남아 있던 메모리 상태도 함께 지워집니다.</li>
+</ul>
+</section>
+</div>
+<div class="surface">
 <section class="section" aria-labelledby="keep">
-<h2 id="keep">4. 보관과 삭제</h2>
+<h2 id="keep">5. 보관과 삭제</h2>
 <p>설치센터는 입력값과 토큰을 서버 중앙 복사본으로 보관하지 않으며, 일상적으로 접근하지 않습니다.</p>
 <p>학교 Sheets 기록·관리 데이터와 비공개 Drive 첨부파일은 학교 소유이며, 학교 계정에서 보관·삭제 기간을 관리합니다.</p>
 <p>직접 내보낸 이어하기 JSON 파일이 있다면 사용자가 보관·관리해야 하며, 비밀 정보를 넣지 마십시오.</p>
@@ -62,7 +77,7 @@
 </div>
 <div class="surface">
 <section class="section" aria-labelledby="share">
-<h2 id="share">5. 공유, 광고, 네트워크 처리</h2>
+<h2 id="share">6. 공유, 광고, 네트워크 처리</h2>
 <p>설치센터는 Google 데이터를 광고 목적으로 판매·공유하지 않으며, AI 학습에 사용하지 않습니다.</p>
 <p>이 앱이 별도의 분석·광고를 추가하지 않습니다.</p>
 <p>정적 호스트와 Google은 네트워크 요청을 각자의 정책에 따라 처리할 수 있습니다.</p>
@@ -70,7 +85,7 @@
 </div>
 <div class="surface">
 <section class="section" aria-labelledby="rights">
-<h2 id="rights">6. 접근 철회와 요청처</h2>
+<h2 id="rights">7. 접근 철회와 요청처</h2>
 <p>Google 계정의 제3자 액세스에서 설치센터 접근을 철회하면, 설치센터의 접근은 중단됩니다.</p>
 <p>이미 만들어진 학교 앱은 별도의 승인을 가지고 동작하므로, 학교 앱 권한도 별도로 확인·철회하십시오.</p>
 <p>학교 기록의 열람·정정·삭제 요청은 해당 학교 관리자에게 문의하십시오.</p>
@@ -79,7 +94,7 @@
 </div>
 <div class="surface">
 <section class="section" aria-labelledby="notice">
-<h2 id="notice">7. 고지</h2>
+<h2 id="notice">8. 고지</h2>
 <p>이 문서는 법적 준수나 인증을 보장하지 않습니다.</p>
 <p>Google 설치 성공을 보장하지 않습니다.</p>
 <p>방침이 바뀌면 이 페이지에서 시행일과 함께 안내합니다.</p>
@@ -89,7 +104,7 @@
 </main>
 <footer class="site-footer">
 <div class="container">
-<p>QR 보안점검표 설치센터 · 개인정보처리방침 · 시행일: 2026-09-10</p>
+<p>QR 보안점검표 설치센터 · 개인정보처리방침 · 시행일: 2026-09-14</p>
 <p><a href="../index.html">설치센터 홈</a> · <a href="../help/index.html">도움말</a></p>
 </div>
 </footer>
