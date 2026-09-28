@@ -27,6 +27,8 @@ test('privacy page is shipped with clear school ownership and a homepage link', 
   const html = fs.readFileSync(path.join(INSTALLER_DIR, 'privacy/index.html'), 'utf8');
   assert.ok(html.includes('개인정보처리방침'));
   assert.ok(html.includes('학교 소유'));
+  assert.ok(html.includes('민감한 정보의 보호 방법'));
+  assert.ok(html.includes('OAuth 접근 토큰은 브라우저 메모리에만 보관'));
   assert.ok(parseAllowlist(fs.readFileSync(BUILDER_PATH, 'utf8')).includes('privacy/index.html'));
   assert.ok(fs.readFileSync(HOME_HTML, 'utf8').includes('privacy/index.html'));
 });
