@@ -124,7 +124,8 @@ describe('guide/help static content (ko shell, relative routes, truth, no secret
     // Preview/sample alone never proves live behavior.
     assert.ok(hasNorm(guide, '검증되는 것은 아닙니다'), 'guide missing live NOT_TESTED disclaimer');
     // Initial-setup guidance must survive the redesign.
-    assert.ok(guide.includes('createInitialSetupKey'), 'guide missing setup-key guidance');
+    assert.ok(guide.includes('showSetupKeyForOwner'), 'guide missing visible setup-key guidance');
+    assert.ok(guide.includes('SETUP_KEY:'), 'guide missing execution-log guidance');
     assert.ok(guide.includes('?page=setup'), 'guide missing setup-page guidance');
     assert.ok(hasNorm(guide, '테스트 제출'), 'guide missing trial-submission guidance');
   });

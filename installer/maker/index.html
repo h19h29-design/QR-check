@@ -154,23 +154,25 @@
 <label for="school-name">학교·기관명<span class="required">*</span>
 </label>
 </div>
-<input id="school-name" name="school-name" type="text" placeholder="예: OO초등학교" maxlength="70" autocomplete="off">
+<input id="school-name" name="school-name" type="text" placeholder="예: OO초등학교" maxlength="70" autocomplete="organization" required>
 </div>
 <div class="field">
 <label for="school-admin-email">관리자 이메일<span class="required">*</span>
 </label>
-<input id="school-admin-email" name="school-admin-email" type="email" placeholder="예: admin@school.kr" maxlength="120" autocomplete="off">
+<input id="school-admin-email" name="school-admin-email" type="email" placeholder="예: admin@school.kr" maxlength="120" autocomplete="email" required>
 <small>점검표 관리를 맡을 담당자 이메일입니다.</small>
 </div>
 <div class="field">
 <label for="account-email">설치용 Google 계정 이메일<span class="required">*</span>
 </label>
-<input id="account-email" name="account-email" type="email" placeholder="예: school-account@school.kr" maxlength="120" autocomplete="off">
+<input id="account-email" name="account-email" type="email" placeholder="예: school-account@school.kr" maxlength="120" autocomplete="email" required>
 <small>실제 설치할 때는 학교에서 승인한 계정을 사용하세요.</small>
 </div>
 </div>
+<p id="school-step-hint" class="step-hint" role="status">필수 정보를 모두 입력하면 다음 단계가 활성화됩니다.</p>
+<button class="btn" id="school-next-btn" type="button" disabled>다음: Google 연결</button>
 </div>
-<div data-wizard-panel="2">
+<div data-wizard-panel="2" hidden>
 <h2>학교 계정에 연결합니다.</h2>
 <p class="surface-lead">학교 담당자가 권한 내용을 확인한 뒤 Google 연결을 승인합니다. 권한을 허용하지 않으면 다음 단계로 진행할 수 없습니다.</p>
 <div class="blocked status-note" role="status">
@@ -214,13 +216,16 @@
 </div>
 </div>
 </div>
-<button class="btn secondary" id="connect-btn" type="button" disabled>
+<div class="btn-group">
+<button class="btn secondary" id="school-edit-btn" type="button">학교 정보 수정</button>
+<button class="btn" id="connect-btn" type="button" disabled>
 <svg class="icon " viewBox="0 0 24 24" aria-hidden="true">
 <rect x="5" y="10" width="14" height="11" rx="2"/>
 <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>
 </svg>Google 연결하기</button>
 </div>
-<div data-wizard-panel="3">
+</div>
+<div data-wizard-panel="3" hidden>
 <h2>우리 학교의 공간을 만듭니다.</h2>
 <p class="surface-lead">연결이 준비되면 아래 자료를 학교 계정에 생성합니다. 연결이 끊기거나 서버가 바쁠 때는 잠시 기다린 뒤 다시 시도 버튼을 누르세요.</p>
 <div class="resource-list">
@@ -269,46 +274,62 @@
 <button class="btn secondary" id="retry-btn" type="button" disabled>다시 시도</button>
 </div>
 </div>
-<div data-wizard-panel="4">
-<h2>초기 설정과 연결을 확인합니다.</h2>
-<p class="surface-lead">초기 설정 확인 완료는 초기 설정 입력 확인이며, 실제 QR 제출·시트 기록·첨부 동작 확인은 별도로 필요합니다. 관리자 화면에서 초기 설정을 한 뒤 연결 검사를 진행하세요.</p>
-<ol class="setup-list">
-<li>
-<strong>초기 설정 키 만들기</strong>학교 계정의 Apps Script 편집기에서 아래 함수를 1회 실행합니다.<div class="code-line">
+<div data-wizard-panel="4" hidden>
+<h2>마지막 설정도 번호대로 진행하세요.</h2>
+<p class="surface-lead">한 단계가 끝나면 다음 버튼이 활성화됩니다. 키는 다른 사람에게 보내지 말고 이 설치에만 사용하세요.</p>
+<div class="guided-setup">
+<section class="setup-step-card" data-setup-step="1">
+<div class="setup-step-heading"><span>1</span><div><h3>초기 설정 키 만들기</h3><p>아래 버튼으로 학교 계정의 Apps Script 편집기를 엽니다.</p></div></div>
+<a class="btn" id="script-editor-url" target="_blank" rel="noopener" hidden>1. Apps Script 편집기 열기</a>
+<ol class="micro-steps">
+<li>편집기 위쪽의 <b>함수 선택</b>을 눌러 <code class="mono">showSetupKeyForOwner</code>를 선택합니다.</li>
+<li><b>실행</b>을 누르고 Google 권한 화면이 나오면 설치한 학교 계정으로 승인합니다.</li>
+<li>아래쪽 <b>실행 로그</b>에서 <code class="mono">SETUP_KEY:</code> 뒤의 긴 값을 복사합니다.</li>
+</ol>
+<div class="code-line">
 <code class="mono">showSetupKeyForOwner</code>
 <button class="copy-button" data-copy="showSetupKeyForOwner" type="button" aria-label="함수 이름 복사">
-<svg class="icon " viewBox="0 0 24 24" aria-hidden="true">
-<rect x="8" y="8" width="12" height="13" rx="2"/>
-<path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>
-</svg>
+<svg class="icon " viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
 </button>
 </div>
-</li>
-<li>
-<strong>학교 정보와 관리자 설정</strong>Apps Script 편집기에서 키를 만든 뒤 <code class="mono">?page=setup</code> 화면에서 학교명, 관리자와 설정 키를 입력합니다.<div class="url-placeholder">관련 주소는 실제 리소스 생성 후 표시됩니다.</div>
-<div class="btn-group">
-<a class="btn secondary" id="script-editor-url" target="_blank" rel="noopener" hidden>Apps Script 편집기 열기</a>
-<a class="btn secondary" id="setup-url" target="_blank" rel="noopener" hidden>초기 설정 화면 열기</a>
+<label class="confirm-check"><input id="setup-key-ready" type="checkbox" disabled> 실행 로그에서 <code class="mono">SETUP_KEY</code> 값을 복사했습니다.</label>
+</section>
+
+<section class="setup-step-card" data-setup-step="2" aria-disabled="true">
+<div class="setup-step-heading"><span>2</span><div><h3>학교 정보 저장하기</h3><p>1번을 확인하면 초기 설정 화면 버튼이 활성화됩니다.</p></div></div>
+<div class="setup-values" aria-label="초기 설정 화면에 입력할 값">
+<div><span>학교명</span><strong id="setup-school-name">앞에서 입력한 학교명</strong></div>
+<div><span>관리자 이메일</span><strong id="setup-admin-email">앞에서 입력한 이메일</strong></div>
+<div><span>Sheet ID</span><code id="spreadsheet-id-output" class="mono">생성 후 표시됩니다</code><button class="copy-button" id="spreadsheet-id-copy" type="button" data-copy="" aria-label="Sheet ID 복사" disabled>복사</button></div>
+</div>
+<a class="btn" id="setup-url" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" hidden>2. 초기 설정 화면 열기</a>
+<p class="small muted">열린 화면에 위 세 값과 복사한 초기 설정 키를 입력한 뒤 <b>초기 설정 저장</b>을 누르세요.</p>
+<label class="confirm-check"><input id="setup-form-saved" type="checkbox" disabled> 초기 설정 화면에서 저장을 눌렀습니다.</label>
+</section>
+
+<section class="setup-step-card" data-setup-step="3" aria-disabled="true">
+<div class="setup-step-heading"><span>3</span><div><h3>학교 연결 확인하기</h3><p>실제로 학교 저장소에 초기 설정이 완료됐는지 확인합니다.</p></div></div>
+<button class="btn" id="verify-btn" type="button" disabled>3. 연결 검사</button>
+</section>
+
+<section class="setup-step-card" data-setup-step="4" aria-disabled="true">
+<div class="setup-step-heading"><span>4</span><div><h3>관리자 주소 보관하고 마치기</h3><p>연결 검사가 성공해야 마지막 버튼이 활성화됩니다.</p></div></div>
 <a class="btn secondary" id="admin-url" target="_blank" rel="noopener" hidden>관리자 화면 열기</a>
+<button class="btn" id="complete-btn" type="button" disabled>설치 마치기</button>
+</section>
 </div>
-</li>
-<li>
-<strong>연결 검사 및 주소 보관</strong>테스트 제출이 학교 저장소에 남는지 확인하고 관리자 주소를 보관합니다. 연결 검사가 끝나면 관리자 주소를 별도로 보관한 뒤 초기 설정 확인 완료 버튼을 누르세요. 이 버튼은 초기 설정 확인이며 QR 제출·첨부 동작 성공을 증명하지 않습니다.</li>
-</ol>
-<div class="wizard-completion-actions">
-<button class="btn secondary" id="verify-btn" type="button" disabled>연결 검사</button>
-<button class="btn" id="complete-btn" type="button" disabled>초기 설정 확인 완료</button>
-</div>
-<p id="owner-steps" class="small muted" aria-live="polite">
-</p>
-<p id="resume-info" class="small muted mono" aria-live="polite">
-</p>
+
+<details class="advanced-resume">
+<summary>설치 중 창을 닫았나요? 이어서 설치하기</summary>
+<p id="owner-steps" class="small muted" aria-live="polite"></p>
+<p id="resume-info" class="small muted mono" aria-live="polite"></p>
 <div class="field">
 <label for="resume-input">이어하기 JSON 입력</label>
 <textarea id="resume-input" class="mono" rows="6" maxlength="16384" spellcheck="false" autocomplete="off" disabled></textarea>
-<small class="small muted">표시된 JSON은 떠나기 전에 직접 복사하세요. 자동 저장되지 않습니다. 원래 학교명과 Google 계정으로 진행하세요. 토큰·비밀번호 등 비밀 정보는 입력하지 마세요. 이전 형식·다른 릴리스·보류 중인 작업은 거부됩니다. 진행 중인 설치를 덮어쓰지 않습니다.</small>
+<small class="small muted">표시된 JSON은 떠나기 전에 직접 복사하세요. 토큰·비밀번호·초기 설정 키는 넣지 마세요.</small>
 </div>
 <button class="btn secondary" id="resume-btn" type="button" disabled>검증 후 이어하기</button>
+</details>
 <div class="form-actions">
 <a class="text-link" href="../guide/index.html#admin">관리자 사용안내 보기<svg class="icon " viewBox="0 0 24 24" aria-hidden="true">
 <path d="M4 12h15M13 5l7 7-7 7"/>

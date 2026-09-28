@@ -15,6 +15,7 @@ import {
   releaseNoteText,
   retryTargetForState,
   displayStageForState,
+  guidedDisplayStage,
   BLOCKED_NO_CLIENT_ID,
   BLOCKED_NO_RUNTIME,
   BLOCKED_GIS_UNAVAILABLE,
@@ -268,6 +269,12 @@ describe('maker HTML contract', () => {
       'resume-info',
       'complete-btn',
       'maker-release',
+      'school-next-btn',
+      'school-edit-btn',
+      'setup-key-ready',
+      'spreadsheet-id-output',
+      'spreadsheet-id-copy',
+      'setup-form-saved',
     ];
     for (const id of ids) assert.ok(html.includes(`id="${id}"`), `missing id ${id}`);
   });
@@ -286,10 +293,19 @@ describe('maker HTML contract', () => {
   });
 
   it('initial disabled connect/create/verify/complete', () => {
-    for (const id of ['connect-btn', 'create-btn', 'verify-btn', 'complete-btn']) {
+    for (const id of ['school-next-btn', 'connect-btn', 'create-btn', 'verify-btn', 'complete-btn']) {
       const re = new RegExp(`<button[^>]*id="${id}"[^>]*disabled|<button[^>]*disabled[^>]*id="${id}"`);
       assert.ok(re.test(html), `${id} should start disabled`);
     }
+  });
+
+  it('starts with only the first panel visible and keeps beginner setup checkpoints', () => {
+    assert.match(html, /data-wizard-panel="1"(?![^>]*hidden)/);
+    for (const n of ['2', '3', '4']) assert.match(html, new RegExp(`data-wizard-panel="${n}"[^>]*hidden`));
+    for (const id of ['setup-key-ready', 'setup-form-saved', 'spreadsheet-id-output']) {
+      assert.ok(html.includes(`id="${id}"`), `missing guided setup control ${id}`);
+    }
+    assert.ok(html.includes('SETUP_KEY:'), 'missing execution-log instruction');
   });
 
   it('hidden admin-url with no fake href', () => {
@@ -414,6 +430,13 @@ describe('displayStageForState mapping', () => {
   it('never skips VERIFIED: completion still requires the real state machine', () => {
     assert.equal(displayStageForState('VERIFIED'), 4);
     assert.equal(displayStageForState('DEPLOYED'), 3);
+  });
+
+  it('allows UI guidance to move forward without changing the real install state', () => {
+    assert.equal(guidedDisplayStage('DRAFT', 2), 2);
+    assert.equal(guidedDisplayStage('DRAFT', 3), 3);
+    assert.equal(guidedDisplayStage('AWAITING_SCHOOL_AUTH', 2), 4);
+    assert.equal(guidedDisplayStage('DRAFT', 99), 4);
   });
 });
 
