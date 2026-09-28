@@ -284,17 +284,30 @@ export function displayStageForState(state) {
   return 1;
 }
 
+export function guidedDisplayStage(state, requestedStage = 1) {
+  const requested = Math.min(4, Math.max(1, Number(requestedStage) || 1));
+  return Math.max(displayStageForState(state), requested);
+}
+
 const DISPLAY_STAGE_LABELS = ['학교 정보', '학교 계정 연결', '학교용 공간 생성', '초기 설정 및 연결 확인'];
 
-function renderDisplayStage(doc, win, install) {
-  const stage = displayStageForState(install && install.state ? install.state : '');
+function renderDisplayStage(doc, win, install, requestedStage = 1) {
+  const stage = guidedDisplayStage(install && install.state ? install.state : '', requestedStage);
   const label = DISPLAY_STAGE_LABELS[stage - 1] || DISPLAY_STAGE_LABELS[0];
   setText(doc, 'wizard-stage-label', '0' + stage + ' / 04 · ' + label);
   try {
     const markers = doc.querySelectorAll('[data-display-stage]');
     markers.forEach((el) => {
-      if (String(el.getAttribute('data-display-stage')) === String(stage)) el.setAttribute('aria-current', 'step');
+      const markerStage = Number(el.getAttribute('data-display-stage'));
+      if (markerStage === stage) el.setAttribute('aria-current', 'step');
       else el.removeAttribute('aria-current');
+      el.setAttribute('data-stage-status', markerStage < stage ? 'complete' : markerStage === stage ? 'current' : 'upcoming');
+    });
+    const panels = doc.querySelectorAll('[data-wizard-panel]');
+    panels.forEach((el) => {
+      const isCurrent = String(el.getAttribute('data-wizard-panel')) === String(stage);
+      el.hidden = !isCurrent;
+      el.setAttribute('aria-hidden', isCurrent ? 'false' : 'true');
     });
   } catch {
     // Indicator-only; real install state stays truthful without markers.
@@ -322,6 +335,33 @@ function setText(doc, id, text) {
 function setDisabled(doc, id, disabled) {
   const el = doc.getElementById(id);
   if (el) el.disabled = Boolean(disabled);
+}
+
+function isChecked(doc, id) {
+  const el = doc.getElementById(id);
+  return Boolean(el && el.checked);
+}
+
+function setLinkEnabled(doc, id, enabled) {
+  const el = doc.getElementById(id);
+  if (!el) return;
+  if (enabled) {
+    el.removeAttribute('aria-disabled');
+    el.removeAttribute('tabindex');
+  } else {
+    el.setAttribute('aria-disabled', 'true');
+    el.setAttribute('tabindex', '-1');
+  }
+}
+
+function setSectionEnabled(doc, step, enabled) {
+  try {
+    const el = doc.querySelector(`[data-setup-step="${step}"]`);
+    if (!el) return;
+    el.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+  } catch {
+    // Guidance-only; install state remains authoritative.
+  }
 }
 
 function setLink(doc, id, href, text) {
@@ -412,6 +452,10 @@ function boot() {
   });
   let install = null;
   let busy = false;
+  let uiStage = 1;
+  let googleConnected = false;
+  let scriptEditorOpened = false;
+  let setupPageOpened = false;
   function hasPendingMarker() {
     try {
       const v = install && install.resources && install.resources.operation_pending;
@@ -434,54 +478,70 @@ function boot() {
       return false;
     }
   }
+  function requiredInputReady() {
+    return hasRequiredInstallInput({
+      schoolName: readInput(doc, 'school-name'),
+      adminEmail: readInput(doc, 'school-admin-email') || readInput(doc, 'admin-email'),
+      accountEmail: readInput(doc, 'account-email'),
+    });
+  }
+  function updateGuidedSetup(hardBlocked, pending) {
+    const state = install && install.state ? install.state : '';
+    const resources = install && install.resources ? install.resources : {};
+    const hasOwnerResources = Boolean(resources.script_id && resources.web_app_url && resources.spreadsheet_id);
+    const keyReady = isChecked(doc, 'setup-key-ready');
+    const formSaved = isChecked(doc, 'setup-form-saved');
+    const verified = state === 'VERIFIED' || state === 'COMPLETE';
+
+    setText(doc, 'setup-school-name', readInput(doc, 'school-name') || '앞에서 입력한 학교명');
+    setText(doc, 'setup-admin-email', readInput(doc, 'school-admin-email') || readInput(doc, 'account-email') || '앞에서 입력한 이메일');
+    setText(doc, 'spreadsheet-id-output', resources.spreadsheet_id || '생성 후 표시됩니다');
+    const copy = doc.getElementById('spreadsheet-id-copy');
+    if (copy) {
+      copy.setAttribute('data-copy', resources.spreadsheet_id || '');
+      copy.disabled = Boolean(busy || hardBlocked || pending || !resources.spreadsheet_id);
+    }
+
+    setDisabled(doc, 'setup-key-ready', busy || hardBlocked || pending || !hasOwnerResources || !scriptEditorOpened);
+    setLinkEnabled(doc, 'setup-url', hasOwnerResources && keyReady && !hardBlocked && !pending);
+    setDisabled(doc, 'setup-form-saved', busy || hardBlocked || pending || !hasOwnerResources || !keyReady || !setupPageOpened);
+    setLinkEnabled(doc, 'admin-url', verified && !hardBlocked && !pending);
+    setSectionEnabled(doc, 1, hasOwnerResources && !hardBlocked && !pending);
+    setSectionEnabled(doc, 2, hasOwnerResources && keyReady && !hardBlocked && !pending);
+    setSectionEnabled(doc, 3, hasOwnerResources && formSaved && !hardBlocked && !pending);
+    setSectionEnabled(doc, 4, verified && !hardBlocked && !pending);
+  }
   function updateControlsOnly() {
     const avail = availability();
     const completion = completionAvailability(install);
     const hardBlocked = avail.blocked || installReleaseMismatch();
     const pending = hasPendingMarker();
     const resumeBlocked = hardBlocked || pending || !isResumeImportAllowed();
-    if (busy) {
-      setDisabled(doc, 'connect-btn', true);
-      setDisabled(doc, 'create-btn', true);
-      setDisabled(doc, 'verify-btn', true);
-      setDisabled(doc, 'complete-btn', true);
-      setDisabled(doc, 'retry-btn', true);
-      setDisabled(doc, 'school-name', true);
-      setDisabled(doc, 'school-admin-email', true);
-      setDisabled(doc, 'admin-email', true);
-      setDisabled(doc, 'account-email', true);
-      setDisabled(doc, 'maker-release', true);
-      setDisabled(doc, 'resume-input', true);
-      setDisabled(doc, 'resume-btn', true);
-    } else if (pending) {
-      setDisabled(doc, 'connect-btn', hardBlocked || !avail.canConnect);
-      setDisabled(doc, 'create-btn', true);
-      setDisabled(doc, 'verify-btn', true);
-      setDisabled(doc, 'complete-btn', true);
-      setDisabled(doc, 'retry-btn', true);
-      setDisabled(doc, 'school-name', false);
-      setDisabled(doc, 'school-admin-email', false);
-      setDisabled(doc, 'admin-email', false);
-      setDisabled(doc, 'account-email', false);
-      setDisabled(doc, 'maker-release', false);
-      setDisabled(doc, 'resume-input', true);
-      setDisabled(doc, 'resume-btn', true);
-    } else {
-      setDisabled(doc, 'connect-btn', hardBlocked || !avail.canConnect);
-      setDisabled(doc, 'create-btn', hardBlocked || !avail.canCreate);
-      setDisabled(doc, 'verify-btn', hardBlocked || !avail.canVerify);
-      setDisabled(doc, 'complete-btn', hardBlocked || !completion.enabled);
-      setDisabled(doc, 'retry-btn', hardBlocked);
-      setDisabled(doc, 'school-name', hardBlocked);
-      setDisabled(doc, 'school-admin-email', hardBlocked);
-      setDisabled(doc, 'admin-email', hardBlocked);
-      setDisabled(doc, 'account-email', hardBlocked);
-      setDisabled(doc, 'maker-release', hardBlocked);
-      setDisabled(doc, 'resume-input', resumeBlocked);
-      setDisabled(doc, 'resume-btn', resumeBlocked);
-    }
+    const inputReady = requiredInputReady();
+    const state = install && install.state ? install.state : '';
+    const formSaved = isChecked(doc, 'setup-form-saved');
+    const locked = busy || hardBlocked || pending;
+
+    setDisabled(doc, 'school-next-btn', locked || googleConnected || !inputReady);
+    setDisabled(doc, 'school-edit-btn', locked || googleConnected);
+    setDisabled(doc, 'connect-btn', locked || !avail.canConnect || !inputReady || googleConnected || uiStage !== 2);
+    setDisabled(doc, 'create-btn', locked || !avail.canCreate || !googleConnected || uiStage < 3);
+    setDisabled(doc, 'verify-btn', locked || !avail.canVerify || state !== 'AWAITING_SCHOOL_AUTH' || !formSaved);
+    setDisabled(doc, 'complete-btn', locked || !completion.enabled);
+    setDisabled(doc, 'retry-btn', locked || !googleConnected);
+    setDisabled(doc, 'school-name', locked || googleConnected);
+    setDisabled(doc, 'school-admin-email', locked || googleConnected);
+    setDisabled(doc, 'admin-email', locked || googleConnected);
+    setDisabled(doc, 'account-email', locked || googleConnected);
+    setDisabled(doc, 'maker-release', locked);
+    setDisabled(doc, 'resume-input', busy || resumeBlocked);
+    setDisabled(doc, 'resume-btn', busy || resumeBlocked);
+    setText(doc, 'school-step-hint', inputReady ? '입력이 완료되었습니다. 다음 단계로 진행하세요.' : '필수 정보를 모두 입력하면 다음 단계가 활성화됩니다.');
+    updateGuidedSetup(hardBlocked, pending);
   }
   function renderBusyOn() {
+    setDisabled(doc, 'school-next-btn', true);
+    setDisabled(doc, 'school-edit-btn', true);
     setDisabled(doc, 'connect-btn', true);
     setDisabled(doc, 'create-btn', true);
     setDisabled(doc, 'verify-btn', true);
@@ -494,11 +554,13 @@ function boot() {
     setDisabled(doc, 'maker-release', true);
     setDisabled(doc, 'resume-input', true);
     setDisabled(doc, 'resume-btn', true);
+    setDisabled(doc, 'setup-key-ready', true);
+    setDisabled(doc, 'setup-form-saved', true);
   }
   function refreshControlsPreserveStatus() {
     updateControlsOnly();
     try {
-      renderDisplayStage(doc, win, install);
+      renderDisplayStage(doc, win, install, uiStage);
     } catch {
       // indicator-only
     }
@@ -553,7 +615,7 @@ function boot() {
       setText(doc, 'maker-status', avail.status);
     }
     updateControlsOnly();
-    renderDisplayStage(doc, win, install);
+    renderDisplayStage(doc, win, install, uiStage);
   }
 
   function renderResumeGuidance() {
@@ -568,6 +630,12 @@ function boot() {
     } catch {
       setText(doc, 'resume-info', '이어하기 정보를 표시할 수 없습니다. 복사한 JSON과 원래 계정·릴리스를 확인하세요.');
     }
+  }
+
+  function renderInstallSnapshot() {
+    renderResumeGuidance();
+    uiStage = Math.max(uiStage, displayStageForState(install && install.state ? install.state : ''));
+    renderDisplayStage(doc, win, install, uiStage);
   }
 
   function buildClients() {
@@ -603,6 +671,25 @@ function boot() {
     return resolveVerifiedEmail({ typedEmail, verifiedEmail });
   }
 
+  function handleSchoolNext() {
+    const schoolName = readInput(doc, 'school-name');
+    const adminEmail = readInput(doc, 'school-admin-email') || readInput(doc, 'admin-email');
+    const accountEmail = readInput(doc, 'account-email');
+    const missing = missingInstallInputMessage({ schoolName, adminEmail, accountEmail });
+    if (missing) {
+      render(missing);
+      return;
+    }
+    uiStage = 2;
+    render('학교 정보가 준비되었습니다. 이제 학교 Google 계정을 연결하세요.');
+  }
+
+  function handleSchoolEdit() {
+    if (googleConnected) return;
+    uiStage = 1;
+    render('학교 정보를 수정한 뒤 다시 다음 버튼을 누르세요.');
+  }
+
   async function handleConnect() {
     const avail = availability();
     if (avail.blocked) {
@@ -626,6 +713,8 @@ function boot() {
       } else if (install.account_email !== verified) {
         throw new Error('설치를 시작한 Google 계정과 다릅니다. 처음 계정으로 다시 로그인하세요.');
       }
+      googleConnected = true;
+      uiStage = 3;
       setText(doc, 'permission-status', 'Google 권한이 연결되었습니다 (' + verified + '). 다음 단계로 진행하세요.');
       renderResumeGuidance();
       render('Google에 연결되었습니다 (' + verified + '). 리소스 만들기를 누르세요.');
@@ -693,7 +782,7 @@ function boot() {
       }
       const res = buildClients();
       render('학교 저장소를 만들고 있습니다…');
-      await runToStorage({ install, accountEmail: verified, res, prefix: prefixToUse, onSnapshot: renderResumeGuidance });
+      await runToStorage({ install, accountEmail: verified, res, prefix: prefixToUse, onSnapshot: renderInstallSnapshot });
       render('앱을 게시하고 있습니다…');
       await runToDeployed({
         install,
@@ -702,11 +791,12 @@ function boot() {
         prefix: prefixToUse,
         runtimeFiles,
         versionDescription: 'maker ' + String(install.release || ''),
-        onSnapshot: renderResumeGuidance,
+        onSnapshot: renderInstallSnapshot,
       });
       const webAppUrl = install.resources ? install.resources.web_app_url : '';
       renderResumeGuidance();
       if (install.state === 'AWAITING_SCHOOL_AUTH' && isNonEmptyString(webAppUrl)) {
+        uiStage = 4;
         setOwnerLinks(doc, install);
         setText(doc, 'owner-steps', ownerSteps(webAppUrl));
         render('리소스가 만들어졌습니다 (AWAITING_SCHOOL_AUTH). Apps Script에서 키를 만든 뒤 초기 설정 화면을 열고 연결 검사를 누르세요.');
@@ -925,6 +1015,8 @@ function boot() {
         throw new Error('resume gate');
       }
       install = restored;
+      googleConnected = true;
+      uiStage = Math.max(2, displayStageForState(install.state));
       try {
         const emailVal = install.account_email || verified;
         const accEl = doc.getElementById('account-email');
@@ -1033,12 +1125,45 @@ function boot() {
     }
   }
 
+  bind('school-next-btn', handleSchoolNext);
+  bind('school-edit-btn', handleSchoolEdit);
   bind('connect-btn', handleConnect);
   bind('create-btn', handleCreate);
   bind('verify-btn', handleVerify);
   bind('complete-btn', handleComplete);
   bind('retry-btn', handleRetry);
   bind('resume-btn', handleResume);
+
+  for (const id of ['school-name', 'school-admin-email', 'account-email']) {
+    const input = doc.getElementById(id);
+    if (input && typeof input.addEventListener === 'function') {
+      input.addEventListener('input', refreshControlsPreserveStatus);
+    }
+  }
+  const scriptEditorLink = doc.getElementById('script-editor-url');
+  if (scriptEditorLink && typeof scriptEditorLink.addEventListener === 'function') {
+    scriptEditorLink.addEventListener('click', () => {
+      scriptEditorOpened = true;
+      refreshControlsPreserveStatus();
+    });
+  }
+  const setupLink = doc.getElementById('setup-url');
+  if (setupLink && typeof setupLink.addEventListener === 'function') {
+    setupLink.addEventListener('click', (ev) => {
+      if (setupLink.getAttribute('aria-disabled') === 'true') {
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+        return;
+      }
+      setupPageOpened = true;
+      refreshControlsPreserveStatus();
+    });
+  }
+  for (const id of ['setup-key-ready', 'setup-form-saved']) {
+    const checkbox = doc.getElementById(id);
+    if (checkbox && typeof checkbox.addEventListener === 'function') {
+      checkbox.addEventListener('change', refreshControlsPreserveStatus);
+    }
+  }
 
   // 초기 화면: clientId 누락·GIS 미가용을 있는 그대로 알리고 전 컨트롤 차단. 타이머 전이 없음.
   const init = availability();
