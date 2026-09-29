@@ -97,6 +97,7 @@ body[data-page="maker"] .setup-step-card {
   border-radius: 14px;
   padding: 18px;
   background: var(--paper, #fff);
+  min-width: 0;
 }
 body[data-page="maker"] .setup-step-card[aria-disabled="true"] {
   background: #f7f9fc;
@@ -130,6 +131,29 @@ body[data-page="maker"] .micro-steps {
   margin: 16px 0;
   padding-left: 22px;
   line-height: 1.7;
+}
+body[data-page="maker"] .setup-guide-image {
+  margin: 18px 0;
+  min-width: 0;
+  max-width: 100%;
+}
+body[data-page="maker"] .setup-guide-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line, #e4e9f2);
+  border-radius: 12px;
+  max-width: 100%;
+}
+body[data-page="maker"] .setup-guide-image img {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  height: auto;
+}
+body[data-page="maker"] .setup-guide-image figcaption {
+  margin-top: 8px;
+  color: var(--muted, #5d6a80);
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 body[data-page="maker"] .confirm-check {
   display: flex;
