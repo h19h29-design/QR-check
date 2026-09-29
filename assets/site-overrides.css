@@ -69,3 +69,45 @@ table.sample th {
   text-align: center;
   color: var(--subtle);
 }
+
+/* Home: responsive system-flow diagram between setup steps and ownership. */
+.operation-flow-card {
+  margin: 0;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 16px 46px #1b39650d;
+}
+.operation-flow-card a,
+.operation-flow-card img {
+  display: block;
+  width: 100%;
+}
+.operation-flow-card a {
+  overflow: hidden;
+  border-radius: 13px;
+}
+.operation-flow-card img {
+  height: auto;
+}
+.operation-flow-card figcaption {
+  padding: 12px 4px 1px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .operation-flow-card {
+    padding: 7px;
+    border-radius: 14px;
+  }
+  .operation-flow-card a {
+    border-radius: 9px;
+  }
+  .operation-flow-card figcaption {
+    padding: 9px 4px 2px;
+    font-size: 11px;
+  }
+}
