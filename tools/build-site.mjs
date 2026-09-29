@@ -18,6 +18,7 @@ const ALLOWLIST = [
   'assets/tokens.css',
   'assets/site-overrides.css',
   'assets/site.js',
+  'assets/qr-check-operation-flow.svg',
   'maker/index.html',
   'maker/maker.js',
   'maker/maker-polish.css',
@@ -113,7 +114,9 @@ export function sha256Hex(buf) {
 
 // Throws on first secret / source-map / private-URL match. Allowed public Google bases are stripped first.
 export function scanText(rel, content) {
-  let withoutGis = content;
+  let withoutGis = content
+    .replaceAll('xmlns="http://www.w3.org/2000/svg"', 'xmlns=""')
+    .replaceAll("xmlns='http://www.w3.org/2000/svg'", "xmlns=''");
   for (const base of ALLOWED_URL_BASES) {
     withoutGis = withoutGis.split(base).join('');
   }

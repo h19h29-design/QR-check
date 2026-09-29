@@ -48,6 +48,16 @@ test('maker ships the anonymized Apps Script walkthrough image and exact click o
   assert.ok(parseAllowlist(fs.readFileSync(BUILDER_PATH, 'utf8')).includes('maker/apps-script-setup-guide.png'));
 });
 
+test('homepage ships the responsive operation-flow diagram', () => {
+  const html = fs.readFileSync(HOME_HTML, 'utf8');
+  const svgPath = path.join(INSTALLER_DIR, 'assets/qr-check-operation-flow.svg');
+  assert.ok(html.includes('src="assets/qr-check-operation-flow.svg"'));
+  assert.ok(html.includes('작동 원리 한눈에 보기'));
+  assert.ok(fs.existsSync(svgPath));
+  assert.ok(fs.readFileSync(svgPath, 'utf8').includes('<title id="title">QR 보안점검표 작동 원리</title>'));
+  assert.ok(parseAllowlist(fs.readFileSync(BUILDER_PATH, 'utf8')).includes('assets/qr-check-operation-flow.svg'));
+});
+
 function norm(s) {
   return String(s ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -295,7 +305,7 @@ describe('tools/build-site.mjs static guards', () => {
     assert.ok(!src.includes('execSync') && !src.includes('spawnSync') && !src.includes('execFile'), 'builder must not spawn');
     assert.ok(!src.includes('rmSync') && !src.includes('rmdirSync') && !src.includes('unlinkSync'), 'builder must not delete');
     const allow = parseAllowlist(src);
-    assert.equal(allow.length, 26, 'allowlist must have exactly 26 entries');
+    assert.equal(allow.length, 27, 'allowlist must have exactly 27 entries');
     for (const need of ['index.html', 'release-data.js', 'guide/index.html', 'help/index.html', 'update/index.html', 'update/update-page.js', 'assets/site.js', 'assets/tokens.css', 'assets/site-overrides.css']) {
       assert.ok(allow.includes(need), 'allowlist missing ' + need);
     }
@@ -315,20 +325,21 @@ describe('tools/build-site.mjs static guards', () => {
     assert.doesNotThrow(() => scanText('ok', 'load https://accounts.google.com/gsi/client now'));
     assert.doesNotThrow(() => scanText('ok', 'use https://www.googleapis.com/drive/v3/files now'));
     assert.doesNotThrow(() => scanText('ok', 'open https://script.google.com/macros/s/ now'));
+    assert.doesNotThrow(() => scanText('ok.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>'));
     assert.throws(() => scanText('bad', 'see https://example.com/evil for details'));
     assert.throws(() => scanText('bad', 'visit http://127.0.0.1:1/x now'));
   });
 });
 
 describe('tools/build-site.mjs spawn builds (mkdtemp exact paths)', () => {
-  test('unpublished build succeeds with exactly 26 allowlisted files including placeholder', () => {
+  test('unpublished build succeeds with exactly 27 allowlisted files including placeholder', () => {
     const base = makeBase('site-content-');
     const out = path.join(base, 'out-unpublished');
     const r = runBuilder(['--out', out]);
     assert.equal(r.status, 0, 'unpublished build failed: ' + (r.stderr || r.stdout));
     const summary = JSON.parse(String(r.stdout).trim().split('\n').pop());
     assert.equal(summary.status, 'unpublished');
-    assert.equal(summary.file_count, 26);
+    assert.equal(summary.file_count, 27);
     assert.equal(summary.runtime_file_count, 0);
     const allow = parseAllowlist(readText(BUILDER_PATH));
     assert.deepEqual(listRelFiles(out), [...allow].sort());
