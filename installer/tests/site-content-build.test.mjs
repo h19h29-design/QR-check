@@ -39,6 +39,15 @@ test('maker polish stylesheet is linked and included in static build', () => {
   assert.ok(parseAllowlist(fs.readFileSync(BUILDER_PATH, 'utf8')).includes('maker/maker-polish.css'));
 });
 
+test('maker ships the anonymized Apps Script walkthrough image and exact click order', () => {
+  const html = fs.readFileSync(path.join(INSTALLER_DIR, 'maker/index.html'), 'utf8');
+  assert.ok(html.includes('src="apps-script-setup-guide.png"'));
+  assert.ok(html.includes('<b>Auth.gs</b>'));
+  assert.ok(html.includes('showSetupKeyForOwner'));
+  assert.ok(html.includes('삼각형 아이콘이 있는 <b>실행</b>'));
+  assert.ok(parseAllowlist(fs.readFileSync(BUILDER_PATH, 'utf8')).includes('maker/apps-script-setup-guide.png'));
+});
+
 function norm(s) {
   return String(s ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -286,7 +295,7 @@ describe('tools/build-site.mjs static guards', () => {
     assert.ok(!src.includes('execSync') && !src.includes('spawnSync') && !src.includes('execFile'), 'builder must not spawn');
     assert.ok(!src.includes('rmSync') && !src.includes('rmdirSync') && !src.includes('unlinkSync'), 'builder must not delete');
     const allow = parseAllowlist(src);
-    assert.equal(allow.length, 25, 'allowlist must have exactly 25 entries');
+    assert.equal(allow.length, 26, 'allowlist must have exactly 26 entries');
     for (const need of ['index.html', 'release-data.js', 'guide/index.html', 'help/index.html', 'update/index.html', 'update/update-page.js', 'assets/site.js', 'assets/tokens.css', 'assets/site-overrides.css']) {
       assert.ok(allow.includes(need), 'allowlist missing ' + need);
     }
@@ -312,17 +321,22 @@ describe('tools/build-site.mjs static guards', () => {
 });
 
 describe('tools/build-site.mjs spawn builds (mkdtemp exact paths)', () => {
-  test('unpublished build succeeds with exactly 25 allowlisted files including placeholder', () => {
+  test('unpublished build succeeds with exactly 26 allowlisted files including placeholder', () => {
     const base = makeBase('site-content-');
     const out = path.join(base, 'out-unpublished');
     const r = runBuilder(['--out', out]);
     assert.equal(r.status, 0, 'unpublished build failed: ' + (r.stderr || r.stdout));
     const summary = JSON.parse(String(r.stdout).trim().split('\n').pop());
     assert.equal(summary.status, 'unpublished');
-    assert.equal(summary.file_count, 25);
+    assert.equal(summary.file_count, 26);
     assert.equal(summary.runtime_file_count, 0);
     const allow = parseAllowlist(readText(BUILDER_PATH));
     assert.deepEqual(listRelFiles(out), [...allow].sort());
+    assert.equal(
+      crypto.createHash('sha256').update(fs.readFileSync(path.join(out, 'maker/apps-script-setup-guide.png'))).digest('hex'),
+      crypto.createHash('sha256').update(fs.readFileSync(path.join(INSTALLER_DIR, 'maker/apps-script-setup-guide.png'))).digest('hex'),
+      'binary walkthrough image must be copied byte-for-byte'
+    );
     const rel = readText(path.join(out, 'release-data.js'));
     assert.ok(rel.includes('__QR_CHECK_RELEASE__'), 'missing QR release var');
     assert.ok(rel.includes('__MAKER_RUNTIME_FILES__'), 'missing runtime files var');

@@ -21,6 +21,7 @@ const ALLOWLIST = [
   'maker/index.html',
   'maker/maker.js',
   'maker/maker-polish.css',
+  'maker/apps-script-setup-guide.png',
   'demo/index.html',
   'demo/demo.js',
   'demo/sample-store.mjs',
@@ -38,6 +39,9 @@ const ALLOWLIST = [
   'src/install/resume.mjs',
   'src/update/update.mjs',
 ];
+
+const BINARY_EXTENSIONS = new Set(['.png']);
+const isBinaryAsset = (rel) => BINARY_EXTENSIONS.has(path.extname(rel).toLowerCase());
 
 const GIS_URL = 'https://accounts.google.com/gsi/client';
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3';
@@ -362,6 +366,7 @@ export function validateGeneratedReleaseData(content, manifest, verified) {
 function scanOutputWithRuntime(resolvedOut, manifest, verified) {
   for (const rel of ALLOWLIST) {
     if (rel === 'release-data.js') continue;
+    if (isBinaryAsset(rel)) continue;
     const full = path.resolve(resolvedOut, rel);
     if (!isInside(resolvedOut, full) && full !== resolvedOut) {
       throw new Error('refusing path outside output during scan: ' + rel);
@@ -433,14 +438,18 @@ function copyAllowlist(resolvedOut) {
     }
     if (lst.isSymbolicLink()) throw new Error('refusing symlink source: ' + rel);
     if (!lst.isFile()) throw new Error('installer source not a regular file: ' + rel);
-    const content = fs.readFileSync(src, 'utf8');
-    if (content.includes('sourceMappingURL') || rel.endsWith('.map')) {
-      throw new Error('source map detected in ' + rel);
-    }
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     const finalDest = path.resolve(resolvedOut, rel);
     if (finalDest !== resolvedOut && !isInside(resolvedOut, finalDest)) {
       throw new Error('refusing path outside output: ' + rel);
+    }
+    if (isBinaryAsset(rel)) {
+      fs.copyFileSync(src, finalDest);
+      continue;
+    }
+    const content = fs.readFileSync(src, 'utf8');
+    if (content.includes('sourceMappingURL') || rel.endsWith('.map')) {
+      throw new Error('source map detected in ' + rel);
     }
     fs.writeFileSync(finalDest, content, 'utf8');
   }
@@ -482,6 +491,7 @@ function verifyOutputExact(resolvedOut) {
 
 function scanOutput(resolvedOut) {
   for (const rel of ALLOWLIST) {
+    if (isBinaryAsset(rel)) continue;
     const full = path.resolve(resolvedOut, rel);
     if (!isInside(resolvedOut, full) && full !== resolvedOut) {
       throw new Error('refusing path outside output during scan: ' + rel);
